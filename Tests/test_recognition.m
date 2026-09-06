@@ -18,7 +18,7 @@ int main(void) {
         NSLog(@"QR extent: %@, image: %zu x %zu", NSStringFromRect(NSRectFromCGRect(bounds)), CGImageGetWidth(cg), CGImageGetHeight(cg));
         CGImageDestinationRef destination = CGImageDestinationCreateWithURL((__bridge CFURLRef)[NSURL fileURLWithPath:@"/tmp/regionshot-test-qr.png"], CFSTR("public.png"), 1, NULL);
         CGImageDestinationAddImage(destination, cg, NULL); CGImageDestinationFinalize(destination); CFRelease(destination);
-        VNDetectBarcodesRequest *request = [VNDetectBarcodesRequest new];
+        VNDetectBarcodesRequest *request = RSBarcodeRequest();
         VNImageRequestHandler *handler = [[VNImageRequestHandler alloc] initWithCGImage:cg options:@{}];
         NSError *error = nil;
         BOOL success = [handler performRequests:@[request] error:&error];

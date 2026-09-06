@@ -24,7 +24,7 @@
     self.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithTitle:@"返回" style:UIBarButtonItemStylePlain target:self action:@selector(close)];
     self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithTitle:@"复制" style:UIBarButtonItemStylePlain target:self action:@selector(copyText)];
     self.navigationItem.rightBarButtonItem.enabled = NO;
-    if (_barcode) _request = [VNDetectBarcodesRequest new];
+    if (_barcode) _request = RSBarcodeRequest();
     else {
         VNRecognizeTextRequest *request = [VNRecognizeTextRequest new];
         request.recognitionLevel = VNRequestTextRecognitionLevelAccurate;
