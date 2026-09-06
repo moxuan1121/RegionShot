@@ -8,6 +8,8 @@ typedef NS_ENUM(NSInteger, RSFloatingAction) {
     RSFloatingActionCloseAll,
 };
 
+NS_ASSUME_NONNULL_BEGIN
+
 @class RSFloatingImageView;
 @protocol RSFloatingImageViewDelegate <NSObject>
 - (void)floatingImageViewDidActivate:(RSFloatingImageView *)snap;
@@ -15,10 +17,9 @@ typedef NS_ENUM(NSInteger, RSFloatingAction) {
 - (void)floatingImageView:(RSFloatingImageView *)snap didRequestAction:(RSFloatingAction)action;
 @end
 
-NS_ASSUME_NONNULL_BEGIN
 @interface RSFloatingImageView : UIImageView
 @property (nonatomic, weak) id<RSFloatingImageViewDelegate> actionDelegate;
 @property (nonatomic, readonly) UIImage *croppedImage;
-- (instancetype)initWithImage:(UIImage *)image;
+- (instancetype)initWithCroppedImage:(UIImage *)image;
 @end
 NS_ASSUME_NONNULL_END

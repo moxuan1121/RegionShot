@@ -106,7 +106,7 @@
     CGSize screen = self.floatingWindow.bounds.size;
     CGFloat factor = MIN(MIN(260.0 / image.size.width, 320.0 / image.size.height), 1.0);
     CGSize size = CGSizeMake(MAX(80, image.size.width * factor), MAX(80, image.size.height * factor));
-    RSFloatingImageView *snap = [[RSFloatingImageView alloc] initWithImage:image];
+    RSFloatingImageView *snap = [[RSFloatingImageView alloc] initWithCroppedImage:image];
     snap.bounds = (CGRect){CGPointZero, size};
     CGFloat offset = (self.mutableSnaps.count % 5) * 18.0;
     snap.center = CGPointMake(screen.width - size.width / 2.0 - 16 - offset,

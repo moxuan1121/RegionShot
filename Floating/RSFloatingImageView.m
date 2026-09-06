@@ -6,7 +6,7 @@
 
 @implementation RSFloatingImageView
 
-- (instancetype)initWithImage:(UIImage *)image {
+- (instancetype)initWithCroppedImage:(UIImage *)image {
     self = [super initWithImage:image];
     if (self) {
         _currentScale = 1;
