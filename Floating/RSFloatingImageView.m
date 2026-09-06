@@ -127,26 +127,16 @@
             RSFloatingImageView *snap = weakSelf;
             if (snap) [snap.actionDelegate floatingImageView:snap didRequestAction:RSFloatingActionHide];
         }];
-        UIAction *close = [UIAction actionWithTitle:@"关闭当前"
-                                             image:[UIImage systemImageNamed:@"xmark"]
-                                        identifier:nil
-                              discoverabilityTitle:nil
-                                        attributes:UIMenuElementAttributesDestructive
-                                             state:UIMenuElementStateOff
-                                           handler:^(__kindof UIAction *action) {
+        UIAction *close = [UIAction actionWithTitle:@"关闭当前" image:[UIImage systemImageNamed:@"xmark"] identifier:nil handler:^(__kindof UIAction *action) {
             RSFloatingImageView *snap = weakSelf;
             if (snap) [snap.actionDelegate floatingImageViewDidRequestRemoval:snap];
         }];
-        UIAction *closeAll = [UIAction actionWithTitle:@"关闭全部"
-                                                image:[UIImage systemImageNamed:@"trash"]
-                                           identifier:nil
-                                 discoverabilityTitle:nil
-                                           attributes:UIMenuElementAttributesDestructive
-                                                state:UIMenuElementStateOff
-                                              handler:^(__kindof UIAction *action) {
+        close.attributes = UIMenuElementAttributesDestructive;
+        UIAction *closeAll = [UIAction actionWithTitle:@"关闭全部" image:[UIImage systemImageNamed:@"trash"] identifier:nil handler:^(__kindof UIAction *action) {
             RSFloatingImageView *snap = weakSelf;
             if (snap) [snap.actionDelegate floatingImageView:snap didRequestAction:RSFloatingActionCloseAll];
         }];
+        closeAll.attributes = UIMenuElementAttributesDestructive;
         return [UIMenu menuWithTitle:@"RegionShot" children:@[copy, save, share, hide, close, closeAll]];
     }];
 }
