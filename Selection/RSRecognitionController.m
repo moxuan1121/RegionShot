@@ -1,5 +1,5 @@
 #import "RSRecognitionController.h"
-#import <Vision/Vision.h>
+#import "../Capture/RSRecognition.h"
 
 @implementation RSRecognitionController {
     UIImage *_image;
@@ -41,17 +41,7 @@
             NSError *error = nil;
             VNImageRequestHandler *handler = [[VNImageRequestHandler alloc] initWithCGImage:image.CGImage options:@{}];
             BOOL success = [handler performRequests:@[request] error:&error];
-            NSMutableArray<NSString *> *strings = [NSMutableArray array];
-            if (success) {
-                for (VNObservation *observation in request.results) {
-                    NSString *text = nil;
-                    if (barcode && [observation isKindOfClass:VNBarcodeObservation.class])
-                        text = ((VNBarcodeObservation *)observation).payloadStringValue;
-                    else if ([observation isKindOfClass:VNRecognizedTextObservation.class])
-                        text = [((VNRecognizedTextObservation *)observation) topCandidates:1].firstObject.string;
-                    if (text.length) [strings addObject:text];
-                }
-            }
+            NSArray<NSString *> *strings = success ? RSRecognizedStrings(request.results, barcode) : @[];
             dispatch_async(dispatch_get_main_queue(), ^{
                 RSRecognitionController *controller = weakSelf;
                 if (!controller || controller->_closed) return;
