@@ -38,7 +38,14 @@ Hook 为 `SpringBoard` 类的实例方法 `-takeScreenshot`。初始化时通过
 
 ## 编译结果
 
-版本 `0.2.0-roothide` 的最终 GitHub Actions 构建结果和 deb 校验值将在对应 GitHub Release 中记录。
+GitHub Actions 的 macOS 14 工作流已在提交 `4fa8607489b3a61d13334b885967e1dd68cc2080` 成功运行。
+几何检查、RootHide Theos 安装、Objective-C/Logos 编译、链接、package 和 artifact 上传均通过。
+
+生成文件为 `com.moxuan.regionshot_0.2.0-roothide_iphoneos-arm64e.deb`，SHA-256 为
+`669D11E865F0E7C32E5934D98B0061CD3B086558587DD86ECA71FAD843BC31A1`。独立解包确认 control 的
+Architecture 为 `iphoneos-arm64e`、Version 为 `0.2.0-roothide`；payload 只有
+`RegionShot.dylib` 与 `RegionShot.plist`。dylib 是 thin ARM64 Mach-O，CPU subtype 为现代 arm64e
+`0x80000002`。
 
 ## 仍需实机验证
 
