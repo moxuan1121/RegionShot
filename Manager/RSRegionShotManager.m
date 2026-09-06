@@ -73,12 +73,13 @@
     UIImage *cropped = self.frozenImage ? [RSScreenCapture cropImage:self.frozenImage
                                                                toRect:rect
                                                           displaySize:displaySize] : nil;
+    UIWindowScene *scene = self.selectionWindow.windowScene;
     [self.selectionWindow dismiss];
     self.selectionWindow = nil;
     self.frozenImage = nil;
     if (cropped) {
         NSLog(@"[RegionShot] selection confirmed");
-        [self createFloatingSnap:cropped];
+        [self createFloatingSnap:cropped windowScene:scene];
     } else {
         NSLog(@"[RegionShot] selection crop failed");
     }
@@ -98,9 +99,10 @@
     NSLog(@"[RegionShot] selection cancelled");
 }
 
-- (void)createFloatingSnap:(UIImage *)image {
+- (void)createFloatingSnap:(UIImage *)image windowScene:(UIWindowScene *)scene {
     if (!self.floatingWindow) {
-        self.floatingWindow = [[RSFloatingWindow alloc] initWithFrame:UIScreen.mainScreen.bounds];
+        self.floatingWindow = scene ? [[RSFloatingWindow alloc] initWithWindowScene:scene]
+                                    : [[RSFloatingWindow alloc] initWithFrame:UIScreen.mainScreen.bounds];
         self.floatingWindow.hidden = NO;
     }
     CGSize screen = self.floatingWindow.bounds.size;

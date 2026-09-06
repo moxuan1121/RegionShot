@@ -23,8 +23,10 @@
 - (instancetype)initWithImage:(UIImage *)image
                        confirm:(void (^)(CGRect, CGSize))confirm
                         cancel:(dispatch_block_t)cancel {
-    self = [super initWithFrame:UIScreen.mainScreen.bounds];
+    UIWindowScene *scene = [RSSelectionWindow currentKeyWindow].windowScene;
+    self = scene ? [super initWithWindowScene:scene] : [super initWithFrame:UIScreen.mainScreen.bounds];
     if (self) {
+        self.frame = scene ? scene.coordinateSpace.bounds : UIScreen.mainScreen.bounds;
         self.windowLevel = UIWindowLevelAlert + 100;
         self.backgroundColor = UIColor.blackColor;
         UIViewController *controller = [UIViewController new];

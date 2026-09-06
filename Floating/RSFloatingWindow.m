@@ -2,16 +2,27 @@
 
 @implementation RSFloatingWindow
 
+- (void)configureWindow {
+    self.windowLevel = UIWindowLevelAlert + 50;
+    self.backgroundColor = UIColor.clearColor;
+    self.opaque = NO;
+    UIViewController *controller = [UIViewController new];
+    controller.view.backgroundColor = UIColor.clearColor;
+    self.rootViewController = controller;
+}
+
+- (instancetype)initWithWindowScene:(UIWindowScene *)windowScene {
+    self = [super initWithWindowScene:windowScene];
+    if (self) {
+        self.frame = windowScene.coordinateSpace.bounds;
+        [self configureWindow];
+    }
+    return self;
+}
+
 - (instancetype)initWithFrame:(CGRect)frame {
     self = [super initWithFrame:frame];
-    if (self) {
-        self.windowLevel = UIWindowLevelAlert + 50;
-        self.backgroundColor = UIColor.clearColor;
-        self.opaque = NO;
-        UIViewController *controller = [UIViewController new];
-        controller.view.backgroundColor = UIColor.clearColor;
-        self.rootViewController = controller;
-    }
+    if (self) [self configureWindow];
     return self;
 }
 

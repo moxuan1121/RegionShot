@@ -8,12 +8,15 @@ RegionShot 是面向 iPhone 13 Pro Max、iOS 15.6、Dopamine、RootHide 和 arm6
 - 冻结图、选区外暗色遮罩、四角调整和选区移动
 - Home Indicator 上方的五按钮胶囊工具条
 - 从最初 frozenImage 按 CGImage 像素裁剪
+- Selection 与 Floating UIWindow 绑定触发时的 UIWindowScene
 - 多张悬浮截图、点击提升层级、空白区域触摸穿透
 - 单指拖动、双指缩放、左右吸边、双击关闭
 - 系统长按菜单：复制、保存、分享、隐藏当前、关闭当前、关闭全部
 - Manager 的隐藏全部、恢复全部和关闭全部接口
 
 “标记”“长截图”“扫码”只有按钮和日志占位；没有 OCR、二维码识别、长截图或图片编辑。
+
+ShellX 二进制分析得到的可验证结论及采用范围见 [REVERSE_ENGINEERING.md](REVERSE_ENGINEERING.md)。
 
 ## 构建
 

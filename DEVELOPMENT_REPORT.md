@@ -8,6 +8,15 @@
 - 实现从 frozenImage 的 Retina 像素裁剪。
 - 实现多悬浮图、层级管理、透明区域触摸穿透、拖动、缩放、左右吸边和双击关闭。
 - 实现 iOS 15 系统长按菜单、复制、Photos 保存、系统分享、隐藏和关闭操作。
+- 选择窗口与悬浮窗口优先绑定触发截图时所在的 `UIWindowScene`，无 scene 时才使用屏幕 frame 回退。
+
+## ShellX 逆向结论
+
+对用户提供的 ShellX 2.9.0 arm64e 包进行静态分析后，确认其区域截图链路同样使用
+`UICreateScreenUIImage` 获取冻结图，并持有原始图、捕获 bounds 和界面方向；确认选区后通过
+`CGImageCreateWithImageInRect` 从原图裁剪。它创建区域选择窗口时优先使用 `initWithWindowScene:`。
+RegionShot 据此保留现有捕获和原图裁剪方案，并补齐 scene 绑定。详细证据和排除范围记录在
+`REVERSE_ENGINEERING.md`。
 
 ## 系统截图入口
 
@@ -29,9 +38,7 @@ Hook 为 `SpringBoard` 类的实例方法 `-takeScreenshot`。初始化时通过
 
 ## 编译结果
 
-GitHub Actions 的 macOS 14 工作流已在提交 `456b936c327f88c68aa893cd9fa102fa9572b169` 成功运行。几何检查、RootHide Theos 安装、全部 Objective-C/Logos 源码编译、链接和 package 阶段均通过；工作流确认 dylib 的 Mach-O CPU subtype 为现代 arm64e `0x80000002`，并确认暂存包包含 `RegionShot.dylib` 和 `RegionShot.plist`。
-
-生成文件为 `com.moxuan.regionshot_0.1.0-roothide_iphoneos-arm64e.deb`，SHA-256 为 `90B92001F5C2F828342138C09CCDA68B59FAE03C75E15AF529FDB8D9B851B083`。解包后的 control 显示 Architecture 为 `iphoneos-arm64e`、Version 为 `0.1.0-roothide`；payload 只有 MobileSubstrate 动态库目录中的 RegionShot dylib 和过滤 plist。
+版本 `0.2.0-roothide` 的最终 GitHub Actions 构建结果和 deb 校验值将在对应 GitHub Release 中记录。
 
 ## 仍需实机验证
 
