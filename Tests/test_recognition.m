@@ -25,6 +25,23 @@ int main(void) {
         if (!success) NSLog(@"Vision test failed: %@", error);
         assert(success && !error);
         NSLog(@"Barcode observations: %@, payloads: %@", request.results, RSRecognizedStrings(request.results, YES));
+        if (!request.results.count) {
+            for (NSNumber *revision in @[@1, @2, @3]) {
+                if (![VNDetectBarcodesRequest.supportedRevisions containsIndex:revision.unsignedIntegerValue]) continue;
+                VNDetectBarcodesRequest *probe = [VNDetectBarcodesRequest new];
+                probe.revision = revision.unsignedIntegerValue;
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+                probe.usesCPUOnly = YES;
+#pragma clang diagnostic pop
+                probe.symbologies = @[VNBarcodeSymbologyQR];
+                NSError *probeError = nil;
+                [handler performRequests:@[probe] error:&probeError];
+                NSLog(@"CPU revision %@: %@, error %@", revision, RSRecognizedStrings(probe.results, YES), probeError);
+            }
+            CIDetector *detector = [CIDetector detectorOfType:CIDetectorTypeQRCode context:context options:@{CIDetectorAccuracy:CIDetectorAccuracyHigh}];
+            for (CIQRCodeFeature *feature in [detector featuresInImage:[CIImage imageWithCGImage:cg]]) NSLog(@"CoreImage QR: %@", feature.messageString);
+        }
         assert([RSRecognizedStrings(request.results, YES) containsObject:payload]);
         assert(RSRecognizedStrings(request.results, NO).count == 0);
         CGImageRelease(cg);
