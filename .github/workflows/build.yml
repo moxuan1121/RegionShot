@@ -22,7 +22,13 @@ jobs:
       - name: Check long screenshot alignment
         run: cc -std=c11 -Wall -Wextra -Werror Tests/test_stitch.c -lm -o /tmp/regionshot-stitch && /tmp/regionshot-stitch
       - name: Check generated QR recognition
-        run: clang -fobjc-arc -Wall -Wextra -Werror -framework Foundation -framework Vision -framework CoreImage -framework CoreGraphics Tests/test_recognition.m -o /tmp/regionshot-recognition && /tmp/regionshot-recognition
+        run: clang -fobjc-arc -Wall -Wextra -Werror -framework Foundation -framework Vision -framework CoreImage -framework CoreGraphics -framework ImageIO Tests/test_recognition.m -o /tmp/regionshot-recognition && /tmp/regionshot-recognition
+      - name: Upload QR diagnostic image
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: recognition-diagnostic
+          path: /tmp/regionshot-test-qr.png
       - name: Install signing tools
         run: brew install ldid xz
       - name: Install pinned RootHide Theos and iOS 15.6 SDK
