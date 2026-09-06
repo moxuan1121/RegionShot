@@ -74,7 +74,7 @@ BOOL RSSelectionMenuHideNames(void) { return [RSMenuPrefs() boolForKey:@"HideSel
     return @[@"图标、名称与排序", @"显示大小", @"恢复"][section];
 }
 - (NSString *)tableView:(UITableView *)tableView titleForFooterInSection:(NSInteger)section {
-    return section == 0 ? @"点行修改名称或图标；点编辑拖动排序。取消按钮保持可用。标记和扫码功能仍在开发中。" : nil;
+    return section == 0 ? @"点行修改名称或图标；点编辑拖动排序。取消按钮保持可用。标记功能仍在开发中。" : nil;
 }
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)path {
     UITableViewCell *cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:nil];

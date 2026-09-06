@@ -2,6 +2,8 @@
 #import "RSSelectionToolbar.h"
 #import "RSSelectionView.h"
 #import "RSMenuSettings.h"
+#import "RSRecognitionController.h"
+#import "../Capture/RSScreenCapture.h"
 
 @interface RSSelectionWindow ()
 @property (nonatomic, strong) UIImageView *imageView;
@@ -61,6 +63,7 @@
             confirm(strongSelf.selectionRect, strongSelf.displaySize);
         };
         _toolbar.cancelHandler = cancel;
+        _toolbar.recognitionHandler = ^{ [weakSelf recognizeSelection]; };
         _toolbar.longCaptureHandler = ^{
             RSSelectionWindow *window = weakSelf;
             if (window.selectionView.hasValidSelection && window.longCaptureHandler)
@@ -102,6 +105,26 @@
     [self.rootViewController presentViewController:navigation animated:YES completion:nil];
 }
 
+- (void)recognizeSelection {
+    if (!self.selectionView.hasValidSelection || self.rootViewController.presentedViewController) return;
+    UIImage *image = [RSScreenCapture cropImage:self.imageView.image toRect:self.selectionRect displaySize:self.displaySize];
+    if (!image) return;
+    UIAlertController *sheet = [UIAlertController alertControllerWithTitle:@"识别选区" message:nil preferredStyle:UIAlertControllerStyleActionSheet];
+    for (NSNumber *barcode in @[@YES, @NO]) {
+        [sheet addAction:[UIAlertAction actionWithTitle:barcode.boolValue ? @"二维码 / 条码" : @"识别文字（OCR）"
+            style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
+                RSRecognitionController *result = [[RSRecognitionController alloc] initWithImage:image barcode:barcode.boolValue];
+                UINavigationController *navigation = [[UINavigationController alloc] initWithRootViewController:result];
+                navigation.modalPresentationStyle = UIModalPresentationFullScreen;
+                [self.rootViewController presentViewController:navigation animated:YES completion:nil];
+            }]];
+    }
+    [sheet addAction:[UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:nil]];
+    sheet.popoverPresentationController.sourceView = self.toolbar;
+    sheet.popoverPresentationController.sourceRect = self.toolbar.bounds;
+    [self.rootViewController presentViewController:sheet animated:YES completion:nil];
+}
+
 - (void)show {
     self.previousKeyWindow = [RSSelectionWindow currentKeyWindow];
     self.hidden = NO;
@@ -115,6 +138,7 @@
     self.toolbar.captureHandler = nil;
     self.toolbar.cancelHandler = nil;
     self.toolbar.longCaptureHandler = nil;
+    self.toolbar.recognitionHandler = nil;
     self.longCaptureHandler = nil;
     self.rootViewController = nil;
 }
