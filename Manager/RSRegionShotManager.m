@@ -65,6 +65,12 @@
         [weakSelf cancelCapture];
     }];
     self.selectionWindow.longCaptureHandler = ^(CGRect rect, CGSize size) { [weakSelf beginLongCapture:rect size:size]; };
+    self.selectionWindow.editedImageHandler = ^(UIImage *edited) {
+        RSRegionShotManager *manager = weakSelf;
+        UIWindowScene *scene = manager.selectionWindow.windowScene;
+        [manager cancelCapture];
+        [manager createFloatingSnap:edited windowScene:scene];
+    };
     [self.selectionWindow show];
     return YES;
 }

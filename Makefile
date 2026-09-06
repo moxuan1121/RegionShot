@@ -15,11 +15,12 @@ RegionShot_FILES = Tweak.xm \
 	Selection/RSSelectionToolbar.m \
 	Selection/RSMenuSettings.m \
 	Selection/RSRecognitionController.m \
+	Selection/RSImageEditor.m \
 	Floating/RSFloatingWindow.m \
 	Floating/RSFloatingImageView.m \
 	AI/RSChatController.m \
 	AI/RSSSEDecoder.m
 RegionShot_CFLAGS = -fobjc-arc -Wall -Wextra -Wno-unused-parameter
-RegionShot_FRAMEWORKS = Foundation UIKit Photos QuartzCore Security PhotosUI UniformTypeIdentifiers Vision
+RegionShot_FRAMEWORKS = Foundation UIKit Photos QuartzCore Security PhotosUI UniformTypeIdentifiers Vision PencilKit
 
 include $(THEOS_MAKE_PATH)/tweak.mk

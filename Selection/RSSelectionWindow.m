@@ -3,6 +3,7 @@
 #import "RSSelectionView.h"
 #import "RSMenuSettings.h"
 #import "RSRecognitionController.h"
+#import "RSImageEditor.h"
 #import "../Capture/RSScreenCapture.h"
 
 @interface RSSelectionWindow ()
@@ -64,6 +65,7 @@
         };
         _toolbar.cancelHandler = cancel;
         _toolbar.recognitionHandler = ^{ [weakSelf recognizeSelection]; };
+        _toolbar.editHandler = ^{ [weakSelf editSelection]; };
         _toolbar.longCaptureHandler = ^{
             RSSelectionWindow *window = weakSelf;
             if (window.selectionView.hasValidSelection && window.longCaptureHandler)
@@ -125,6 +127,20 @@
     [self.rootViewController presentViewController:sheet animated:YES completion:nil];
 }
 
+- (void)editSelection {
+    if (!self.selectionView.hasValidSelection || self.rootViewController.presentedViewController) return;
+    UIImage *image = [RSScreenCapture cropImage:self.imageView.image toRect:self.selectionRect displaySize:self.displaySize];
+    if (!image) return;
+    __weak typeof(self) weakSelf = self;
+    RSImageEditor *editor = [[RSImageEditor alloc] initWithImage:image completion:^(UIImage *edited) {
+        RSSelectionWindow *window = weakSelf;
+        if (window.editedImageHandler) window.editedImageHandler(edited);
+    }];
+    UINavigationController *navigation = [[UINavigationController alloc] initWithRootViewController:editor];
+    navigation.modalPresentationStyle = UIModalPresentationFullScreen;
+    [self.rootViewController presentViewController:navigation animated:YES completion:nil];
+}
+
 - (void)show {
     self.previousKeyWindow = [RSSelectionWindow currentKeyWindow];
     self.hidden = NO;
@@ -139,6 +155,8 @@
     self.toolbar.cancelHandler = nil;
     self.toolbar.longCaptureHandler = nil;
     self.toolbar.recognitionHandler = nil;
+    self.toolbar.editHandler = nil;
+    self.editedImageHandler = nil;
     self.longCaptureHandler = nil;
     self.rootViewController = nil;
 }

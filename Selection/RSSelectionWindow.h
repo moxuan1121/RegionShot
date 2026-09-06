@@ -5,6 +5,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, readonly) CGRect selectionRect;
 @property (nonatomic, readonly) CGSize displaySize;
 @property (nonatomic, copy, nullable) void (^longCaptureHandler)(CGRect rect, CGSize size);
+@property (nonatomic, copy, nullable) void (^editedImageHandler)(UIImage *image);
 - (instancetype)initWithImage:(UIImage *)image
                        confirm:(void (^)(CGRect selectionRect, CGSize displaySize))confirm
                         cancel:(dispatch_block_t)cancel;
