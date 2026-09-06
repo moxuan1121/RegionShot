@@ -14,7 +14,7 @@ jobs:
   package:
     runs-on: macos-14
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Check crop geometry
         run: cc -std=c11 -Wall -Wextra -Werror Tests/test_geometry.c -lm -o /tmp/regionshot-geometry && /tmp/regionshot-geometry
       - name: Install RootHide Theos
@@ -38,7 +38,7 @@ jobs:
           assert len(packages) == 1, f'Expected one deb, got {len(packages)}'
           print(f'Verified {packages[0]} and modern arm64e ABI')
           PY
-          dpkg-deb -c packages/*.deb | grep -E 'RegionShot\.dylib|RegionShot\.plist'
+          find .theos/_ -type f | grep -E 'RegionShot\.dylib|RegionShot\.plist'
       - uses: actions/upload-artifact@v4
         with:
           name: RegionShot-roothide-arm64e
