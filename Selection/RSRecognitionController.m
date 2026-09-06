@@ -41,7 +41,9 @@
             NSError *error = nil;
             VNImageRequestHandler *handler = [[VNImageRequestHandler alloc] initWithCGImage:image.CGImage options:@{}];
             BOOL success = [handler performRequests:@[request] error:&error];
-            NSArray<NSString *> *strings = success ? RSRecognizedStrings(request.results, barcode) : @[];
+            NSArray<NSString *> *strings = barcode ? RSBarcodeStrings(image.CGImage, request.results) :
+                success ? RSRecognizedStrings(request.results, NO) : @[];
+            if (strings.count) error = nil;
             dispatch_async(dispatch_get_main_queue(), ^{
                 RSRecognitionController *controller = weakSelf;
                 if (!controller || controller->_closed) return;

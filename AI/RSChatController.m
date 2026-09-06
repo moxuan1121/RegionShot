@@ -46,7 +46,10 @@
 
 static RSChatController *RSActiveChat;
 static NSUserDefaults *RSChatPreferences(void) {
-    return [[NSUserDefaults alloc] initWithSuiteName:@"com.moxuan.regionshot"];
+    static NSUserDefaults *prefs;
+    static dispatch_once_t once;
+    dispatch_once(&once, ^{ prefs = [[NSUserDefaults alloc] initWithSuiteName:@"com.moxuan.regionshot"]; });
+    return prefs;
 }
 static NSMutableDictionary *RSKeyQuery(void) {
     return [@{(__bridge id)kSecClass:(__bridge id)kSecClassGenericPassword,

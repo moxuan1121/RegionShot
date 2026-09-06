@@ -4,7 +4,10 @@
 #import <math.h>
 
 static NSUserDefaults *RSMenuPrefs(void) {
-    return [[NSUserDefaults alloc] initWithSuiteName:@"com.moxuan.regionshot"];
+    static NSUserDefaults *prefs;
+    static dispatch_once_t once;
+    dispatch_once(&once, ^{ prefs = [[NSUserDefaults alloc] initWithSuiteName:@"com.moxuan.regionshot"]; });
+    return prefs;
 }
 static NSArray *RSMenuDefaults(void) {
     return @[@{@"id":@0, @"title":@"截图", @"symbol":@"camera", @"enabled":@YES},
