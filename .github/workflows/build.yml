@@ -1,0 +1,46 @@
+name: Build RegionShot
+
+on:
+  workflow_dispatch:
+  push:
+    paths-ignore:
+      - "README.md"
+      - "DEVELOPMENT_REPORT.md"
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check crop geometry
+        run: cc -std=c11 -Wall -Wextra -Werror Tests/test_geometry.c -lm -o /tmp/regionshot-geometry && /tmp/regionshot-geometry
+      - name: Install RootHide Theos
+        env:
+          CI: "true"
+          THEOS: ${{ github.workspace }}/theos
+        run: bash -c "$(curl -fsSL https://raw.githubusercontent.com/roothide/theos/master/bin/install-theos)"
+      - name: Build package
+        env:
+          THEOS: ${{ github.workspace }}/theos
+        run: make clean package FINALPACKAGE=1
+      - name: Verify package and modern arm64e ABI
+        run: |
+          python3 - <<'PY'
+          import pathlib, struct
+          binary = pathlib.Path('.theos/obj/arm64e/RegionShot.dylib').read_bytes()
+          magic, cpu, subtype = struct.unpack_from('<III', binary)
+          assert magic == 0xfeedfacf and cpu == 0x100000c, 'Expected thin ARM64 Mach-O'
+          assert subtype == 0x80000002, f'Expected modern arm64e ABI, got {subtype:#x}'
+          packages = list(pathlib.Path('packages').glob('*.deb'))
+          assert len(packages) == 1, f'Expected one deb, got {len(packages)}'
+          print(f'Verified {packages[0]} and modern arm64e ABI')
+          PY
+          dpkg-deb -c packages/*.deb | grep -E 'RegionShot\.dylib|RegionShot\.plist'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: RegionShot-roothide-arm64e
+          path: packages/*.deb
+          if-no-files-found: error
