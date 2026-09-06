@@ -48,6 +48,11 @@
             confirm(strongSelf.selectionRect, strongSelf.displaySize);
         };
         _toolbar.cancelHandler = cancel;
+        _toolbar.longCaptureHandler = ^{
+            RSSelectionWindow *window = weakSelf;
+            if (window.selectionView.hasValidSelection && window.longCaptureHandler)
+                window.longCaptureHandler(window.selectionRect, window.displaySize);
+        };
     }
     return self;
 }
@@ -81,6 +86,8 @@
     [self.previousKeyWindow makeKeyWindow];
     self.toolbar.captureHandler = nil;
     self.toolbar.cancelHandler = nil;
+    self.toolbar.longCaptureHandler = nil;
+    self.longCaptureHandler = nil;
     self.rootViewController = nil;
 }
 

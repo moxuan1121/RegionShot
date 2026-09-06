@@ -4,6 +4,7 @@
 #import "../Floating/RSFloatingWindow.h"
 #import "../Selection/RSSelectionWindow.h"
 #import "../AI/RSChatController.h"
+#import "../Capture/RSLongCaptureWindow.h"
 #import <Photos/Photos.h>
 
 @interface RSRegionShotManager () <RSFloatingImageViewDelegate>
@@ -13,6 +14,7 @@
 @property (nonatomic, strong, nullable) RSSelectionWindow *selectionWindow;
 @property (nonatomic, strong, nullable) RSFloatingWindow *floatingWindow;
 @property (nonatomic, strong) NSMutableArray<RSFloatingImageView *> *mutableSnaps;
+@property (nonatomic, strong) RSLongCaptureWindow *longWindow;
 @end
 
 @implementation RSRegionShotManager
@@ -62,6 +64,7 @@
     } cancel:^{
         [weakSelf cancelCapture];
     }];
+    self.selectionWindow.longCaptureHandler = ^(CGRect rect, CGSize size) { [weakSelf beginLongCapture:rect size:size]; };
     [self.selectionWindow show];
     return YES;
 }
@@ -92,12 +95,35 @@
         dispatch_async(dispatch_get_main_queue(), ^{ [self cancelCapture]; });
         return;
     }
+    [self.longWindow cancel];
+    self.longWindow = nil;
     [self.selectionWindow dismiss];
     self.selectionWindow = nil;
     self.frozenImage = nil;
     self.internalCapture = NO;
     self.capturing = NO;
     NSLog(@"[RegionShot] selection cancelled");
+}
+
+- (void)beginLongCapture:(CGRect)rect size:(CGSize)size {
+    UIWindowScene *scene = self.selectionWindow.windowScene;
+    [self.selectionWindow dismiss]; self.selectionWindow = nil; self.frozenImage = nil;
+    self.floatingWindow.hidden = YES;
+    __weak typeof(self) weakSelf = self;
+    self.longWindow = [[RSLongCaptureWindow alloc] initWithScene:scene rect:rect displaySize:size capture:^UIImage *{
+        RSRegionShotManager *manager = weakSelf;
+        if (!manager) return nil;
+        @try {
+            manager.internalCapture = YES;
+            return [RSScreenCapture captureScreen];
+        } @finally { manager.internalCapture = NO; }
+    } completion:^(UIImage *image) {
+        RSRegionShotManager *manager = weakSelf;
+        manager.longWindow = nil; manager.capturing = NO;
+        manager.floatingWindow.hidden = NO;
+        if (image) [manager createFloatingSnap:image windowScene:scene];
+    }];
+    [self.longWindow start];
 }
 
 - (void)createFloatingSnap:(UIImage *)image windowScene:(UIWindowScene *)scene {

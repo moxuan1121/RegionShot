@@ -9,6 +9,7 @@ TWEAK_NAME = RegionShot
 RegionShot_FILES = Tweak.xm \
 	Manager/RSRegionShotManager.m \
 	Capture/RSScreenCapture.m \
+	Capture/RSLongCaptureWindow.m \
 	Selection/RSSelectionWindow.m \
 	Selection/RSSelectionView.m \
 	Selection/RSSelectionToolbar.m \

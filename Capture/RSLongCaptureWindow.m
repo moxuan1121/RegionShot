@@ -1,0 +1,190 @@
+#import "RSLongCaptureWindow.h"
+#import "RSScreenCapture.h"
+#import "../Geometry/RSStitch.h"
+
+@implementation RSLongCaptureWindow {
+    CGRect _captureRect;
+    CGSize _displaySize;
+    UIImage *(^_capture)(void);
+    void (^_completion)(UIImage *);
+    UIView *_panel;
+    UILabel *_status;
+    UIButton *_sampleButton;
+    UIImageView *_preview;
+    NSMutableArray<NSURL *> *_slices;
+    NSURL *_directory;
+    NSData *_previousStrip;
+    NSUInteger _width, _height, _totalHeight;
+    CGFloat _scale;
+    BOOL _busy, _closed, _sampling;
+    NSTimer *_timer;
+    dispatch_queue_t _queue;
+}
+- (instancetype)initWithScene:(UIWindowScene *)scene rect:(CGRect)rect displaySize:(CGSize)size
+                       capture:(UIImage *(^)(void))capture completion:(void (^)(UIImage *))completion {
+    self = scene ? [super initWithWindowScene:scene] : [super initWithFrame:UIScreen.mainScreen.bounds];
+    if (!self) return nil;
+    self.frame = scene ? scene.coordinateSpace.bounds : UIScreen.mainScreen.bounds;
+    self.windowLevel = UIWindowLevelAlert + 120;
+    self.backgroundColor = UIColor.clearColor;
+    _captureRect = rect; _displaySize = size; _capture = [capture copy]; _completion = [completion copy];
+    _slices = [NSMutableArray array];
+    _queue = dispatch_queue_create("com.moxuan.regionshot.stitch", DISPATCH_QUEUE_SERIAL);
+    _directory = [[NSURL fileURLWithPath:NSTemporaryDirectory() isDirectory:YES]
+        URLByAppendingPathComponent:[@"RegionShot-" stringByAppendingString:NSUUID.UUID.UUIDString] isDirectory:YES];
+    self.rootViewController = [UIViewController new];
+    self.rootViewController.view.backgroundColor = UIColor.clearColor;
+    _panel = [UIView new]; _panel.backgroundColor = UIColor.secondarySystemBackgroundColor; _panel.layer.cornerRadius = 18;
+    [self.rootViewController.view addSubview:_panel];
+    _status = [UILabel new]; _status.font = [UIFont systemFontOfSize:12]; _status.numberOfLines = 3;
+    _status.text = @"手动向上滑动页面，再点截取；选区内请避开固定工具栏。";
+    [_panel addSubview:_status];
+    _preview = [UIImageView new]; _preview.contentMode = UIViewContentModeScaleAspectFit; [_panel addSubview:_preview];
+    NSArray *titles = @[@"截取", @"采样", @"完成", @"取消"];
+    SEL actions[] = {@selector(captureFrame), @selector(toggleSampling), @selector(finish), @selector(cancel)};
+    for (NSUInteger i = 0; i < titles.count; i++) {
+        UIButton *button = [UIButton buttonWithType:UIButtonTypeSystem];
+        [button setTitle:titles[i] forState:UIControlStateNormal]; button.tag = 500 + i;
+        [button addTarget:self action:actions[i] forControlEvents:UIControlEventTouchUpInside];
+        [_panel addSubview:button]; if (i == 1) _sampleButton = button;
+    }
+    return self;
+}
+- (void)layoutSubviews {
+    [super layoutSubviews];
+    _panel.frame = CGRectMake(MAX(8, self.bounds.size.width - 250), self.safeAreaInsets.top + 8, 242, 144);
+    _preview.frame = CGRectMake(8, 8, 62, 84);
+    _status.frame = CGRectMake(78, 8, 156, 84);
+    for (NSUInteger i = 0; i < 4; i++) [_panel viewWithTag:500 + i].frame = CGRectMake(i * 60, 96, 60, 44);
+}
+- (UIView *)hitTest:(CGPoint)point withEvent:(UIEvent *)event {
+    return CGRectContainsPoint(_panel.frame, point) ? [super hitTest:point withEvent:event] : nil;
+}
+- (void)start {
+    NSError *error = nil;
+    if (![NSFileManager.defaultManager createDirectoryAtURL:_directory withIntermediateDirectories:YES attributes:nil error:&error]) {
+        _status.text = error.localizedDescription; self.hidden = NO; return;
+    }
+    self.hidden = NO;
+    [self captureFrame];
+}
+- (void)toggleSampling {
+    _sampling = !_sampling;
+    [_sampleButton setTitle:_sampling ? @"暂停" : @"采样" forState:UIControlStateNormal];
+    [_timer invalidate]; _timer = nil;
+    if (_sampling) {
+        __weak typeof(self) weakSelf = self;
+        _timer = [NSTimer scheduledTimerWithTimeInterval:0.8 repeats:YES block:^(NSTimer *timer) { [weakSelf captureFrame]; }];
+    }
+}
+- (void)captureFrame {
+    if (_busy || _closed) return;
+    if (!CGSizeEqualToSize(self.bounds.size, _displaySize)) {
+        _status.text = @"屏幕方向已变化，请恢复原方向后继续。"; return;
+    }
+    _busy = YES;
+    _panel.hidden = YES;
+    // Give the compositor a display interval before capturing without the controls.
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 50 * NSEC_PER_MSEC), dispatch_get_main_queue(), ^{
+        if (self->_closed) return;
+        UIImage *full = self->_capture ? self->_capture() : nil;
+        self->_panel.hidden = NO;
+        if (!full) { self->_busy = NO; self->_status.text = @"截图失败，可以重试。"; return; }
+        dispatch_async(self->_queue, ^{
+            @autoreleasepool {
+                UIImage *image = [RSScreenCapture cropImage:full toRect:self->_captureRect displaySize:self->_displaySize];
+                [self processImage:image];
+            }
+        });
+    });
+}
+- (void)processed:(NSString *)message preview:(UIImage *)preview {
+    dispatch_async(dispatch_get_main_queue(), ^{
+        if (self->_closed) return;
+        self->_busy = NO; self->_status.text = message;
+        if (preview) self->_preview.image = preview;
+    });
+}
+- (void)processImage:(UIImage *)image {
+    CGImageRef cg = image.CGImage;
+    if (!cg) { [self processed:@"无法裁剪截图，请重试。" preview:nil]; return; }
+    NSUInteger width = CGImageGetWidth(cg), height = CGImageGetHeight(cg);
+    if (_slices.count && (width != _width || height != _height)) {
+        [self processed:@"截图尺寸改变，请结束后重新开始。" preview:nil]; return;
+    }
+    const int stripWidth = 48;
+    int stripHeight = (int)MIN(height, 4096);
+    NSMutableData *strip = [NSMutableData dataWithLength:stripWidth * stripHeight];
+    CGColorSpaceRef gray = CGColorSpaceCreateDeviceGray();
+    CGContextRef context = CGBitmapContextCreate(strip.mutableBytes, stripWidth, stripHeight, 8, stripWidth, gray, kCGImageAlphaNone);
+    CGColorSpaceRelease(gray);
+    if (!context) { [self processed:@"内存不足，无法分析截图。" preview:nil]; return; }
+    CGContextTranslateCTM(context, 0, stripHeight); CGContextScaleCTM(context, 1, -1);
+    CGContextDrawImage(context, CGRectMake(0, 0, stripWidth, stripHeight), cg); CGContextRelease(context);
+    int offset = _previousStrip ? RSStitchOffset(_previousStrip.bytes, strip.bytes, stripWidth, stripHeight, 12) : stripHeight;
+    if (offset == 0) { [self processed:@"页面没有移动；继续向上滑动后截取。" preview:nil]; return; }
+    if (offset < 0) { [self processed:@"无法可靠对齐；请回滚少许、保留重叠内容后再截取。" preview:nil]; return; }
+    NSUInteger added = _previousStrip ? (NSUInteger)llround((double)offset * height / stripHeight) : height;
+    // ponytail: final UIKit image is bounded to 24 million pixels; tiled file export is the upgrade path.
+    if (width * (_totalHeight + added) > 24000000 || _slices.count >= 100) {
+        [self processed:@"已达到本次长图上限，请点完成保存。" preview:nil]; return;
+    }
+    CGImageRef crop = CGImageCreateWithImageInRect(cg, CGRectMake(0, height - added, width, added));
+    UIImage *slice = crop ? [UIImage imageWithCGImage:crop scale:1 orientation:UIImageOrientationUp] : nil;
+    if (crop) CGImageRelease(crop);
+    NSData *png = slice ? UIImagePNGRepresentation(slice) : nil;
+    NSURL *path = [_directory URLByAppendingPathComponent:[NSString stringWithFormat:@"%03lu.png", (unsigned long)_slices.count]];
+    NSError *error = nil;
+    if (!png || ![png writeToURL:path options:NSDataWritingAtomic error:&error]) {
+        [self processed:error.localizedDescription ?: @"保存分段失败，可以重试。" preview:nil]; return;
+    }
+    _width = width; _height = height; _scale = image.scale; _totalHeight += added;
+    _previousStrip = strip; [_slices addObject:path];
+    UIGraphicsImageRenderer *renderer = [[UIGraphicsImageRenderer alloc] initWithSize:CGSizeMake(62, 84)];
+    UIImage *preview = [renderer imageWithActions:^(UIGraphicsImageRendererContext *ctx) { [image drawInRect:CGRectMake(0, 0, 62, 84)]; }];
+    [self processed:[NSString stringWithFormat:@"已拼接 %lu 段\n%lu × %lu 像素", (unsigned long)_slices.count,
+        (unsigned long)_width, (unsigned long)_totalHeight] preview:preview];
+}
+- (void)finish {
+    if (_busy || _closed) return;
+    if (!_slices.count) { _status.text = @"请先截取至少一段。"; return; }
+    _busy = YES; [_timer invalidate]; _timer = nil; _sampling = NO;
+    _status.text = @"正在合成长图…";
+    dispatch_async(_queue, ^{
+        @autoreleasepool {
+            UIGraphicsImageRendererFormat *format = [UIGraphicsImageRendererFormat defaultFormat];
+            format.scale = 1; format.opaque = YES;
+            UIGraphicsImageRenderer *renderer = [[UIGraphicsImageRenderer alloc] initWithSize:CGSizeMake(self->_width, self->_totalHeight) format:format];
+            __block BOOL failed = NO;
+            UIImage *result = [renderer imageWithActions:^(UIGraphicsImageRendererContext *ctx) {
+                CGFloat y = 0;
+                for (NSURL *path in self->_slices) {
+                    @autoreleasepool {
+                        UIImage *slice = [UIImage imageWithContentsOfFile:path.path];
+                        if (!slice.CGImage) { failed = YES; break; }
+                        [slice drawAtPoint:CGPointMake(0, y)]; y += slice.size.height;
+                    }
+                }
+            }];
+            dispatch_async(dispatch_get_main_queue(), ^{
+                if (self->_closed) return;
+                self->_busy = NO;
+                if (failed || !result.CGImage) { self->_status.text = @"合成失败，分段仍保留，可重试。"; return; }
+                UIImage *image = [UIImage imageWithCGImage:result.CGImage scale:self->_scale orientation:UIImageOrientationUp];
+                void (^completion)(UIImage *) = self->_completion;
+                self->_completion = nil; [self cancel];
+                if (completion) completion(image);
+            });
+        }
+    });
+}
+- (void)cancel {
+    if (_closed) return;
+    _closed = YES; [_timer invalidate]; _timer = nil; self.hidden = YES;
+    _capture = nil;
+    NSURL *directory = _directory;
+    dispatch_async(_queue, ^{ [NSFileManager.defaultManager removeItemAtURL:directory error:nil]; });
+    void (^completion)(UIImage *) = _completion; _completion = nil;
+    if (completion) completion(nil);
+}
+@end
