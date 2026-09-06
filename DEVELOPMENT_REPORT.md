@@ -29,7 +29,9 @@ Hook 为 `SpringBoard` 类的实例方法 `-takeScreenshot`。初始化时通过
 
 ## 编译结果
 
-当前 Windows 执行环境没有 Theos、make、clang 或 iOS SDK，无法在本机诚实地宣称编译或生成 deb 成功。工程包含 macOS 14 的构建工作流：运行几何检查、安装 RootHide Theos、构建 package、检查现代 arm64e Mach-O subtype，并确认 deb 内含 dylib 与 plist。此工作流尚未在本次会话运行，因此 `packages/` 中没有声称已验证的 deb。
+GitHub Actions 的 macOS 14 工作流已在提交 `456b936c327f88c68aa893cd9fa102fa9572b169` 成功运行。几何检查、RootHide Theos 安装、全部 Objective-C/Logos 源码编译、链接和 package 阶段均通过；工作流确认 dylib 的 Mach-O CPU subtype 为现代 arm64e `0x80000002`，并确认暂存包包含 `RegionShot.dylib` 和 `RegionShot.plist`。
+
+生成文件为 `com.moxuan.regionshot_0.1.0-roothide_iphoneos-arm64e.deb`，SHA-256 为 `90B92001F5C2F828342138C09CCDA68B59FAE03C75E15AF529FDB8D9B851B083`。解包后的 control 显示 Architecture 为 `iphoneos-arm64e`、Version 为 `0.1.0-roothide`；payload 只有 MobileSubstrate 动态库目录中的 RegionShot dylib 和过滤 plist。
 
 ## 仍需实机验证
 
