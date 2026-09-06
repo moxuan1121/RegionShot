@@ -17,14 +17,22 @@ jobs:
       - uses: actions/checkout@v5
       - name: Check crop geometry
         run: cc -std=c11 -Wall -Wextra -Werror Tests/test_geometry.c -lm -o /tmp/regionshot-geometry && /tmp/regionshot-geometry
-      - name: Install RootHide Theos
-        env:
-          CI: "true"
-          THEOS: ${{ github.workspace }}/theos
-        run: bash -c "$(curl -fsSL https://raw.githubusercontent.com/roothide/theos/master/bin/install-theos)"
+      - name: Check streaming packet boundaries
+        run: clang -fobjc-arc -Wall -Wextra -Werror -framework Foundation Tests/test_stream.m AI/RSSSEDecoder.m -o /tmp/regionshot-stream && /tmp/regionshot-stream
+      - name: Install signing tools
+        run: brew install ldid xz
+      - name: Install pinned RootHide Theos and iOS 15.6 SDK
+        run: |
+          export THEOS="$RUNNER_TEMP/theos"
+          echo "THEOS=$THEOS" >> "$GITHUB_ENV"
+          git clone https://github.com/roothide/theos.git "$THEOS"
+          git -C "$THEOS" checkout 88506b2c22e9e07dd4ed055f23c9e398a117a2c7
+          git -C "$THEOS" submodule update --init --recursive
+          git clone --filter=blob:none --no-checkout https://github.com/theos/sdks.git "$RUNNER_TEMP/sdks"
+          git -C "$RUNNER_TEMP/sdks" sparse-checkout set iPhoneOS15.6.sdk
+          git -C "$RUNNER_TEMP/sdks" checkout 0222fd5413cf4b9af096f37b4621afa2688572f7
+          cp -R "$RUNNER_TEMP/sdks/iPhoneOS15.6.sdk" "$THEOS/sdks/"
       - name: Build package
-        env:
-          THEOS: ${{ github.workspace }}/theos
         run: make clean package FINALPACKAGE=1
       - name: Verify package and modern arm64e ABI
         run: |

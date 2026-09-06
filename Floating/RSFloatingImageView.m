@@ -137,7 +137,11 @@
             if (snap) [snap.actionDelegate floatingImageView:snap didRequestAction:RSFloatingActionCloseAll];
         }];
         closeAll.attributes = UIMenuElementAttributesDestructive;
-        return [UIMenu menuWithTitle:@"RegionShot" children:@[copy, save, share, hide, close, closeAll]];
+        UIAction *ai = [UIAction actionWithTitle:@"图片问答" image:[UIImage systemImageNamed:@"text.bubble"] identifier:nil handler:^(__kindof UIAction *action) {
+            RSFloatingImageView *snap = weakSelf;
+            if (snap) [snap.actionDelegate floatingImageView:snap didRequestAction:RSFloatingActionAI];
+        }];
+        return [UIMenu menuWithTitle:@"RegionShot" children:@[ai, copy, save, share, hide, close, closeAll]];
     }];
 }
 

@@ -16,6 +16,16 @@ RegionShot 是面向 iPhone 13 Pro Max、iOS 15.6、Dopamine、RootHide 和 arm6
 
 “标记”“长截图”“扫码”只有按钮和日志占位；没有 OCR、二维码识别、长截图或图片编辑。
 
+## 0.3.0 图片问答（开发中）
+
+长按悬浮截图 → 图片问答，点击标题配置支持图片的 Chat Completions 完整 HTTPS 地址、模型和 API Key。
+密钥保存在系统钥匙串。支持图片和文字连续提问、流式显示、停止、复制、从旧提问重新生成、最小化和拖动恢复。
+每条回复的刷新按钮旁有 `character.textbox` 分词按钮，通过进程内通知连接 KeyboardAI；需要相应新版 KeyboardAI。
+图片附件支持系统相册和图片文件；拍照仅在宿主具备相机用途声明时启用，否则提示从相册导入。
+
+这不是 ShellX 3.0.1 的完整复刻。自动滚动长截图、OCR/翻译、完整标记编辑、历史管理、外观设置和插件入口等仍待完成。
+SpringBoard 中的系统图片选择器、键盘、相机权限及浮窗触摸需要 iOS 15.6 RootHide 实机验证。
+
 ShellX 二进制分析得到的可验证结论及采用范围见 [REVERSE_ENGINEERING.md](REVERSE_ENGINEERING.md)。
 
 ## 构建

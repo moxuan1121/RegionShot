@@ -3,6 +3,7 @@
 #import "../Floating/RSFloatingImageView.h"
 #import "../Floating/RSFloatingWindow.h"
 #import "../Selection/RSSelectionWindow.h"
+#import "../AI/RSChatController.h"
 #import <Photos/Photos.h>
 
 @interface RSRegionShotManager () <RSFloatingImageViewDelegate>
@@ -198,6 +199,9 @@
             break;
         case RSFloatingActionCloseAll:
             [self closeAllSnaps];
+            break;
+        case RSFloatingActionAI:
+            [RSChatController showImage:image scene:snap.window.windowScene];
             break;
     }
 }

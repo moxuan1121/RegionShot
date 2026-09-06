@@ -6,6 +6,7 @@ typedef NS_ENUM(NSInteger, RSFloatingAction) {
     RSFloatingActionShare,
     RSFloatingActionHide,
     RSFloatingActionCloseAll,
+    RSFloatingActionAI,
 };
 
 NS_ASSUME_NONNULL_BEGIN

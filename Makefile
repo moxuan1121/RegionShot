@@ -13,8 +13,10 @@ RegionShot_FILES = Tweak.xm \
 	Selection/RSSelectionView.m \
 	Selection/RSSelectionToolbar.m \
 	Floating/RSFloatingWindow.m \
-	Floating/RSFloatingImageView.m
+	Floating/RSFloatingImageView.m \
+	AI/RSChatController.m \
+	AI/RSSSEDecoder.m
 RegionShot_CFLAGS = -fobjc-arc -Wall -Wextra -Wno-unused-parameter
-RegionShot_FRAMEWORKS = Foundation UIKit Photos QuartzCore
+RegionShot_FRAMEWORKS = Foundation UIKit Photos QuartzCore Security PhotosUI UniformTypeIdentifiers
 
 include $(THEOS_MAKE_PATH)/tweak.mk
