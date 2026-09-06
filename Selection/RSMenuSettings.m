@@ -1,0 +1,214 @@
+#import "RSMenuSettings.h"
+#import <PhotosUI/PhotosUI.h>
+#import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
+#import <math.h>
+
+static NSUserDefaults *RSMenuPrefs(void) {
+    return [[NSUserDefaults alloc] initWithSuiteName:@"com.moxuan.regionshot"];
+}
+static NSArray *RSMenuDefaults(void) {
+    return @[@{@"id":@0, @"title":@"截图", @"symbol":@"camera", @"enabled":@YES},
+             @{@"id":@1, @"title":@"标记", @"symbol":@"pencil.tip", @"enabled":@YES},
+             @{@"id":@2, @"title":@"长截图", @"symbol":@"doc.on.doc", @"enabled":@YES},
+             @{@"id":@3, @"title":@"扫码", @"symbol":@"qrcode.viewfinder", @"enabled":@YES},
+             @{@"id":@4, @"title":@"取消", @"symbol":@"xmark", @"enabled":@YES}];
+}
+NSArray<NSDictionary *> *RSSelectionMenuItems(void) {
+    id saved = [RSMenuPrefs() objectForKey:@"SelectionMenu"];
+    if (![saved isKindOfClass:NSArray.class]) return RSMenuDefaults();
+    NSMutableArray *result = [NSMutableArray array];
+    NSMutableSet *seen = [NSMutableSet set];
+    for (id value in saved) {
+        if (![value isKindOfClass:NSDictionary.class]) continue;
+        id identifier = value[@"id"];
+        if (![identifier isKindOfClass:NSNumber.class] || [identifier doubleValue] != [identifier integerValue] ||
+            [identifier integerValue] < 0 || [identifier integerValue] > 4 || [seen containsObject:identifier]) continue;
+        NSMutableDictionary *item = [RSMenuDefaults()[[identifier unsignedIntegerValue]] mutableCopy];
+        for (NSString *key in @[@"title", @"symbol"])
+            if ([value[key] isKindOfClass:NSString.class] && [value[key] length] > 0 && [value[key] length] <= 100) item[key] = value[key];
+        if ([value[@"enabled"] isKindOfClass:NSNumber.class]) item[@"enabled"] = value[@"enabled"];
+        if ([value[@"image"] isKindOfClass:NSData.class] && [value[@"image"] length] <= 256 * 1024) item[@"image"] = value[@"image"];
+        if ([identifier integerValue] == 4) item[@"enabled"] = @YES;
+        [seen addObject:identifier]; [result addObject:item];
+    }
+    for (NSDictionary *item in RSMenuDefaults()) if (![seen containsObject:item[@"id"]]) [result addObject:item];
+    return result;
+}
+UIImage *RSSelectionMenuIcon(NSDictionary *item) {
+    NSData *data = item[@"image"];
+    UIImage *image = data ? [UIImage imageWithData:data] : nil;
+    return image ? [image imageWithRenderingMode:UIImageRenderingModeAlwaysOriginal] : [UIImage systemImageNamed:item[@"symbol"]];
+}
+CGFloat RSSelectionMenuSize(BOOL icon) {
+    NSUserDefaults *prefs = RSMenuPrefs();
+    NSString *key = icon ? @"SelectionIconSize" : @"SelectionTextSize";
+    CGFloat value = [prefs objectForKey:key] ? [prefs doubleForKey:key] : (icon ? 25 : 10);
+    return isfinite(value) ? MIN(MAX(value, icon ? 16 : 8), icon ? 80 : 16) : (icon ? 25 : 10);
+}
+BOOL RSSelectionMenuHideNames(void) { return [RSMenuPrefs() boolForKey:@"HideSelectionNames"]; }
+
+@interface RSMenuSettings () <PHPickerViewControllerDelegate, UIDocumentPickerDelegate>
+@property (nonatomic, strong) NSMutableArray<NSMutableDictionary *> *items;
+@property (nonatomic, strong) NSNumber *editingIdentifier;
+@end
+@implementation RSMenuSettings
+- (instancetype)init { return [super initWithStyle:UITableViewStyleInsetGrouped]; }
+- (void)viewDidLoad {
+    [super viewDidLoad];
+    self.title = @"区域工具条";
+    [self reloadItems];
+    self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithTitle:@"完成" style:UIBarButtonItemStyleDone target:self action:@selector(close)];
+    self.navigationItem.leftBarButtonItem = self.editButtonItem;
+}
+- (void)reloadItems {
+    self.items = [NSMutableArray array];
+    for (NSDictionary *item in RSSelectionMenuItems()) [self.items addObject:item.mutableCopy];
+}
+- (void)save { [RSMenuPrefs() setObject:self.items forKey:@"SelectionMenu"]; }
+- (void)close { [self dismissViewControllerAnimated:YES completion:self.onClose]; }
+- (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView { return 3; }
+- (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
+    return section == 0 ? self.items.count : section == 1 ? 3 : 1;
+}
+- (NSString *)tableView:(UITableView *)tableView titleForHeaderInSection:(NSInteger)section {
+    return @[@"图标、名称与排序", @"显示大小", @"恢复"][section];
+}
+- (NSString *)tableView:(UITableView *)tableView titleForFooterInSection:(NSInteger)section {
+    return section == 0 ? @"点行修改名称或图标；点编辑拖动排序。取消按钮保持可用。标记和扫码功能仍在开发中。" : nil;
+}
+- (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)path {
+    UITableViewCell *cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:nil];
+    if (path.section == 0) {
+        NSDictionary *item = self.items[path.row]; cell.textLabel.text = item[@"title"];
+        cell.imageView.image = RSSelectionMenuIcon(item); cell.detailTextLabel.text = item[@"image"] ? @"自定义图片" : item[@"symbol"];
+        UISwitch *toggle = [UISwitch new]; toggle.on = [item[@"enabled"] boolValue]; toggle.tag = [item[@"id"] integerValue];
+        toggle.enabled = toggle.tag != 4; toggle.accessibilityLabel = [@"显示 " stringByAppendingString:item[@"title"]];
+        [toggle addTarget:self action:@selector(toggleItem:) forControlEvents:UIControlEventValueChanged]; cell.accessoryView = toggle;
+    } else if (path.section == 1 && path.row == 0) {
+        cell.textLabel.text = @"隐藏按钮名称";
+        UISwitch *toggle = [UISwitch new]; toggle.on = RSSelectionMenuHideNames();
+        [toggle addTarget:self action:@selector(toggleNames:) forControlEvents:UIControlEventValueChanged]; cell.accessoryView = toggle;
+    } else if (path.section == 1) {
+        BOOL icon = path.row == 1;
+        cell.textLabel.text = [NSString stringWithFormat:@"%@：%.0f", icon ? @"图标大小" : @"文字大小", RSSelectionMenuSize(icon)];
+        UISlider *slider = [[UISlider alloc] initWithFrame:CGRectMake(0, 0, 140, 44)]; slider.tag = icon;
+        slider.minimumValue = icon ? 16 : 8; slider.maximumValue = icon ? 80 : 16; slider.value = RSSelectionMenuSize(icon);
+        slider.accessibilityLabel = icon ? @"图标大小" : @"文字大小";
+        [slider addTarget:self action:@selector(sizeChanged:) forControlEvents:UIControlEventValueChanged]; cell.accessoryView = slider;
+    } else { cell.textLabel.text = @"恢复工具条默认设置"; cell.textLabel.textColor = UIColor.systemRedColor; }
+    return cell;
+}
+- (NSMutableDictionary *)itemForID:(NSNumber *)identifier {
+    for (NSMutableDictionary *item in self.items) if ([item[@"id"] isEqual:identifier]) return item;
+    return nil;
+}
+- (void)toggleItem:(UISwitch *)toggle { [self itemForID:@(toggle.tag)][@"enabled"] = @(toggle.on); [self save]; }
+- (void)toggleNames:(UISwitch *)toggle { [RSMenuPrefs() setBool:toggle.on forKey:@"HideSelectionNames"]; }
+- (void)sizeChanged:(UISlider *)slider {
+    [RSMenuPrefs() setDouble:round(slider.value) forKey:slider.tag ? @"SelectionIconSize" : @"SelectionTextSize"];
+    UIView *view = slider;
+    while (view && ![view isKindOfClass:UITableViewCell.class]) view = view.superview;
+    ((UITableViewCell *)view).textLabel.text = [NSString stringWithFormat:@"%@：%.0f", slider.tag ? @"图标大小" : @"文字大小", round(slider.value)];
+}
+- (BOOL)tableView:(UITableView *)tableView canMoveRowAtIndexPath:(NSIndexPath *)path { return path.section == 0; }
+- (BOOL)tableView:(UITableView *)tableView canEditRowAtIndexPath:(NSIndexPath *)path { return path.section == 0; }
+- (UITableViewCellEditingStyle)tableView:(UITableView *)tableView editingStyleForRowAtIndexPath:(NSIndexPath *)path { return UITableViewCellEditingStyleNone; }
+- (BOOL)tableView:(UITableView *)tableView shouldIndentWhileEditingRowAtIndexPath:(NSIndexPath *)path { return NO; }
+- (NSIndexPath *)tableView:(UITableView *)tableView targetIndexPathForMoveFromRowAtIndexPath:(NSIndexPath *)source toProposedIndexPath:(NSIndexPath *)target {
+    return target.section == 0 ? target : [NSIndexPath indexPathForRow:self.items.count - 1 inSection:0];
+}
+- (void)tableView:(UITableView *)tableView moveRowAtIndexPath:(NSIndexPath *)source toIndexPath:(NSIndexPath *)target {
+    NSMutableDictionary *item = self.items[source.row]; [self.items removeObjectAtIndex:source.row];
+    [self.items insertObject:item atIndex:target.row]; [self save];
+}
+- (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)path {
+    [tableView deselectRowAtIndexPath:path animated:YES];
+    if (path.section == 1) return;
+    if (path.section == 2) {
+        UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"恢复默认" message:@"清除工具条排序、名称、图标和大小设置？" preferredStyle:UIAlertControllerStyleAlert];
+        [alert addAction:[UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:nil]];
+        [alert addAction:[UIAlertAction actionWithTitle:@"恢复" style:UIAlertActionStyleDestructive handler:^(UIAlertAction *action) {
+            for (NSString *key in @[@"SelectionMenu", @"SelectionIconSize", @"SelectionTextSize", @"HideSelectionNames"]) [RSMenuPrefs() removeObjectForKey:key];
+            [self reloadItems]; [self.tableView reloadData];
+        }]];
+        [self presentViewController:alert animated:YES completion:nil]; return;
+    }
+    self.editingIdentifier = self.items[path.row][@"id"];
+    UIAlertController *sheet = [UIAlertController alertControllerWithTitle:self.items[path.row][@"title"] message:nil preferredStyle:UIAlertControllerStyleActionSheet];
+    [sheet addAction:[UIAlertAction actionWithTitle:@"修改名称 / SF Symbol" style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) { [self editText]; }]];
+    [sheet addAction:[UIAlertAction actionWithTitle:@"相册图片图标" style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
+        PHPickerConfiguration *config = [PHPickerConfiguration new]; config.selectionLimit = 1; config.filter = PHPickerFilter.imagesFilter;
+        PHPickerViewController *picker = [[PHPickerViewController alloc] initWithConfiguration:config]; picker.delegate = self;
+        [self presentViewController:picker animated:YES completion:nil];
+    }]];
+    [sheet addAction:[UIAlertAction actionWithTitle:@"文件图片图标" style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
+        UIDocumentPickerViewController *picker = [[UIDocumentPickerViewController alloc] initForOpeningContentTypes:@[UTTypeImage] asCopy:YES]; picker.delegate = self;
+        [self presentViewController:picker animated:YES completion:nil];
+    }]];
+    [sheet addAction:[UIAlertAction actionWithTitle:@"恢复原图标" style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
+        NSMutableDictionary *item = [self itemForID:self.editingIdentifier]; [item removeObjectForKey:@"image"];
+        item[@"symbol"] = RSMenuDefaults()[self.editingIdentifier.unsignedIntegerValue][@"symbol"];
+        [self save]; [self.tableView reloadData];
+    }]];
+    [sheet addAction:[UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:nil]];
+    sheet.popoverPresentationController.sourceView = [tableView cellForRowAtIndexPath:path];
+    sheet.popoverPresentationController.sourceRect = sheet.popoverPresentationController.sourceView.bounds;
+    [self presentViewController:sheet animated:YES completion:nil];
+}
+- (void)editText {
+    NSMutableDictionary *item = [self itemForID:self.editingIdentifier];
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"名称与系统图标" message:@"例如 camera、character.textbox。填写有效的 SF Symbol 名称会替换图片图标。" preferredStyle:UIAlertControllerStyleAlert];
+    [alert addTextFieldWithConfigurationHandler:^(UITextField *field) { field.text = item[@"title"]; field.placeholder = @"按钮名称"; }];
+    [alert addTextFieldWithConfigurationHandler:^(UITextField *field) {
+        field.text = item[@"symbol"]; field.placeholder = @"SF Symbol 名称";
+        field.autocapitalizationType = UITextAutocapitalizationTypeNone; field.autocorrectionType = UITextAutocorrectionTypeNo;
+    }];
+    [alert addAction:[UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:nil]];
+    [alert addAction:[UIAlertAction actionWithTitle:@"保存" style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
+        NSString *title = alert.textFields[0].text;
+        NSString *symbol = [alert.textFields[1].text stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+        if (!title.length || title.length > 100 || !symbol.length || symbol.length > 100 || ![UIImage systemImageNamed:symbol]) {
+            dispatch_async(dispatch_get_main_queue(), ^{ [self showError:@"名称不能为空或超过 100 字符，图标必须是当前 iOS 支持的 SF Symbol。"]; }); return;
+        }
+        item[@"title"] = title; item[@"symbol"] = symbol; [item removeObjectForKey:@"image"];
+        [self save]; [self.tableView reloadData];
+    }]];
+    [self presentViewController:alert animated:YES completion:nil];
+}
+- (void)showError:(NSString *)message {
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"未能保存" message:message preferredStyle:UIAlertControllerStyleAlert];
+    [alert addAction:[UIAlertAction actionWithTitle:@"好" style:UIAlertActionStyleCancel handler:nil]];
+    [self presentViewController:alert animated:YES completion:nil];
+}
+- (void)importImage:(UIImage *)image identifier:(NSNumber *)identifier {
+    if (!image.CGImage || image.size.width <= 0 || image.size.height <= 0) { [self showError:@"无法读取图片。"]; return; }
+    UIGraphicsImageRendererFormat *format = [UIGraphicsImageRendererFormat defaultFormat]; format.scale = 1;
+    UIGraphicsImageRenderer *renderer = [[UIGraphicsImageRenderer alloc] initWithSize:CGSizeMake(160, 160) format:format];
+    CGFloat scale = MIN(160 / image.size.width, 160 / image.size.height);
+    CGSize size = CGSizeMake(image.size.width * scale, image.size.height * scale);
+    UIImage *icon = [renderer imageWithActions:^(UIGraphicsImageRendererContext *ctx) {
+        [image drawInRect:CGRectMake((160 - size.width) / 2, (160 - size.height) / 2, size.width, size.height)];
+    }];
+    NSData *png = UIImagePNGRepresentation(icon);
+    if (!png || png.length > 256 * 1024) { [self showError:@"图标编码失败或过大。"]; return; }
+    [self itemForID:identifier][@"image"] = png; [self save]; [self.tableView reloadData];
+}
+- (void)picker:(PHPickerViewController *)picker didFinishPicking:(NSArray<PHPickerResult *> *)results {
+    NSNumber *identifier = self.editingIdentifier;
+    [picker dismissViewControllerAnimated:YES completion:nil];
+    NSItemProvider *provider = results.firstObject.itemProvider;
+    if (!provider) return;
+    if (![provider canLoadObjectOfClass:UIImage.class]) { [self showError:@"请选择图片。"]; return; }
+    [provider loadObjectOfClass:UIImage.class completionHandler:^(id<NSItemProviderReading> object, NSError *error) {
+        dispatch_async(dispatch_get_main_queue(), ^{ [self importImage:[object isKindOfClass:UIImage.class] ? (UIImage *)object : nil identifier:identifier]; });
+    }];
+}
+- (void)documentPicker:(UIDocumentPickerViewController *)picker didPickDocumentsAtURLs:(NSArray<NSURL *> *)urls {
+    NSURL *url = urls.firstObject; if (!url) return;
+    BOOL scoped = [url startAccessingSecurityScopedResource];
+    NSNumber *size = nil; [url getResourceValue:&size forKey:NSURLFileSizeKey error:nil];
+    UIImage *image = size && size.unsignedLongLongValue <= 12 * 1024 * 1024 ? [UIImage imageWithContentsOfFile:url.path] : nil;
+    if (scoped) [url stopAccessingSecurityScopedResource];
+    [self importImage:image identifier:self.editingIdentifier];
+}
+@end

@@ -5,5 +5,6 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, copy, nullable) dispatch_block_t captureHandler;
 @property (nonatomic, copy, nullable) dispatch_block_t cancelHandler;
 @property (nonatomic, copy, nullable) dispatch_block_t longCaptureHandler;
+- (void)reloadButtons;
 @end
 NS_ASSUME_NONNULL_END

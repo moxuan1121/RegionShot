@@ -13,6 +13,7 @@ RegionShot_FILES = Tweak.xm \
 	Selection/RSSelectionWindow.m \
 	Selection/RSSelectionView.m \
 	Selection/RSSelectionToolbar.m \
+	Selection/RSMenuSettings.m \
 	Floating/RSFloatingWindow.m \
 	Floating/RSFloatingImageView.m \
 	AI/RSChatController.m \

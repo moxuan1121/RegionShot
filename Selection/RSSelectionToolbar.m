@@ -1,4 +1,5 @@
 #import "RSSelectionToolbar.h"
+#import "RSMenuSettings.h"
 
 @interface RSSelectionToolbarButton : UIButton
 @end
@@ -7,10 +8,12 @@
 - (void)layoutSubviews {
     [super layoutSubviews];
     CGFloat width = CGRectGetWidth(self.bounds);
-    self.imageView.frame = CGRectMake((width - 23) / 2.0, 9, 23, 23);
-    self.titleLabel.frame = CGRectMake(0, 38, width, 17);
+    CGFloat size = RSSelectionMenuSize(YES);
+    BOOL hideNames = RSSelectionMenuHideNames();
+    self.imageView.frame = CGRectMake((width - size) / 2.0, 8, size, size);
+    self.titleLabel.frame = hideNames ? CGRectZero : CGRectMake(0, size + 12, width, 20);
     self.titleLabel.textAlignment = NSTextAlignmentCenter;
-    self.titleLabel.font = [UIFont systemFontOfSize:10 weight:UIFontWeightMedium];
+    self.titleLabel.font = [UIFont systemFontOfSize:RSSelectionMenuSize(NO) weight:UIFontWeightMedium];
 }
 @end
 
@@ -22,20 +25,26 @@
         self.backgroundColor = [UIColor colorWithWhite:0.08 alpha:0.88];
         self.layer.cornerRadius = 22;
         self.layer.masksToBounds = YES;
-        NSArray<NSString *> *titles = @[@"截图", @"标记", @"长截图", @"扫码", @"取消"];
-        NSArray<NSString *> *symbols = @[@"camera", @"pencil.tip", @"doc.on.doc", @"qrcode.viewfinder", @"xmark"];
-        for (NSUInteger index = 0; index < titles.count; index++) {
+        [self reloadButtons];
+    }
+    return self;
+}
+
+- (void)reloadButtons {
+        for (UIView *view in self.subviews.copy) [view removeFromSuperview];
+        for (NSDictionary *item in RSSelectionMenuItems()) {
+            if (![item[@"enabled"] boolValue]) continue;
             RSSelectionToolbarButton *button = [RSSelectionToolbarButton buttonWithType:UIButtonTypeSystem];
-            [button setTitle:titles[index] forState:UIControlStateNormal];
-            [button setImage:[UIImage systemImageNamed:symbols[index]] forState:UIControlStateNormal];
+            [button setTitle:item[@"title"] forState:UIControlStateNormal];
+            button.accessibilityLabel = item[@"title"];
+            [button setImage:RSSelectionMenuIcon(item) forState:UIControlStateNormal];
             button.tintColor = UIColor.whiteColor;
             [button setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
-            button.tag = index;
+            button.tag = [item[@"id"] integerValue];
             [button addTarget:self action:@selector(buttonPressed:) forControlEvents:UIControlEventTouchUpInside];
             [self addSubview:button];
         }
-    }
-    return self;
+        [self setNeedsLayout];
 }
 
 - (void)layoutSubviews {
