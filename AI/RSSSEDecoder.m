@@ -5,11 +5,13 @@
     NSMutableArray<NSString *> *_fields;
     NSUInteger _eventBytes;
     BOOL _afterCR;
+    BOOL _firstLine;
 }
 - (instancetype)init {
     if ((self = [super init])) {
         _line = [NSMutableData data];
         _fields = [NSMutableArray array];
+        _firstLine = YES;
     }
     return self;
 }
@@ -20,6 +22,8 @@
     NSString *line = [[NSString alloc] initWithData:_line encoding:NSUTF8StringEncoding];
     [_line setLength:0];
     if (!line) { [self fail:@"服务返回了无效的 UTF-8 文本"]; return; }
+    if (_firstLine && [line hasPrefix:@"\uFEFF"]) line = [line substringFromIndex:1];
+    _firstLine = NO;
     if (!line.length) {
         if (_fields.count && self.onEvent) self.onEvent([_fields componentsJoinedByString:@"\n"]);
         [_fields removeAllObjects];
@@ -47,6 +51,6 @@
 }
 - (void)finish {
     // SSE dispatches on a blank line. A truncated final event must not become an answer.
-    if (_line.length || _fields.count) [self fail:@"流式响应中途断开，请重新生成"]; 
+    if (_line.length || _fields.count) [self fail:@"流式响应中途断开，请重新生成"];
 }
 @end

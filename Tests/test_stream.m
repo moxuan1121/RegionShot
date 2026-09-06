@@ -22,6 +22,18 @@ int main(void) {
         RSSSEDecoder *oversized = [RSSSEDecoder new];
         [oversized appendData:[NSMutableData dataWithLength:1024 * 1024 + 1]];
         assert(oversized.error);
+        RSSSEDecoder *bom = [RSSSEDecoder new];
+        NSMutableArray *bomEvents = [NSMutableArray array];
+        bom.onEvent = ^(NSString *event) { [bomEvents addObject:event]; };
+        NSData *bomWire = [@"\uFEFFdata: 汉字\r\r" dataUsingEncoding:NSUTF8StringEncoding];
+        for (NSUInteger i = 0; i < bomWire.length; i++)
+            [bom appendData:[bomWire subdataWithRange:NSMakeRange(i, 1)]];
+        [bom finish];
+        assert(!bom.error && [bomEvents isEqualToArray:@[@"汉字"]]);
+        RSSSEDecoder *invalidUTF8 = [RSSSEDecoder new];
+        const uint8_t invalid[] = {0xff, '\n'};
+        [invalidUTF8 appendData:[NSData dataWithBytes:invalid length:sizeof(invalid)]];
+        assert(invalidUTF8.error);
         puts("RegionShot SSE packet-boundary checks passed");
     }
 }
