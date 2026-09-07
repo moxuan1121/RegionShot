@@ -3,7 +3,8 @@
 ## 0.3.1 触发与系统设置修复
 
 新增组合键动作入口 `SBCombinationHardwareButtonActions performTakeScreenshotAction` 和
-`SpringBoard takeScreenshotAndEdit:`，与原有入口共用捕获/重复触发/原生回退处理，并检查运行时签名。
+`SpringBoard takeScreenshotAndEdit:` 及 `SSScreenCapturer takeScreenshotWithPresentationOptions:`，
+与原有入口共用捕获/重复触发/原生回退处理，并检查运行时签名。
 参考硬件动作接口：[运行时声明](https://github.com/SparkDev97/iOS14-Runtime-Headers/blob/master/PrivateFrameworks/SpringBoard.framework/SBCombinationHardwareButtonActions.h)。
 具体 iOS 15.6 RootHide 实机路径仍需验证，不能用编译成功代替按键测试。
 

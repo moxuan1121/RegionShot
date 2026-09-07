@@ -1,5 +1,14 @@
 # RegionShot 开发报告
 
+## 0.3.1 用户反馈修复
+
+用户实机反馈组合键无效、系统设置无面板。旧版仅拦截 `SpringBoard takeScreenshot`，而且包内没有 PreferenceLoader 注册或设置 bundle。
+新版加入组合键动作 `performTakeScreenshotAction`、`takeScreenshotAndEdit:` 和 ScreenshotServices
+`takeScreenshotWithPresentationOptions:`，运行时验证 void 返回值及参数签名，所有入口共用捕获与原生回退。
+新增独立现代 arm64e 设置组件，提供启用开关、现有工具条定制及 Darwin 通知测试截图入口。
+`Tests/check_package.py` 会检查设置注册、实际 bundle 二进制、控制器、版本和签名；旧 0.3.0 包不能通过该检查。
+以上是代码及包结构修复，仍需用户设备验证组合键和设置界面。完整 ShellX 功能迁移范围不因本次修复缩减。
+
 ## 0.3.0 开发预览进展（2026-09-07）
 
 目标已扩展为 ShellX 3.0.1 的区域截图相关完整功能，明确包括全部详细设置、自定义图标和长截图，排除套壳截图。
