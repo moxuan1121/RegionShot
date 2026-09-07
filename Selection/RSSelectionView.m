@@ -37,7 +37,7 @@ static const CGFloat RSHandleHitRadius = 28.0;
     return CGRectGetWidth(self.selectionRect) >= RSMinimumSelectionSize &&
            CGRectGetHeight(self.selectionRect) >= RSMinimumSelectionSize;
 }
-- (void)selectAll { self.selectionRect = self.bounds; [self setNeedsDisplay]; }
+- (void)selectAll { self.selectionRect = self.bounds; [self setNeedsDisplay]; if (self.selectionChanged) self.selectionChanged(NO); }
 
 - (CGPoint)clampedPoint:(CGPoint)point {
     return CGPointMake(MIN(MAX(point.x, 0), CGRectGetWidth(self.bounds)),
@@ -124,6 +124,7 @@ static const CGFloat RSHandleHitRadius = 28.0;
         self.selectionRect = CGRectZero;
         NSLog(@"[RegionShot] selection started");
     }
+    if (self.selectionChanged) self.selectionChanged(YES);
 }
 
 - (void)touchesMoved:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
@@ -144,6 +145,7 @@ static const CGFloat RSHandleHitRadius = 28.0;
     }
     self.lastPoint = point;
     [self setNeedsDisplay];
+    if (self.selectionChanged) self.selectionChanged(YES);
 }
 
 - (void)touchesEnded:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
@@ -153,6 +155,10 @@ static const CGFloat RSHandleHitRadius = 28.0;
     if (CGRectIsEmpty(self.selectionRect))
         self.selectionRect = [self newRectFromPoint:self.startPoint toPoint:self.startPoint];
     [self setNeedsDisplay];
+    if (self.selectionChanged) self.selectionChanged(NO);
+}
+- (void)touchesCancelled:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
+    [self setNeedsDisplay]; if (self.selectionChanged) self.selectionChanged(NO);
 }
 
 - (void)drawRect:(CGRect)rect {
@@ -176,12 +182,13 @@ static const CGFloat RSHandleHitRadius = 28.0;
         CGPointMake(CGRectGetMaxX(selection), CGRectGetMaxY(selection)),
     };
     for (NSUInteger index = 0; index < 4; index++) {
-        UIBezierPath *handle = [UIBezierPath bezierPathWithOvalInRect:CGRectMake(corners[index].x - 5,
-                                                                                 corners[index].y - 5, 10, 10)];
-        [UIColor.whiteColor setFill];
-        [handle fill];
-        [[UIColor colorWithWhite:0 alpha:0.65] setStroke];
-        handle.lineWidth = 1;
+        CGFloat dx = index == 0 || index == 2 ? 1 : -1;
+        CGFloat dy = index < 2 ? 1 : -1;
+        UIBezierPath *handle = [UIBezierPath bezierPath];
+        [handle moveToPoint:CGPointMake(corners[index].x, corners[index].y + dy * 11)];
+        [handle addLineToPoint:corners[index]];
+        [handle addLineToPoint:CGPointMake(corners[index].x + dx * 11, corners[index].y)];
+        [UIColor.whiteColor setStroke]; handle.lineWidth = 3; handle.lineJoinStyle = kCGLineJoinRound;
         [handle stroke];
     }
 }

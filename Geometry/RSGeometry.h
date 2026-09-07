@@ -8,6 +8,20 @@ typedef struct {
     double height;
 } RSRectD;
 
+static inline int RSInStatusBarRightRegion(double x, double y, double width, double height) {
+    return isfinite(x) && isfinite(y) && isfinite(width) && isfinite(height) &&
+           width > 0 && height > 0 && x >= width * 0.5 && x < width && y >= 0 && y < height;
+}
+
+static inline RSRectD RSToolbarFrame(RSRectD selection, RSRectD safe, double width, double height) {
+    width = fmin(width, safe.width); height = fmin(height, safe.height);
+    double x = fmax(safe.x, fmin(selection.x + selection.width / 2 - width / 2, safe.x + safe.width - width));
+    double y = selection.y + selection.height + 8;
+    if (y + height > safe.y + safe.height) y = selection.y - height - 8;
+    y = fmax(safe.y, fmin(y, safe.y + safe.height - height));
+    return (RSRectD){x, y, width, height};
+}
+
 static inline RSRectD RSRectClamp(RSRectD rect, double width, double height) {
     if (!isfinite(rect.x) || !isfinite(rect.y) || !isfinite(rect.width) ||
         !isfinite(rect.height) || width <= 0 || height <= 0) return (RSRectD){0, 0, 0, 0};

@@ -34,6 +34,7 @@
         for (UIView *view in self.subviews.copy) [view removeFromSuperview];
         for (NSDictionary *item in RSSelectionMenuItems()) {
             if (![item[@"enabled"] boolValue]) continue;
+            if (!self.selectionActive && [item[@"id"] integerValue] > 4) continue;
             RSSelectionToolbarButton *button = [RSSelectionToolbarButton buttonWithType:UIButtonTypeSystem];
             [button setTitle:item[@"title"] forState:UIControlStateNormal];
             button.accessibilityLabel = item[@"title"];

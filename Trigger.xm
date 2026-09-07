@@ -6,6 +6,9 @@
 #import "Capture/RSCaptureStatus.h"
 #import "Preferences/RSOptions.h"
 #import "AI/RSChatController.h"
+#import "Geometry/RSGeometry.h"
+@interface _UIStatusBar : UIView
+@end
 @interface SpringBoard : UIApplication
 - (void)takeScreenshot;
 - (void)takeScreenshotAndEdit:(BOOL)edit;
@@ -45,6 +48,35 @@ static BOOL RSTryCapture(NSString *source) {
         return NO;
     }
 }
+@interface RSStatusBarGesture : NSObject <UIGestureRecognizerDelegate>
+@end
+@implementation RSStatusBarGesture
+- (BOOL)gestureRecognizer:(UIGestureRecognizer *)gesture shouldReceiveTouch:(UITouch *)touch {
+    UIView *view = gesture.view;
+    CGPoint point = [touch locationInView:view]; CGRect bounds = view.bounds;
+    return RSEnabled && [RSOption(@"StatusBarSwipe") boolValue] && view.window && !view.hidden && view.alpha > 0.01 &&
+        RSInStatusBarRightRegion(point.x - bounds.origin.x, point.y - bounds.origin.y, bounds.size.width, bounds.size.height);
+}
+- (void)swiped:(UISwipeGestureRecognizer *)gesture {
+    if (gesture.state != UIGestureRecognizerStateRecognized || !gesture.view.window) return;
+    dispatch_async(dispatch_get_main_queue(), ^{ if ([RSOption(@"StatusBarSwipe") boolValue]) RSTryCapture(@"StatusBar.rightSwipe"); });
+}
+@end
+static char RSStatusBarGestureKey;
+%group RSStatusBarEntry
+%hook _UIStatusBar
+- (void)didMoveToWindow {
+    %orig;
+    if (!self.window || !NSThread.isMainThread || objc_getAssociatedObject(self, &RSStatusBarGestureKey)) return;
+    static RSStatusBarGesture *target; static dispatch_once_t once;
+    dispatch_once(&once, ^{ target = [RSStatusBarGesture new]; });
+    UISwipeGestureRecognizer *swipe = [[UISwipeGestureRecognizer alloc] initWithTarget:target action:@selector(swiped:)];
+    swipe.direction = UISwipeGestureRecognizerDirectionRight; swipe.numberOfTouchesRequired = 1;
+    swipe.delegate = target; swipe.cancelsTouchesInView = NO;
+    [self addGestureRecognizer:swipe]; objc_setAssociatedObject(self, &RSStatusBarGestureKey, swipe, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+}
+%end
+%end
 %group RSApplicationEntry
 %hook SpringBoard
 - (void)takeScreenshot {
@@ -127,6 +159,7 @@ static void RSPreferenceEvent(CFNotificationCenterRef center, void *observer, CF
     @autoreleasepool {
         if (![NSBundle.mainBundle.bundleIdentifier isEqualToString:@"com.apple.springboard"]) return;
         RSReload();
+        if ([NSClassFromString(@"_UIStatusBar") isSubclassOfClass:UIView.class]) { %init(RSStatusBarEntry); }
         Class app = NSClassFromString(@"SpringBoard");
         Class hardware = NSClassFromString(@"SBCombinationHardwareButtonActions");
         BOOL direct = RSCompatible(app, @"takeScreenshot", NULL);

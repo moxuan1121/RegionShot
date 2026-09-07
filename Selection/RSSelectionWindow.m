@@ -7,6 +7,7 @@
 #import "../Capture/RSScreenCapture.h"
 #import "../AI/RSChatController.h"
 #import "../Manager/RSRegionShotManager.h"
+#import "../Geometry/RSGeometry.h"
 
 @interface RSSelectionWindow ()
 @property (nonatomic, strong) UIImageView *imageView;
@@ -60,6 +61,15 @@
         [controller.view addSubview:_settingsButton];
 
         __weak typeof(self) weakSelf = self;
+        _selectionView.selectionChanged = ^(BOOL dragging) {
+            RSSelectionWindow *window = weakSelf;
+            BOOL selected = window.selectionView.hasValidSelection;
+            if (window.toolbar.selectionActive != selected) {
+                window.toolbar.selectionActive = selected; [window.toolbar reloadButtons];
+            }
+            window.toolbarScroll.hidden = dragging;
+            [window setNeedsLayout];
+        };
         _toolbar.captureHandler = ^{
             RSSelectionWindow *strongSelf = weakSelf;
             if (!strongSelf.selectionView.hasValidSelection) return;
@@ -97,11 +107,20 @@
     self.imageView.frame = self.bounds;
     self.selectionView.frame = self.bounds;
     CGFloat safeBottom = self.safeAreaInsets.bottom;
-    CGFloat width = MIN(CGRectGetWidth(self.bounds) - 32, 396);
-    CGFloat height = MAX(60, RSSelectionMenuSize(YES) + (RSSelectionMenuHideNames() ? 16 : 36));
+    CGFloat buttonWidth = MAX(44, RSSelectionMenuSize(YES) + 16);
+    CGFloat width = MIN(CGRectGetWidth(self.bounds) - 32, MIN(396, self.toolbar.subviews.count * buttonWidth));
+    CGFloat height = MAX(44, RSSelectionMenuSize(YES) + (RSSelectionMenuHideNames() ? 16 : 32));
     self.toolbarScroll.frame = CGRectMake((CGRectGetWidth(self.bounds) - width) / 2.0,
                                     CGRectGetHeight(self.bounds) - safeBottom - height - 12, width, height);
-    CGFloat contentWidth = MAX(width, self.toolbar.subviews.count * MAX(64, RSSelectionMenuSize(YES) + 16));
+    if (self.selectionView.hasValidSelection) {
+        CGRect rect = self.selectionRect;
+        RSRectD safe = {16 + self.safeAreaInsets.left, self.safeAreaInsets.top + 8,
+            self.bounds.size.width - self.safeAreaInsets.left - self.safeAreaInsets.right - 32,
+            self.bounds.size.height - self.safeAreaInsets.top - self.safeAreaInsets.bottom - 20};
+        RSRectD frame = RSToolbarFrame((RSRectD){rect.origin.x, rect.origin.y, rect.size.width, rect.size.height}, safe, width, height);
+        self.toolbarScroll.frame = CGRectMake(frame.x, frame.y, frame.width, frame.height);
+    }
+    CGFloat contentWidth = MAX(width, self.toolbar.subviews.count * buttonWidth);
     self.toolbar.frame = CGRectMake(0, 0, contentWidth, height);
     self.toolbarScroll.contentSize = self.toolbar.bounds.size;
     self.settingsButton.frame = CGRectMake(CGRectGetWidth(self.bounds) - 60, self.safeAreaInsets.top + 12, 44, 44);
@@ -180,6 +199,7 @@
     self.toolbar.aiHandler = nil; self.toolbar.ocrHandler = nil; self.toolbar.fullscreenHandler = nil;
     self.toolbar.historyHandler = nil;
     self.selectionView.doubleTapHandler = nil;
+    self.selectionView.selectionChanged = nil;
     self.editedImageHandler = nil;
     self.longCaptureHandler = nil;
     self.rootViewController = nil;

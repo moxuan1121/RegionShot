@@ -10,7 +10,8 @@ NSArray<NSDictionary *> *RSOptionGroups(void) {
     static NSArray *groups; static dispatch_once_t once;
     dispatch_once(&once, ^{ groups = @[
         @{@"title":@"截图与保存", @"items":@[
-            @{@"key":@"DoubleTapSelection", @"title":@"双击选区生成浮图", @"default":@NO},
+            @{@"key":@"DoubleTapSelection", @"title":@"双击选区生成浮图", @"default":@YES},
+            @{@"key":@"StatusBarSwipe", @"title":@"状态栏右半侧右滑截图", @"default":@YES},
             @{@"key":@"CaptureHaptic", @"title":@"截图完成震动", @"default":@NO},
             @{@"key":@"CopyOnSave", @"title":@"保存时同时复制", @"default":@NO},
             @{@"key":@"CopyOnly", @"title":@"保存时仅复制到剪贴板", @"default":@NO},

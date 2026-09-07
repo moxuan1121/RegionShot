@@ -92,6 +92,13 @@
     if (cropped) {
         NSLog(@"[RegionShot] selection confirmed");
         [self createFloatingSnap:cropped windowScene:scene];
+        RSFloatingImageView *snap = self.mutableSnaps.lastObject;
+        // Match the reference: the cropped region becomes a floating image in place.
+        if (snap && CGSizeEqualToSize(displaySize, self.floatingWindow.bounds.size)) {
+            snap.bounds = (CGRect){CGPointZero, rect.size}; snap.center = CGPointMake(CGRectGetMidX(rect), CGRectGetMidY(rect));
+            snap.alpha = 0;
+            [UIView animateWithDuration:UIAccessibilityIsReduceMotionEnabled() ? 0 : 0.12 animations:^{ snap.alpha = [RSOption(@"FloatOpacity") doubleValue]; }];
+        }
     } else {
         NSLog(@"[RegionShot] selection crop failed");
     }

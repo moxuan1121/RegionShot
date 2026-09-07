@@ -2,6 +2,7 @@
 
 NS_ASSUME_NONNULL_BEGIN
 @interface RSSelectionToolbar : UIView
+@property (nonatomic) BOOL selectionActive;
 @property (nonatomic, copy, nullable) dispatch_block_t captureHandler;
 @property (nonatomic, copy, nullable) dispatch_block_t cancelHandler;
 @property (nonatomic, copy, nullable) dispatch_block_t longCaptureHandler;
