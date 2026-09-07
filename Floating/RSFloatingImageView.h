@@ -7,6 +7,9 @@ typedef NS_ENUM(NSInteger, RSFloatingAction) {
     RSFloatingActionHide,
     RSFloatingActionCloseAll,
     RSFloatingActionAI,
+    RSFloatingActionCloseCurrent,
+    RSFloatingActionHistory,
+    RSFloatingActionRestoreAll,
 };
 
 NS_ASSUME_NONNULL_BEGIN

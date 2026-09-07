@@ -1,4 +1,5 @@
 #import "RSMenuSettings.h"
+#import "RSMenuConfiguration.h"
 #import <PhotosUI/PhotosUI.h>
 #import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
 #import <math.h>
@@ -9,7 +10,17 @@ static NSUserDefaults *RSMenuPrefs(void) {
     dispatch_once(&once, ^{ prefs = [[NSUserDefaults alloc] initWithSuiteName:@"com.moxuan.regionshot"]; });
     return prefs;
 }
-static NSArray *RSMenuDefaults(void) {
+static NSArray *RSMenuDefaults(BOOL floating) {
+    if (floating) return @[
+        @{@"id":@0, @"title":@"复制", @"symbol":@"doc.on.doc", @"enabled":@YES},
+        @{@"id":@1, @"title":@"保存", @"symbol":@"square.and.arrow.down", @"enabled":@YES},
+        @{@"id":@2, @"title":@"分享", @"symbol":@"square.and.arrow.up", @"enabled":@YES},
+        @{@"id":@3, @"title":@"隐藏当前", @"symbol":@"eye.slash", @"enabled":@YES},
+        @{@"id":@4, @"title":@"关闭全部", @"symbol":@"trash", @"enabled":@YES},
+        @{@"id":@5, @"title":@"图片问答", @"symbol":@"text.bubble", @"enabled":@YES},
+        @{@"id":@6, @"title":@"关闭当前", @"symbol":@"xmark", @"enabled":@YES},
+        @{@"id":@7, @"title":@"截图历史", @"symbol":@"clock.arrow.circlepath", @"enabled":@YES},
+        @{@"id":@8, @"title":@"恢复隐藏浮图", @"symbol":@"eye", @"enabled":@YES}];
     return @[@{@"id":@0, @"title":@"截图", @"symbol":@"camera", @"enabled":@YES},
              @{@"id":@1, @"title":@"标记", @"symbol":@"pencil.tip", @"enabled":@YES},
              @{@"id":@2, @"title":@"长截图", @"symbol":@"doc.on.doc", @"enabled":@YES},
@@ -20,28 +31,12 @@ static NSArray *RSMenuDefaults(void) {
              @{@"id":@7, @"title":@"全屏", @"symbol":@"arrow.up.left.and.arrow.down.right", @"enabled":@YES},
              @{@"id":@8, @"title":@"历史", @"symbol":@"clock.arrow.circlepath", @"enabled":@YES}];
 }
-NSArray<NSDictionary *> *RSSelectionMenuItems(void) {
+static NSArray *RSMenuItems(BOOL floating) {
     [RSMenuPrefs() synchronize];
-    id saved = [RSMenuPrefs() objectForKey:@"SelectionMenu"];
-    if (![saved isKindOfClass:NSArray.class]) return RSMenuDefaults();
-    NSMutableArray *result = [NSMutableArray array];
-    NSMutableSet *seen = [NSMutableSet set];
-    for (id value in saved) {
-        if (![value isKindOfClass:NSDictionary.class]) continue;
-        id identifier = value[@"id"];
-        if (![identifier isKindOfClass:NSNumber.class] || [identifier doubleValue] != [identifier integerValue] ||
-            [identifier integerValue] < 0 || [identifier integerValue] >= (NSInteger)RSMenuDefaults().count || [seen containsObject:identifier]) continue;
-        NSMutableDictionary *item = [RSMenuDefaults()[[identifier unsignedIntegerValue]] mutableCopy];
-        for (NSString *key in @[@"title", @"symbol"])
-            if ([value[key] isKindOfClass:NSString.class] && [value[key] length] > 0 && [value[key] length] <= 100) item[key] = value[key];
-        if ([value[@"enabled"] isKindOfClass:NSNumber.class]) item[@"enabled"] = value[@"enabled"];
-        if ([value[@"image"] isKindOfClass:NSData.class] && [value[@"image"] length] <= 256 * 1024) item[@"image"] = value[@"image"];
-        if ([identifier integerValue] == 4) item[@"enabled"] = @YES;
-        [seen addObject:identifier]; [result addObject:item];
-    }
-    for (NSDictionary *item in RSMenuDefaults()) if (![seen containsObject:item[@"id"]]) [result addObject:item];
-    return result;
+    return RSNormalizeMenu([RSMenuPrefs() objectForKey:floating ? @"FloatingMenu" : @"SelectionMenu"], RSMenuDefaults(floating), floating ? @6 : @4);
 }
+NSArray<NSDictionary *> *RSSelectionMenuItems(void) { return RSMenuItems(NO); }
+NSArray<NSDictionary *> *RSFloatingMenuItems(void) { return RSMenuItems(YES); }
 UIImage *RSSelectionMenuIcon(NSDictionary *item) {
     NSData *data = item[@"image"];
     UIImage *image = data ? [UIImage imageWithData:data] : nil;
@@ -55,6 +50,41 @@ CGFloat RSSelectionMenuSize(BOOL icon) {
 }
 BOOL RSSelectionMenuHideNames(void) { return [RSMenuPrefs() boolForKey:@"HideSelectionNames"]; }
 
+@interface RSMenuSymbols : UITableViewController <UISearchResultsUpdating>
+@property (nonatomic, copy) void (^choose)(NSString *);
+@property (nonatomic, strong) NSArray<NSString *> *symbols;
+@property (nonatomic, strong) UISearchController *search;
+@end
+@implementation RSMenuSymbols
+- (void)viewDidLoad {
+    [super viewDidLoad]; self.title = @"选择系统图标";
+    self.search = [[UISearchController alloc] initWithSearchResultsController:nil];
+    self.search.searchResultsUpdater = self; self.search.obscuresBackgroundDuringPresentation = NO;
+    self.search.searchBar.placeholder = @"筛选常用图标，或输入完整 SF Symbol 名称";
+    self.navigationItem.searchController = self.search; self.definesPresentationContext = YES;
+    [self updateSearchResultsForSearchController:self.search];
+}
+- (void)updateSearchResultsForSearchController:(UISearchController *)search {
+    NSString *query = [search.searchBar.text stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet] ?: @"";
+    NSArray *common = @[@"camera", @"camera.fill", @"camera.viewfinder", @"photo", @"photo.fill", @"photo.on.rectangle", @"rectangle.dashed", @"crop", @"pencil", @"pencil.tip", @"pencil.tip.crop.circle", @"paintbrush", @"paintpalette", @"scribble", @"highlighter", @"lasso", @"doc.on.doc", @"doc.text", @"doc.text.viewfinder", @"text.viewfinder", @"text.bubble", @"text.bubble.fill", @"character.textbox", @"character.cursor.ibeam", @"textformat", @"brain", @"sparkles", @"globe", @"qrcode", @"qrcode.viewfinder", @"barcode.viewfinder", @"arrow.clockwise", @"arrow.down", @"arrow.up", @"arrow.left", @"arrow.right", @"arrow.up.left.and.arrow.down.right", @"arrow.down.right.and.arrow.up.left", @"square.and.arrow.down", @"square.and.arrow.up", @"square.on.square", @"clock.arrow.circlepath", @"clock", @"tray", @"folder", @"gearshape", @"slider.horizontal.3", @"eye", @"eye.slash", @"checkmark", @"checkmark.circle", @"xmark", @"xmark.circle", @"trash", @"minus", @"plus", @"heart", @"star", @"bolt", @"pin", @"hand.draw", @"magnifyingglass"];
+    NSMutableArray *filtered = [NSMutableArray array];
+    if (query.length <= 100 && query.length && [UIImage systemImageNamed:query]) [filtered addObject:query];
+    for (NSString *name in common) if ((!query.length || [name localizedCaseInsensitiveContainsString:query]) &&
+        ![filtered containsObject:name] && [UIImage systemImageNamed:name]) [filtered addObject:name];
+    self.symbols = filtered; [self.tableView reloadData];
+}
+- (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section { return self.symbols.count; }
+- (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)path {
+    UITableViewCell *cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:nil];
+    cell.textLabel.text = self.symbols[path.row]; cell.imageView.image = [UIImage systemImageNamed:self.symbols[path.row]];
+    return cell;
+}
+- (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)path {
+    if (self.choose) self.choose(self.symbols[path.row]);
+    self.search.active = NO; [self.navigationController popViewControllerAnimated:YES];
+}
+@end
+
 @interface RSMenuSettings () <PHPickerViewControllerDelegate, UIDocumentPickerDelegate>
 @property (nonatomic, strong) NSMutableArray<NSMutableDictionary *> *items;
 @property (nonatomic, strong) NSNumber *editingIdentifier;
@@ -63,16 +93,16 @@ BOOL RSSelectionMenuHideNames(void) { return [RSMenuPrefs() boolForKey:@"HideSel
 - (instancetype)init { return [super initWithStyle:UITableViewStyleInsetGrouped]; }
 - (void)viewDidLoad {
     [super viewDidLoad];
-    self.title = @"区域工具条";
+    self.title = self.floatingMenu ? @"浮图长按菜单" : @"区域工具条";
     [self reloadItems];
     self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithTitle:@"完成" style:UIBarButtonItemStyleDone target:self action:@selector(close)];
     self.navigationItem.leftBarButtonItem = self.editButtonItem;
 }
 - (void)reloadItems {
     self.items = [NSMutableArray array];
-    for (NSDictionary *item in RSSelectionMenuItems()) [self.items addObject:item.mutableCopy];
+    for (NSDictionary *item in RSMenuItems(self.floatingMenu)) [self.items addObject:item.mutableCopy];
 }
-- (void)save { [RSMenuPrefs() setObject:self.items forKey:@"SelectionMenu"]; [RSMenuPrefs() synchronize]; }
+- (void)save { [RSMenuPrefs() setObject:self.items forKey:self.floatingMenu ? @"FloatingMenu" : @"SelectionMenu"]; [RSMenuPrefs() synchronize]; }
 - (void)close {
     [RSMenuPrefs() synchronize];
     if (self.navigationController.viewControllers.count > 1) [self.navigationController popViewControllerAnimated:YES];
@@ -80,13 +110,13 @@ BOOL RSSelectionMenuHideNames(void) { return [RSMenuPrefs() boolForKey:@"HideSel
 }
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView { return 3; }
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
-    return section == 0 ? self.items.count : section == 1 ? 3 : 1;
+    return section == 0 ? self.items.count : section == 1 ? (self.floatingMenu ? 0 : 3) : 1;
 }
 - (NSString *)tableView:(UITableView *)tableView titleForHeaderInSection:(NSInteger)section {
-    return @[@"图标、名称与排序", @"显示大小", @"恢复"][section];
+    return section == 1 && self.floatingMenu ? nil : @[@"图标、名称与排序", @"显示大小", @"恢复"][section];
 }
 - (NSString *)tableView:(UITableView *)tableView titleForFooterInSection:(NSInteger)section {
-    return section == 0 ? @"点行修改名称或图标；点编辑拖动排序。取消按钮保持可用。" : nil;
+    return section == 0 ? @"点行修改名称或图标；点编辑拖动排序。关闭/取消按钮保持可用。浮图菜单字号与大小使用系统样式。" : nil;
 }
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)path {
     UITableViewCell *cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:nil];
@@ -94,7 +124,7 @@ BOOL RSSelectionMenuHideNames(void) { return [RSMenuPrefs() boolForKey:@"HideSel
         NSDictionary *item = self.items[path.row]; cell.textLabel.text = item[@"title"];
         cell.imageView.image = RSSelectionMenuIcon(item); cell.detailTextLabel.text = item[@"image"] ? @"自定义图片" : item[@"symbol"];
         UISwitch *toggle = [UISwitch new]; toggle.on = [item[@"enabled"] boolValue]; toggle.tag = [item[@"id"] integerValue];
-        toggle.enabled = toggle.tag != 4; toggle.accessibilityLabel = [@"显示 " stringByAppendingString:item[@"title"]];
+        toggle.enabled = toggle.tag != (self.floatingMenu ? 6 : 4); toggle.accessibilityLabel = [@"显示 " stringByAppendingString:item[@"title"]];
         [toggle addTarget:self action:@selector(toggleItem:) forControlEvents:UIControlEventValueChanged]; cell.accessoryView = toggle;
     } else if (path.section == 1 && path.row == 0) {
         cell.textLabel.text = @"隐藏按钮名称";
@@ -140,13 +170,23 @@ BOOL RSSelectionMenuHideNames(void) { return [RSMenuPrefs() boolForKey:@"HideSel
         UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"恢复默认" message:@"清除工具条排序、名称、图标和大小设置？" preferredStyle:UIAlertControllerStyleAlert];
         [alert addAction:[UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:nil]];
         [alert addAction:[UIAlertAction actionWithTitle:@"恢复" style:UIAlertActionStyleDestructive handler:^(UIAlertAction *action) {
-            for (NSString *key in @[@"SelectionMenu", @"SelectionIconSize", @"SelectionTextSize", @"HideSelectionNames"]) [RSMenuPrefs() removeObjectForKey:key];
+            for (NSString *key in (self.floatingMenu ? @[@"FloatingMenu"] : @[@"SelectionMenu", @"SelectionIconSize", @"SelectionTextSize", @"HideSelectionNames"])) [RSMenuPrefs() removeObjectForKey:key];
             [self reloadItems]; [self.tableView reloadData];
         }]];
         [self presentViewController:alert animated:YES completion:nil]; return;
     }
     self.editingIdentifier = self.items[path.row][@"id"];
     UIAlertController *sheet = [UIAlertController alertControllerWithTitle:self.items[path.row][@"title"] message:nil preferredStyle:UIAlertControllerStyleActionSheet];
+    [sheet addAction:[UIAlertAction actionWithTitle:@"浏览系统图标" style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
+        RSMenuSymbols *symbols = [[RSMenuSymbols alloc] initWithStyle:UITableViewStyleInsetGrouped];
+        NSNumber *identifier = self.editingIdentifier;
+        __weak typeof(self) weakSelf = self;
+        symbols.choose = ^(NSString *symbol) {
+            NSMutableDictionary *item = [weakSelf itemForID:identifier]; item[@"symbol"] = symbol; [item removeObjectForKey:@"image"];
+            [weakSelf save]; [weakSelf.tableView reloadData];
+        };
+        [self.navigationController pushViewController:symbols animated:YES];
+    }]];
     [sheet addAction:[UIAlertAction actionWithTitle:@"修改名称 / SF Symbol" style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) { [self editText]; }]];
     [sheet addAction:[UIAlertAction actionWithTitle:@"相册图片图标" style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
         PHPickerConfiguration *config = [PHPickerConfiguration new]; config.selectionLimit = 1; config.filter = PHPickerFilter.imagesFilter;
@@ -159,7 +199,7 @@ BOOL RSSelectionMenuHideNames(void) { return [RSMenuPrefs() boolForKey:@"HideSel
     }]];
     [sheet addAction:[UIAlertAction actionWithTitle:@"恢复原图标" style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
         NSMutableDictionary *item = [self itemForID:self.editingIdentifier]; [item removeObjectForKey:@"image"];
-        item[@"symbol"] = RSMenuDefaults()[self.editingIdentifier.unsignedIntegerValue][@"symbol"];
+        item[@"symbol"] = RSMenuDefaults(self.floatingMenu)[self.editingIdentifier.unsignedIntegerValue][@"symbol"];
         [self save]; [self.tableView reloadData];
     }]];
     [sheet addAction:[UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:nil]];

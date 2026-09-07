@@ -1,6 +1,7 @@
 #import "../Preferences/RSOptions.h"
 #include <assert.h>
 #include <math.h>
+#import "../Selection/RSMenuConfiguration.h"
 int main(void) { @autoreleasepool {
     NSMutableSet *keys = [NSMutableSet set];
     for (NSDictionary *group in RSOptionGroups()) for (NSDictionary *option in group[@"items"]) {
@@ -14,4 +15,9 @@ int main(void) { @autoreleasepool {
         }
     }
     assert(keys.count >= 20);
+    NSArray *defaults = @[@{@"id":@0, @"title":@"截图", @"enabled":@YES}, @{@"id":@1, @"title":@"关闭", @"enabled":@YES}];
+    NSArray *menu = RSNormalizeMenu(@[@{@"id":@1, @"enabled":@NO}, @{@"id":@1}, @{@"id":@(-1)}, @{@"id":@0.5}, @{@"id":@88}], defaults, @1);
+    assert(menu.count == 2 && [menu[0][@"id"] isEqual:@1] && [menu[0][@"enabled"] boolValue]);
+    assert([menu[1] isEqual:defaults[0]]);
+    assert([RSNormalizeMenu(@{}, defaults, @1) isEqual:defaults]);
 } return 0; }

@@ -250,6 +250,9 @@
         case RSFloatingActionAI:
             [RSChatController showImage:image scene:snap.window.windowScene];
             break;
+        case RSFloatingActionCloseCurrent: [self removeSnap:snap]; break;
+        case RSFloatingActionHistory: [self showHistory]; break;
+        case RSFloatingActionRestoreAll: [self showAllSnaps]; break;
     }
 }
 

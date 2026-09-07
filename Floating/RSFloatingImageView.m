@@ -1,4 +1,5 @@
 #import "RSFloatingImageView.h"
+#import "../Selection/RSMenuSettings.h"
 #import "../Preferences/RSOptions.h"
 
 @interface RSFloatingImageView () <UIGestureRecognizerDelegate, UIContextMenuInteractionDelegate>
@@ -113,37 +114,18 @@
     __weak typeof(self) weakSelf = self;
     return [UIContextMenuConfiguration configurationWithIdentifier:nil previewProvider:nil actionProvider:^UIMenu *(NSArray<UIMenuElement *> *suggested) {
         if (!weakSelf) return [UIMenu menuWithTitle:@"" children:@[]];
-        UIAction *copy = [UIAction actionWithTitle:@"复制" image:[UIImage systemImageNamed:@"doc.on.doc"] identifier:nil handler:^(__kindof UIAction *action) {
-            RSFloatingImageView *snap = weakSelf;
-            if (snap) [snap.actionDelegate floatingImageView:snap didRequestAction:RSFloatingActionCopy];
-        }];
-        UIAction *save = [UIAction actionWithTitle:@"保存" image:[UIImage systemImageNamed:@"square.and.arrow.down"] identifier:nil handler:^(__kindof UIAction *action) {
-            RSFloatingImageView *snap = weakSelf;
-            if (snap) [snap.actionDelegate floatingImageView:snap didRequestAction:RSFloatingActionSave];
-        }];
-        UIAction *share = [UIAction actionWithTitle:@"分享" image:[UIImage systemImageNamed:@"square.and.arrow.up"] identifier:nil handler:^(__kindof UIAction *action) {
-            RSFloatingImageView *snap = weakSelf;
-            if (snap) [snap.actionDelegate floatingImageView:snap didRequestAction:RSFloatingActionShare];
-        }];
-        UIAction *hide = [UIAction actionWithTitle:@"隐藏当前" image:[UIImage systemImageNamed:@"eye.slash"] identifier:nil handler:^(__kindof UIAction *action) {
-            RSFloatingImageView *snap = weakSelf;
-            if (snap) [snap.actionDelegate floatingImageView:snap didRequestAction:RSFloatingActionHide];
-        }];
-        UIAction *close = [UIAction actionWithTitle:@"关闭当前" image:[UIImage systemImageNamed:@"xmark"] identifier:nil handler:^(__kindof UIAction *action) {
-            RSFloatingImageView *snap = weakSelf;
-            if (snap) [snap.actionDelegate floatingImageViewDidRequestRemoval:snap];
-        }];
-        close.attributes = UIMenuElementAttributesDestructive;
-        UIAction *closeAll = [UIAction actionWithTitle:@"关闭全部" image:[UIImage systemImageNamed:@"trash"] identifier:nil handler:^(__kindof UIAction *action) {
-            RSFloatingImageView *snap = weakSelf;
-            if (snap) [snap.actionDelegate floatingImageView:snap didRequestAction:RSFloatingActionCloseAll];
-        }];
-        closeAll.attributes = UIMenuElementAttributesDestructive;
-        UIAction *ai = [UIAction actionWithTitle:@"图片问答" image:[UIImage systemImageNamed:@"text.bubble"] identifier:nil handler:^(__kindof UIAction *action) {
-            RSFloatingImageView *snap = weakSelf;
-            if (snap) [snap.actionDelegate floatingImageView:snap didRequestAction:RSFloatingActionAI];
-        }];
-        return [UIMenu menuWithTitle:@"RegionShot" children:@[ai, copy, save, share, hide, close, closeAll]];
+        NSMutableArray *actions = [NSMutableArray array];
+        for (NSDictionary *item in RSFloatingMenuItems()) {
+            if (![item[@"enabled"] boolValue]) continue;
+            NSInteger identifier = [item[@"id"] integerValue];
+            UIAction *action = [UIAction actionWithTitle:item[@"title"] image:RSSelectionMenuIcon(item) identifier:nil handler:^(__kindof UIAction *sender) {
+                RSFloatingImageView *snap = weakSelf;
+                if (snap) [snap.actionDelegate floatingImageView:snap didRequestAction:(RSFloatingAction)identifier];
+            }];
+            if (identifier == RSFloatingActionCloseAll || identifier == RSFloatingActionCloseCurrent) action.attributes = UIMenuElementAttributesDestructive;
+            [actions addObject:action];
+        }
+        return [UIMenu menuWithTitle:@"RegionShot" children:actions];
     }];
 }
 

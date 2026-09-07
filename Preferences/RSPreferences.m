@@ -19,6 +19,8 @@
     [items addObject:enabled];
     PSSpecifier *menu = [PSSpecifier preferenceSpecifierNamed:@"工具条与自定义图标" target:self set:nil get:nil detail:nil cell:PSButtonCell edit:nil];
     menu.buttonAction = @selector(openMenu); [items addObject:menu];
+    PSSpecifier *floating = [PSSpecifier preferenceSpecifierNamed:@"浮图长按菜单与图标" target:self set:nil get:nil detail:nil cell:PSButtonCell edit:nil];
+    floating.buttonAction = @selector(openFloatingMenu); [items addObject:floating];
     PSSpecifier *options = [PSSpecifier preferenceSpecifierNamed:@"截图、浮图、OCR、长图与 AI 设置" target:self set:nil get:nil detail:nil cell:PSButtonCell edit:nil];
     options.buttonAction = @selector(openOptions); [items addObject:options];
     PSSpecifier *ai = [PSSpecifier preferenceSpecifierNamed:@"配置 AI 服务、模型与密钥" target:self set:nil get:nil detail:nil cell:PSButtonCell edit:nil];
@@ -49,6 +51,7 @@
     CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(), CFSTR("com.moxuan.regionshot/ReloadPrefs"), NULL, NULL, YES);
 }
 - (void)openMenu { [self.navigationController pushViewController:[RSMenuSettings new] animated:YES]; }
+- (void)openFloatingMenu { RSMenuSettings *settings = [RSMenuSettings new]; settings.floatingMenu = YES; [self.navigationController pushViewController:settings animated:YES]; }
 - (void)openOptions { [self.navigationController pushViewController:[RSBehaviorSettings new] animated:YES]; }
 - (void)openAI { notify_post("com.moxuan.regionshot/AISettings"); }
 - (void)openHistory { notify_post("com.moxuan.regionshot/History"); }
