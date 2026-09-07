@@ -89,4 +89,4 @@ GitHub Actions 工作流使用 `macos-14`，并检查 dylib 的 Mach-O CPU subty
 [RegionShot] frozen image captured
 ```
 
-如果没有找到 `UICreateScreenUIImage` 或捕获失败，RegionShot 会清理状态并调用原生截图实现。
+如果没有找到 `_UICreateScreenUIImage` 或兼容名称 或捕获失败，RegionShot 会清理状态并调用原生截图实现。

@@ -1,5 +1,13 @@
 # RegionShot 开发报告
 
+## 0.3.2：设置入口与组合键均失败的后续修复
+
+- 已定位共享捕获路径的符号拼写错误。用户提供的 ShellX 3.0.1 二进制导入 `__UICreateScreenUIImage`，实际 C/dlsym 名称为 `_UICreateScreenUIImage`；此前缺少下划线导致找不到此入口、返回 nil，再退回系统截图。
+- 修正共用解析函数，区域截图和长截图均受益。新增可运行检查，在 macOS 导出相同名称的模拟函数，验证正确名称优先、旧名称兼容回退。
+- 设置页新增即时诊断：以本次随机请求 ID 核对 SpringBoard 响应，显示开关、符号和挂接入口状态。测试失败不再静默，超时不冒充成功。
+- 不把符号修复或构建通过等同于实机修复完成；需要设备确认窗口实际显示及组合键行为。完整功能范围与下述待办保持一致。
+
+
 ## 0.3.1 用户反馈修复
 
 用户实机反馈组合键无效、系统设置无面板。旧版仅拦截 `SpringBoard takeScreenshot`，而且包内没有 PreferenceLoader 注册或设置 bundle。
@@ -45,7 +53,7 @@
 ## ShellX 逆向结论
 
 对用户提供的 ShellX 2.9.0 arm64e 包进行静态分析后，确认其区域截图链路同样使用
-`UICreateScreenUIImage` 获取冻结图，并持有原始图、捕获 bounds 和界面方向；确认选区后通过
+`_UICreateScreenUIImage` 获取冻结图，并持有原始图、捕获 bounds 和界面方向；确认选区后通过
 `CGImageCreateWithImageInRect` 从原图裁剪。它创建区域选择窗口时优先使用 `initWithWindowScene:`。
 RegionShot 据此保留现有捕获和原图裁剪方案，并补齐 scene 绑定。详细证据和排除范围记录在
 `REVERSE_ENGINEERING.md`。
@@ -58,7 +66,7 @@ Hook 为 `SpringBoard` 类的实例方法 `-takeScreenshot`。初始化时通过
 
 ## 屏幕捕获
 
-`RSScreenCapture` 用 `dlsym(RTLD_DEFAULT, "UICreateScreenUIImage")` 运行时解析系统函数，不静态链接未知私有符号。调用发生在 Selection Window 创建之前，并保存唯一的原始 `frozenImage`。若符号不存在或结果没有 CGImage，Manager 清理状态，Hook 回退到原生截图。
+`RSScreenCapture` 用 `dlsym(RTLD_DEFAULT, "_UICreateScreenUIImage")` 运行时解析系统函数，不静态链接未知私有符号。调用发生在 Selection Window 创建之前，并保存唯一的原始 `frozenImage`。若符号不存在或结果没有 CGImage，Manager 清理状态，Hook 回退到原生截图。
 
 ## Selection UI
 
@@ -82,7 +90,7 @@ Architecture 为 `iphoneos-arm64e`、Version 为 `0.2.0-roothide`；payload 只�
 ## 仍需实机验证
 
 - 原生侧边键 + 音量加是否进入 `SpringBoard -takeScreenshot`
-- `UICreateScreenUIImage` 在 iOS 15.6 RootHide SpringBoard 中的解析和画面内容
+- `_UICreateScreenUIImage` 在 iOS 15.6 RootHide SpringBoard 中的解析和画面内容
 - Safari、视频界面和系统 UI 的冻结结果
 - iPhone 13 Pro Max 3× 的最终裁剪坐标
 - 工具条位置、Home Indicator 间距和横屏表现
@@ -92,14 +100,8 @@ Architecture 为 `iphoneos-arm64e`、Version 为 `0.2.0-roothide`；payload 只�
 
 ## 风险
 
-- `SpringBoard -takeScreenshot` 和 `UICreateScreenUIImage` 都是私有接口。代码只在运行时存在且签名符合预期时使用，但不同系统状态仍可能失败。
+- `SpringBoard -takeScreenshot` 和 `_UICreateScreenUIImage` 都是私有接口。代码只在运行时存在且签名符合预期时使用，但不同系统状态仍可能失败。
 - statusbar-shot 只验证主动发送 `takeScreenshot` 的调用；实体截图组合键覆盖范围仍未知。
 - 隐藏悬浮窗口后立即捕获依赖 iOS 合成时序，实机需确认旧悬浮图不会进入 frozenImage，也不会产生可见闪烁。
 - 从非 key 的悬浮 UIWindow 根控制器弹出 UIActivityViewController 需要在目标环境实测。
 - 竖屏是当前优先路径；旋转中的 selectionRect 重映射未增加额外兼容层。
-# 0.3.2：设置入口与组合键均失败的后续修复
-
-- 已定位共享捕获路径的符号拼写错误。用户提供的 ShellX 3.0.1 二进制导入 `__UICreateScreenUIImage`，实际 C/dlsym 名称为 `_UICreateScreenUIImage`；此前缺少下划线导致找不到此入口、返回 nil，再退回系统截图。
-- 修正共用解析函数，区域截图和长截图均受益。新增可运行检查，在 macOS 导出相同名称的模拟函数，验证正确名称优先、旧名称兼容回退。
-- 设置页新增即时诊断：以本次随机请求 ID 核对 SpringBoard 响应，显示开关、符号和挂接入口状态。测试失败不再静默，超时不冒充成功。
-- 不把符号修复或构建通过等同于实机修复完成；需要设备确认窗口实际显示及组合键行为。完整功能范围与下述待办保持一致。
