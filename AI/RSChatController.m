@@ -1,5 +1,6 @@
 #import "RSChatController.h"
 #import "RSSSEDecoder.h"
+#import "../Preferences/RSOptions.h"
 #import <Security/Security.h>
 #import <PhotosUI/PhotosUI.h>
 #import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
@@ -81,7 +82,8 @@ static OSStatus RSWriteKey(NSString *key) {
         [RSActiveChat restore];
         RSActiveChat.attachment = image;
         RSActiveChat.chip.image = image;
-        RSActiveChat.chip.hidden = NO;
+        RSActiveChat.chip.hidden = image == nil;
+        if (image && [RSOption(@"AIAutoImage") boolValue] && !RSActiveChat.task) [RSActiveChat send];
         return;
     }
     RSChatController *controller = [self new];
@@ -98,6 +100,20 @@ static OSStatus RSWriteKey(NSString *key) {
     window.rootViewController = controller;
     RSActiveChat = controller;
     [window makeKeyAndVisible];
+    [controller loadViewIfNeeded];
+    if (image && [RSOption(@"AIAutoImage") boolValue]) [controller send];
+}
++ (void)showText:(NSString *)text scene:(UIWindowScene *)scene sendImmediately:(BOOL)send {
+    [self showImage:nil scene:scene];
+    RSActiveChat.input.text = text;
+    if (send && !RSActiveChat.task) [RSActiveChat send];
+}
++ (void)showServiceSettings {
+    UIWindowScene *scene = nil;
+    for (UIScene *candidate in UIApplication.sharedApplication.connectedScenes)
+        if ([candidate isKindOfClass:UIWindowScene.class] && candidate.activationState == UISceneActivationStateForegroundActive) { scene = (UIWindowScene *)candidate; break; }
+    [self showImage:nil scene:scene];
+    [RSActiveChat settings];
 }
 - (UIButton *)button:(NSString *)symbol title:(NSString *)title action:(SEL)selector {
     UIButton *button = [UIButton buttonWithType:UIButtonTypeSystem];
@@ -131,6 +147,7 @@ static OSStatus RSWriteKey(NSString *key) {
         [self button:@"xmark" title:@"关闭对话" action:@selector(close)]]];
     [content addArrangedSubview:top];
     self.chip = [[UIImageView alloc] initWithImage:self.attachment];
+    self.chip.hidden = self.attachment == nil;
     self.chip.contentMode = UIViewContentModeScaleAspectFit;
     self.chip.userInteractionEnabled = YES;
     self.chip.accessibilityLabel = @"待发送图片，轻按移除";
@@ -180,6 +197,15 @@ static OSStatus RSWriteKey(NSString *key) {
     self.ball.hidden = YES;
     [self.ball addGestureRecognizer:[[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(panBall:)]];
     [self.view addSubview:self.ball];
+    [self applyAppearance];
+}
+- (void)applyAppearance {
+    self.overrideUserInterfaceStyle = (UIUserInterfaceStyle)[RSOption(@"AITheme") integerValue];
+    CGFloat size = [RSOption(@"AIBallSize") doubleValue];
+    for (NSLayoutConstraint *constraint in self.ball.constraints)
+        if (constraint.firstAttribute == NSLayoutAttributeWidth || constraint.firstAttribute == NSLayoutAttributeHeight) constraint.constant = size;
+    self.ball.bounds = CGRectMake(0, 0, size, size); self.ball.layer.cornerRadius = size / 2;
+    self.ball.alpha = [RSOption(@"AIBallOpacity") doubleValue];
 }
 - (void)updateModelTitle {
     NSString *model = [RSChatPreferences() stringForKey:@"AIModel"];
@@ -196,6 +222,7 @@ static OSStatus RSWriteKey(NSString *key) {
     [self.previousKey makeKeyWindow];
 }
 - (void)restore {
+    RSReloadOptions(); [self applyAppearance];
     self.host.activeSurface = nil;
     self.card.hidden = NO;
     self.ball.hidden = YES;
@@ -205,10 +232,11 @@ static OSStatus RSWriteKey(NSString *key) {
 - (void)panBall:(UIPanGestureRecognizer *)pan {
     CGPoint delta = [pan translationInView:self.view];
     CGRect safe = UIEdgeInsetsInsetRect(self.view.bounds, self.view.safeAreaInsets);
-    CGFloat x = MIN(MAX(self.ball.center.x + delta.x, CGRectGetMinX(safe) + 26), CGRectGetMaxX(safe) - 26);
-    CGFloat y = MIN(MAX(self.ball.center.y + delta.y, CGRectGetMinY(safe) + 26), CGRectGetMaxY(safe) - 26);
+    CGFloat radius = self.ball.bounds.size.width / 2;
+    CGFloat x = MIN(MAX(self.ball.center.x + delta.x, CGRectGetMinX(safe) + radius), CGRectGetMaxX(safe) - radius);
+    CGFloat y = MIN(MAX(self.ball.center.y + delta.y, CGRectGetMinY(safe) + radius), CGRectGetMaxY(safe) - radius);
     if (pan.state == UIGestureRecognizerStateEnded)
-        x = x < CGRectGetMidX(safe) ? CGRectGetMinX(safe) + 26 : CGRectGetMaxX(safe) - 26;
+        x = x < CGRectGetMidX(safe) ? CGRectGetMinX(safe) + radius : CGRectGetMaxX(safe) - radius;
     self.ball.center = CGPointMake(x, y);
     [pan setTranslation:CGPointZero inView:self.view];
 }
@@ -255,6 +283,7 @@ static OSStatus RSWriteKey(NSString *key) {
         }
         [prefs setObject:endpoint forKey:@"AIEndpoint"];
         [prefs setObject:model forKey:@"AIModel"];
+        [prefs synchronize];
         [self updateModelTitle];
     }]];
     [self presentViewController:alert animated:YES completion:nil];
@@ -321,7 +350,7 @@ static OSStatus RSWriteKey(NSString *key) {
     NSString *text = [self.input.text stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
     if (!text.length && !self.attachment) return;
     if (text.length > 24000) { [self message:@"单次问题最多 24,000 字符。"]; return; }
-    if (!text.length) text = @"请提取并解释图片中的内容。";
+    if (!text.length) text = [RSOption(@"AIImagePrompt") length] ? RSOption(@"AIImagePrompt") : @"请描述图片内容。";
     NSMutableArray *content = [NSMutableArray arrayWithObject:@{@"type":@"text", @"text":text}];
     if (self.attachment) {
         NSData *jpeg = UIImageJPEGRepresentation(self.attachment, 0.85);
@@ -336,13 +365,20 @@ static OSStatus RSWriteKey(NSString *key) {
 }
 - (void)startRequest {
     NSUserDefaults *prefs = RSChatPreferences();
+    NSURL *endpoint = [NSURL URLWithString:[prefs stringForKey:@"AIEndpoint"] ?: @""];
+    if (![endpoint.scheme.lowercaseString isEqual:@"https"] || !endpoint.host.length || endpoint.user || endpoint.password || ![prefs stringForKey:@"AIModel"].length) {
+        [self message:@"请先配置有效的 HTTPS 服务地址和模型。"]; return;
+    }
+    NSMutableArray *messages = self.history.mutableCopy;
+    NSString *persona = RSOption(@"AIPersona");
+    if (persona.length) [messages insertObject:@{@"role":@"system", @"content":persona} atIndex:0];
     NSError *error = nil;
     NSData *data = [NSJSONSerialization dataWithJSONObject:@{@"model":[prefs stringForKey:@"AIModel"] ?: @"",
-        @"messages":self.history, @"stream":@YES} options:0 error:&error];
+        @"messages":messages, @"stream":RSOption(@"AIStream")} options:0 error:&error];
     if (!data || data.length > 32 * 1024 * 1024) {
         [self message:error.localizedDescription ?: @"对话图片总量超过 32 MB，请关闭后开始新对话。"]; return;
     }
-    NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:[NSURL URLWithString:[prefs stringForKey:@"AIEndpoint"]]];
+    NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:endpoint];
     request.HTTPMethod = @"POST"; request.HTTPBody = data; request.timeoutInterval = 120;
     [request setValue:@"application/json" forHTTPHeaderField:@"Content-Type"];
     [request setValue:@"text/event-stream, application/json" forHTTPHeaderField:@"Accept"];

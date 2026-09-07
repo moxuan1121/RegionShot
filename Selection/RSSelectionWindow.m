@@ -5,6 +5,7 @@
 #import "RSRecognitionController.h"
 #import "RSImageEditor.h"
 #import "../Capture/RSScreenCapture.h"
+#import "../AI/RSChatController.h"
 
 @interface RSSelectionWindow ()
 @property (nonatomic, strong) UIImageView *imageView;
@@ -64,6 +65,16 @@
             confirm(strongSelf.selectionRect, strongSelf.displaySize);
         };
         _toolbar.cancelHandler = cancel;
+        _selectionView.doubleTapHandler = ^{ if (weakSelf.toolbar.captureHandler) weakSelf.toolbar.captureHandler(); };
+        _toolbar.fullscreenHandler = ^{ [weakSelf.selectionView selectAll]; };
+        _toolbar.ocrHandler = ^{ [weakSelf showRecognition:NO]; };
+        _toolbar.aiHandler = ^{
+            RSSelectionWindow *window = weakSelf;
+            if (!window.selectionView.hasValidSelection) return;
+            UIImage *cropped = [RSScreenCapture cropImage:window.imageView.image toRect:window.selectionRect displaySize:window.displaySize];
+            UIWindowScene *scene = window.windowScene;
+            if (cropped) { if (window.toolbar.cancelHandler) window.toolbar.cancelHandler(); [RSChatController showImage:cropped scene:scene]; }
+        };
         _toolbar.recognitionHandler = ^{ [weakSelf recognizeSelection]; };
         _toolbar.editHandler = ^{ [weakSelf editSelection]; };
         _toolbar.longCaptureHandler = ^{
@@ -115,16 +126,24 @@
     for (NSNumber *barcode in @[@YES, @NO]) {
         [sheet addAction:[UIAlertAction actionWithTitle:barcode.boolValue ? @"二维码 / 条码" : @"识别文字（OCR）"
             style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
-                RSRecognitionController *result = [[RSRecognitionController alloc] initWithImage:image barcode:barcode.boolValue];
-                UINavigationController *navigation = [[UINavigationController alloc] initWithRootViewController:result];
-                navigation.modalPresentationStyle = UIModalPresentationFullScreen;
-                [self.rootViewController presentViewController:navigation animated:YES completion:nil];
+                [self showRecognition:barcode.boolValue];
             }]];
     }
     [sheet addAction:[UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:nil]];
     sheet.popoverPresentationController.sourceView = self.toolbar;
     sheet.popoverPresentationController.sourceRect = self.toolbar.bounds;
     [self.rootViewController presentViewController:sheet animated:YES completion:nil];
+}
+- (void)showRecognition:(BOOL)barcode {
+    if (!self.selectionView.hasValidSelection) return;
+    UIImage *image = [RSScreenCapture cropImage:self.imageView.image toRect:self.selectionRect displaySize:self.displaySize];
+    if (!image) return;
+    RSRecognitionController *result = [[RSRecognitionController alloc] initWithImage:image barcode:barcode];
+    __weak typeof(self) weakSelf = self;
+    result.onForward = ^{ if (weakSelf.toolbar.cancelHandler) weakSelf.toolbar.cancelHandler(); };
+    UINavigationController *navigation = [[UINavigationController alloc] initWithRootViewController:result];
+    navigation.modalPresentationStyle = UIModalPresentationFullScreen;
+    [self.rootViewController presentViewController:navigation animated:YES completion:nil];
 }
 
 - (void)editSelection {
@@ -156,6 +175,8 @@
     self.toolbar.longCaptureHandler = nil;
     self.toolbar.recognitionHandler = nil;
     self.toolbar.editHandler = nil;
+    self.toolbar.aiHandler = nil; self.toolbar.ocrHandler = nil; self.toolbar.fullscreenHandler = nil;
+    self.selectionView.doubleTapHandler = nil;
     self.editedImageHandler = nil;
     self.longCaptureHandler = nil;
     self.rootViewController = nil;

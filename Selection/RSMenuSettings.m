@@ -14,7 +14,10 @@ static NSArray *RSMenuDefaults(void) {
              @{@"id":@1, @"title":@"标记", @"symbol":@"pencil.tip", @"enabled":@YES},
              @{@"id":@2, @"title":@"长截图", @"symbol":@"doc.on.doc", @"enabled":@YES},
              @{@"id":@3, @"title":@"扫码", @"symbol":@"qrcode.viewfinder", @"enabled":@YES},
-             @{@"id":@4, @"title":@"取消", @"symbol":@"xmark", @"enabled":@YES}];
+             @{@"id":@4, @"title":@"取消", @"symbol":@"xmark", @"enabled":@YES},
+             @{@"id":@5, @"title":@"图片问答", @"symbol":@"text.bubble", @"enabled":@YES},
+             @{@"id":@6, @"title":@"识别文字", @"symbol":@"text.viewfinder", @"enabled":@YES},
+             @{@"id":@7, @"title":@"全屏", @"symbol":@"arrow.up.left.and.arrow.down.right", @"enabled":@YES}];
 }
 NSArray<NSDictionary *> *RSSelectionMenuItems(void) {
     [RSMenuPrefs() synchronize];
@@ -26,7 +29,7 @@ NSArray<NSDictionary *> *RSSelectionMenuItems(void) {
         if (![value isKindOfClass:NSDictionary.class]) continue;
         id identifier = value[@"id"];
         if (![identifier isKindOfClass:NSNumber.class] || [identifier doubleValue] != [identifier integerValue] ||
-            [identifier integerValue] < 0 || [identifier integerValue] > 4 || [seen containsObject:identifier]) continue;
+            [identifier integerValue] < 0 || [identifier integerValue] >= (NSInteger)RSMenuDefaults().count || [seen containsObject:identifier]) continue;
         NSMutableDictionary *item = [RSMenuDefaults()[[identifier unsignedIntegerValue]] mutableCopy];
         for (NSString *key in @[@"title", @"symbol"])
             if ([value[key] isKindOfClass:NSString.class] && [value[key] length] > 0 && [value[key] length] <= 100) item[key] = value[key];

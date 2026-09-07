@@ -1,5 +1,7 @@
 #import "RSRecognitionController.h"
 #import "../Capture/RSRecognition.h"
+#import "../Preferences/RSOptions.h"
+#import "../AI/RSChatController.h"
 
 @implementation RSRecognitionController {
     UIImage *_image;
@@ -7,6 +9,7 @@
     UITextView *_text;
     VNRequest *_request;
     BOOL _closed;
+    BOOL _hasResult;
 }
 - (instancetype)initWithImage:(UIImage *)image barcode:(BOOL)barcode {
     if ((self = [super init])) { _image = image; _barcode = barcode; }
@@ -24,17 +27,34 @@
     self.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithTitle:@"返回" style:UIBarButtonItemStylePlain target:self action:@selector(close)];
     self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithTitle:@"复制" style:UIBarButtonItemStylePlain target:self action:@selector(copyText)];
     self.navigationItem.rightBarButtonItem.enabled = NO;
+    NSMutableArray *actions = [NSMutableArray array];
+    NSArray *symbols = @[@"character.textbox", @"text.bubble", @"globe", @"square.and.arrow.up"];
+    NSArray *titles = @[@"分词", @"文字问答", @"AI 翻译", @"分享文字"];
+    SEL selectors[] = {@selector(segmentText), @selector(askAI), @selector(translateText), @selector(shareText)};
+    for (NSUInteger i = 0; i < symbols.count; i++) {
+        if (i) [actions addObject:[[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemFlexibleSpace target:nil action:nil]];
+        UIBarButtonItem *button = [[UIBarButtonItem alloc] initWithImage:[UIImage systemImageNamed:symbols[i]] style:UIBarButtonItemStylePlain target:self action:selectors[i]];
+        button.accessibilityLabel = titles[i]; button.enabled = NO; [actions addObject:button];
+    }
+    self.toolbarItems = actions; [self.navigationController setToolbarHidden:NO];
     if (_barcode) _request = RSBarcodeRequest();
     else {
         VNRecognizeTextRequest *request = [VNRecognizeTextRequest new];
-        request.recognitionLevel = VNRequestTextRecognitionLevelAccurate;
-        request.recognitionLanguages = @[@"zh-Hans", @"zh-Hant", @"en-US"];
-        request.usesLanguageCorrection = YES;
+        request.recognitionLevel = [RSOption(@"OCRFast") boolValue] ? VNRequestTextRecognitionLevelFast : VNRequestTextRecognitionLevelAccurate;
+        NSArray *supported = [request supportedRecognitionLanguagesAndReturnError:nil];
+        NSMutableArray *languages = [NSMutableArray array];
+        for (NSString *part in [RSOption(@"OCRLanguages") componentsSeparatedByString:@","]) {
+            NSString *language = [part stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+            if ([supported containsObject:language] && ![languages containsObject:language]) [languages addObject:language];
+        }
+        if (languages.count) request.recognitionLanguages = languages;
+        request.usesLanguageCorrection = [RSOption(@"OCRCorrection") boolValue];
         _request = request;
     }
     VNRequest *request = _request;
     UIImage *image = _image;
     BOOL barcode = _barcode;
+    NSString *separator = !barcode && [RSOption(@"OCRJoinLines") boolValue] ? @" " : @"\n\n";
     __weak typeof(self) weakSelf = self;
     dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
         @autoreleasepool {
@@ -48,14 +68,51 @@
                 RSRecognitionController *controller = weakSelf;
                 if (!controller || controller->_closed) return;
                 controller->_text.text = error ? error.localizedDescription : strings.count ?
-                    [strings componentsJoinedByString:@"\n\n"] : @"没有识别到内容，请调整选区后重试。";
+                    [strings componentsJoinedByString:separator] : @"没有识别到内容，请调整选区后重试。";
                 controller.navigationItem.rightBarButtonItem.enabled = strings.count > 0 && !error;
+                controller->_hasResult = strings.count > 0 && !error;
+                controller->_text.editable = controller->_hasResult;
+                for (UIBarButtonItem *item in controller.toolbarItems) item.enabled = controller->_hasResult;
                 controller->_image = nil;
             });
         }
     });
 }
-- (void)copyText { UIPasteboard.generalPasteboard.string = _text.text; }
+- (NSString *)selectedText {
+    if (!_hasResult) return @"";
+    return _text.selectedRange.length ? [_text.text substringWithRange:_text.selectedRange] : _text.text;
+}
+- (void)copyText { UIPasteboard.generalPasteboard.string = [self selectedText]; }
+- (void)shareText {
+    if (![self selectedText].length) return;
+    [self presentViewController:[[UIActivityViewController alloc] initWithActivityItems:@[[self selectedText]] applicationActivities:nil] animated:YES completion:nil];
+}
+- (void)segmentText {
+    NSString *text = [self selectedText]; if (!text.length) return;
+    NSMutableDictionary *request = [@{@"text":text, @"handled":@NO} mutableCopy];
+    [NSNotificationCenter.defaultCenter postNotificationName:@"com.moxuan.regionshot.tokenize" object:request];
+    if ([request[@"handled"] boolValue]) {
+        _closed = YES;
+        [self dismissViewControllerAnimated:NO completion:^{ if (self.onForward) self.onForward(); }];
+    } else {
+        UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"分词未接入" message:@"请安装支持 RegionShot 的 KeyboardAI 1.4.6 或更新版。" preferredStyle:UIAlertControllerStyleAlert];
+        [alert addAction:[UIAlertAction actionWithTitle:@"知道了" style:UIAlertActionStyleCancel handler:nil]];
+        [self presentViewController:alert animated:YES completion:nil];
+    }
+}
+- (void)forwardText:(NSString *)text send:(BOOL)send {
+    if (!text.length) return;
+    UIWindowScene *scene = self.view.window.windowScene; _closed = YES;
+    [self dismissViewControllerAnimated:NO completion:^{
+        if (self.onForward) self.onForward();
+        [RSChatController showText:text scene:scene sendImmediately:send];
+    }];
+}
+- (void)askAI { [self forwardText:[self selectedText] send:[RSOption(@"AIAutoText") boolValue]]; }
+- (void)translateText {
+    NSString *text = [self selectedText]; if (!text.length) return;
+    [self forwardText:[NSString stringWithFormat:@"请将以下原文翻译为%@，只输出译文：\n\n%@", RSOption(@"TranslateTarget"), text] send:YES];
+}
 - (void)close { _closed = YES; [_request cancel]; [self dismissViewControllerAnimated:YES completion:nil]; }
 - (void)dealloc { [_request cancel]; }
 @end

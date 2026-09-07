@@ -15,6 +15,8 @@ jobs:
     runs-on: macos-14
     steps:
       - uses: actions/checkout@v5
+      - name: Check settings validation
+        run: clang -fobjc-arc -Wall -Wextra -Werror -framework Foundation Tests/test_options.m Preferences/RSOptions.m -o /tmp/regionshot-options && /tmp/regionshot-options
       - name: Check screenshot symbol resolution
         run: |
           clang -Wall -Wextra -Werror -Wl,-export_dynamic Tests/test_capture_symbol.c -o /tmp/regionshot-symbol

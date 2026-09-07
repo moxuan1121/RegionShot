@@ -66,6 +66,12 @@
         if (self.recognitionHandler) self.recognitionHandler();
     } else if (button.tag == 4) {
         if (self.cancelHandler) self.cancelHandler();
+    } else if (button.tag == 5) {
+        if (self.aiHandler) self.aiHandler();
+    } else if (button.tag == 6) {
+        if (self.ocrHandler) self.ocrHandler();
+    } else if (button.tag == 7) {
+        if (self.fullscreenHandler) self.fullscreenHandler();
     }
 }
 

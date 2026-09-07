@@ -2,6 +2,7 @@
 #import <Preferences/PSSpecifier.h>
 #import "../Selection/RSMenuSettings.h"
 #import "../Capture/RSCaptureStatus.h"
+#import "RSBehaviorSettings.h"
 @interface RSPreferences : PSListController
 @property (nonatomic, strong) PSSpecifier *diagnosticGroup;
 @property (nonatomic) BOOL diagnosticPending;
@@ -18,6 +19,10 @@
     [items addObject:enabled];
     PSSpecifier *menu = [PSSpecifier preferenceSpecifierNamed:@"工具条与自定义图标" target:self set:nil get:nil detail:nil cell:PSButtonCell edit:nil];
     menu.buttonAction = @selector(openMenu); [items addObject:menu];
+    PSSpecifier *options = [PSSpecifier preferenceSpecifierNamed:@"截图、浮图、OCR、长图与 AI 设置" target:self set:nil get:nil detail:nil cell:PSButtonCell edit:nil];
+    options.buttonAction = @selector(openOptions); [items addObject:options];
+    PSSpecifier *ai = [PSSpecifier preferenceSpecifierNamed:@"配置 AI 服务、模型与密钥" target:self set:nil get:nil detail:nil cell:PSButtonCell edit:nil];
+    ai.buttonAction = @selector(openAI); [items addObject:ai];
     PSSpecifier *test = [PSSpecifier preferenceSpecifierNamed:@"测试截图入口" target:self set:nil get:nil detail:nil cell:PSButtonCell edit:nil];
     test.buttonAction = @selector(testCapture); [items addObject:test];
     PSSpecifier *check = [PSSpecifier preferenceSpecifierNamed:@"检查 SpringBoard 状态" target:self set:nil get:nil detail:nil cell:PSButtonCell edit:nil];
@@ -40,6 +45,8 @@
     CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(), CFSTR("com.moxuan.regionshot/ReloadPrefs"), NULL, NULL, YES);
 }
 - (void)openMenu { [self.navigationController pushViewController:[RSMenuSettings new] animated:YES]; }
+- (void)openOptions { [self.navigationController pushViewController:[RSBehaviorSettings new] animated:YES]; }
+- (void)openAI { notify_post("com.moxuan.regionshot/AISettings"); }
 - (void)testCapture { [self diagnoseCapture:YES]; }
 - (void)checkCapture { [self diagnoseCapture:NO]; }
 - (void)showDiagnostic:(NSString *)message {

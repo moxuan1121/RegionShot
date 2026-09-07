@@ -1,4 +1,5 @@
 #import "RSFloatingImageView.h"
+#import "../Preferences/RSOptions.h"
 
 @interface RSFloatingImageView () <UIGestureRecognizerDelegate, UIContextMenuInteractionDelegate>
 @property (nonatomic) CGFloat currentScale;
@@ -16,7 +17,8 @@
         self.layer.cornerRadius = 8;
         self.layer.masksToBounds = NO;
         self.layer.shadowColor = UIColor.blackColor.CGColor;
-        self.layer.shadowOpacity = 0.35;
+        self.layer.shadowOpacity = [RSOption(@"FloatShadow") boolValue] ? 0.35 : 0;
+        self.alpha = [RSOption(@"FloatOpacity") doubleValue];
         self.layer.shadowRadius = 10;
         self.layer.shadowOffset = CGSizeMake(0, 4);
 
@@ -45,7 +47,7 @@
 }
 
 - (void)doubleTapped:(UITapGestureRecognizer *)gesture {
-    if (gesture.state == UIGestureRecognizerStateRecognized)
+    if (gesture.state == UIGestureRecognizerStateRecognized && [RSOption(@"FloatDoubleClose") boolValue])
         [self.actionDelegate floatingImageViewDidRequestRemoval:self];
 }
 
@@ -84,7 +86,7 @@
 }
 
 - (void)snapToNearestHorizontalEdge {
-    if (!self.superview) return;
+    if (!self.superview || ![RSOption(@"FloatSnap") boolValue]) return;
     CGRect safe = UIEdgeInsetsInsetRect(self.superview.bounds, self.superview.safeAreaInsets);
     CGRect frame = self.frame;
     CGFloat left = CGRectGetMinX(safe) + CGRectGetWidth(frame) / 2.0 + 8;

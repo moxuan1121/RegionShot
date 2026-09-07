@@ -4,6 +4,8 @@
 #import "Manager/RSRegionShotManager.h"
 #import "Capture/RSScreenCapture.h"
 #import "Capture/RSCaptureStatus.h"
+#import "Preferences/RSOptions.h"
+#import "AI/RSChatController.h"
 @interface SpringBoard : UIApplication
 - (void)takeScreenshot;
 - (void)takeScreenshotAndEdit:(BOOL)edit;
@@ -19,6 +21,7 @@ static __thread NSUInteger RSOriginalDepth;
 static int RSCheckToken = -1, RSStatusToken = -1;
 static uint32_t RSHookStatus;
 static void RSReload(void) {
+    RSReloadOptions();
     NSUserDefaults *prefs = [[NSUserDefaults alloc] initWithSuiteName:@"com.moxuan.regionshot"];
     [prefs synchronize];
     RSEnabled = ![prefs objectForKey:@"Enabled"] || [prefs boolForKey:@"Enabled"];
@@ -91,6 +94,10 @@ static BOOL RSCompatible(Class cls, NSString *name, const char *argumentTypes) {
 }
 static void RSPreferenceEvent(CFNotificationCenterRef center, void *observer, CFStringRef name,
                               const void *object, CFDictionaryRef info) {
+    if (CFEqual(name, CFSTR("com.moxuan.regionshot/AISettings"))) {
+        dispatch_async(dispatch_get_main_queue(), ^{ [RSChatController showServiceSettings]; });
+        return;
+    }
     if (CFEqual(name, CFSTR(RS_CAPTURE_CHECK))) {
         uint64_t request = 0;
         if (RSCheckToken < 0 || notify_get_state(RSCheckToken, &request) != NOTIFY_STATUS_OK) return;
@@ -129,6 +136,7 @@ static void RSPreferenceEvent(CFNotificationCenterRef center, void *observer, CF
         if (notify_register_check(RS_CAPTURE_CHECK, &RSCheckToken) != NOTIFY_STATUS_OK) RSCheckToken = -1;
         if (notify_register_check(RS_CAPTURE_STATUS, &RSStatusToken) != NOTIFY_STATUS_OK) RSStatusToken = -1;
         CFNotificationCenterRef center = CFNotificationCenterGetDarwinNotifyCenter();
+        CFNotificationCenterAddObserver(center, NULL, RSPreferenceEvent, CFSTR("com.moxuan.regionshot/AISettings"), NULL, CFNotificationSuspensionBehaviorDeliverImmediately);
         CFNotificationCenterAddObserver(center, NULL, RSPreferenceEvent, CFSTR(RS_CAPTURE_CHECK), NULL, CFNotificationSuspensionBehaviorDeliverImmediately);
         CFNotificationCenterAddObserver(center, NULL, RSPreferenceEvent, CFSTR("com.moxuan.regionshot/ReloadPrefs"), NULL, CFNotificationSuspensionBehaviorDeliverImmediately);
         CFNotificationCenterAddObserver(center, NULL, RSPreferenceEvent, CFSTR("com.moxuan.regionshot/TakeScreenshot"), NULL, CFNotificationSuspensionBehaviorDeliverImmediately);

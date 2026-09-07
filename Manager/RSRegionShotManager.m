@@ -6,6 +6,7 @@
 #import "../AI/RSChatController.h"
 #import "../Capture/RSLongCaptureWindow.h"
 #import <Photos/Photos.h>
+#import "../Preferences/RSOptions.h"
 
 @interface RSRegionShotManager () <RSFloatingImageViewDelegate>
 @property (nonatomic, getter=isCapturing) BOOL capturing;
@@ -139,7 +140,7 @@
         self.floatingWindow.hidden = NO;
     }
     CGSize screen = self.floatingWindow.bounds.size;
-    CGFloat factor = MIN(MIN(260.0 / image.size.width, 320.0 / image.size.height), 1.0);
+    CGFloat factor = MIN(MIN([RSOption(@"FloatWidth") doubleValue] / image.size.width, 320.0 / image.size.height), 1.0);
     CGSize size = CGSizeMake(MAX(80, image.size.width * factor), MAX(80, image.size.height * factor));
     RSFloatingImageView *snap = [[RSFloatingImageView alloc] initWithCroppedImage:image];
     snap.bounds = (CGRect){CGPointZero, size};
@@ -149,6 +150,7 @@
     snap.actionDelegate = self;
     [self.floatingWindow.rootViewController.view addSubview:snap];
     [self.mutableSnaps addObject:snap];
+    if ([RSOption(@"CaptureHaptic") boolValue]) [[[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleLight] impactOccurred];
     NSLog(@"[RegionShot] floating snap created");
 }
 
@@ -239,6 +241,8 @@
 }
 
 - (void)saveImage:(UIImage *)image {
+    if ([RSOption(@"CopyOnSave") boolValue] || [RSOption(@"CopyOnly") boolValue]) UIPasteboard.generalPasteboard.image = image;
+    if ([RSOption(@"CopyOnly") boolValue]) return;
     PHAuthorizationStatus status = [PHPhotoLibrary authorizationStatusForAccessLevel:PHAccessLevelAddOnly];
     if (status == PHAuthorizationStatusNotDetermined) {
         __weak typeof(self) weakSelf = self;

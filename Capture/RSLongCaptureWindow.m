@@ -1,6 +1,7 @@
 #import "RSLongCaptureWindow.h"
 #import "RSScreenCapture.h"
 #import "../Geometry/RSStitch.h"
+#import "../Preferences/RSOptions.h"
 
 @implementation RSLongCaptureWindow {
     CGRect _captureRect;
@@ -74,7 +75,7 @@
     [_timer invalidate]; _timer = nil;
     if (_sampling) {
         __weak typeof(self) weakSelf = self;
-        _timer = [NSTimer scheduledTimerWithTimeInterval:0.8 repeats:YES block:^(NSTimer *timer) { [weakSelf captureFrame]; }];
+        _timer = [NSTimer scheduledTimerWithTimeInterval:[RSOption(@"LongInterval") doubleValue] repeats:YES block:^(NSTimer *timer) { [weakSelf captureFrame]; }];
     }
 }
 - (void)captureFrame {
@@ -126,7 +127,7 @@
     if (offset < 0) { [self processed:@"无法可靠对齐；请回滚少许、保留重叠内容后再截取。" preview:nil]; return; }
     NSUInteger added = _previousStrip ? (NSUInteger)llround((double)offset * height / stripHeight) : height;
     // ponytail: final UIKit image is bounded to 24 million pixels; tiled file export is the upgrade path.
-    if (width * (_totalHeight + added) > 24000000 || _slices.count >= 100) {
+    if (width * (_totalHeight + added) > [RSOption(@"LongMaxMP") doubleValue] * 1000000 || _slices.count >= [RSOption(@"LongMaxSlices") unsignedIntegerValue]) {
         [self processed:@"已达到本次长图上限，请点完成保存。" preview:nil]; return;
     }
     CGImageRef crop = CGImageCreateWithImageInRect(cg, CGRectMake(0, height - added, width, added));

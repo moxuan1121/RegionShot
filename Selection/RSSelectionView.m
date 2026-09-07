@@ -1,5 +1,6 @@
 #import "RSSelectionView.h"
 #import <math.h>
+#import "../Preferences/RSOptions.h"
 
 typedef NS_ENUM(NSInteger, RSSelectionDragMode) {
     RSSelectionDragNew,
@@ -36,6 +37,7 @@ static const CGFloat RSHandleHitRadius = 28.0;
     return CGRectGetWidth(self.selectionRect) >= RSMinimumSelectionSize &&
            CGRectGetHeight(self.selectionRect) >= RSMinimumSelectionSize;
 }
+- (void)selectAll { self.selectionRect = self.bounds; [self setNeedsDisplay]; }
 
 - (CGPoint)clampedPoint:(CGPoint)point {
     return CGPointMake(MIN(MAX(point.x, 0), CGRectGetWidth(self.bounds)),
@@ -145,6 +147,9 @@ static const CGFloat RSHandleHitRadius = 28.0;
 }
 
 - (void)touchesEnded:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
+    UITouch *touch = touches.anyObject;
+    if (touch.tapCount == 2 && self.hasValidSelection && CGRectContainsPoint(self.selectionRect, [touch locationInView:self]) &&
+        [RSOption(@"DoubleTapSelection") boolValue] && self.doubleTapHandler) { self.doubleTapHandler(); return; }
     if (CGRectIsEmpty(self.selectionRect))
         self.selectionRect = [self newRectFromPoint:self.startPoint toPoint:self.startPoint];
     [self setNeedsDisplay];
@@ -154,7 +159,7 @@ static const CGFloat RSHandleHitRadius = 28.0;
     UIBezierPath *shade = [UIBezierPath bezierPathWithRect:self.bounds];
     if ([self hasValidSelection]) [shade appendPath:[UIBezierPath bezierPathWithRect:self.selectionRect]];
     shade.usesEvenOddFillRule = YES;
-    [[UIColor colorWithWhite:0 alpha:0.38] setFill];
+    [[UIColor colorWithWhite:0 alpha:[RSOption(@"SelectionShade") doubleValue]] setFill];
     [shade fill];
     if (![self hasValidSelection]) return;
 
