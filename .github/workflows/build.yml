@@ -44,6 +44,8 @@ jobs:
           cp -R "$RUNNER_TEMP/sdks/iPhoneOS15.6.sdk" "$THEOS/sdks/"
       - name: Build package
         run: make clean package FINALPACKAGE=1
+      - name: Verify installable Settings bundle
+        run: python3 Tests/check_package.py packages/*.deb
       - name: Verify package and modern arm64e ABI
         run: |
           python3 - <<'PY'

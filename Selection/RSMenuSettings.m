@@ -17,6 +17,7 @@ static NSArray *RSMenuDefaults(void) {
              @{@"id":@4, @"title":@"取消", @"symbol":@"xmark", @"enabled":@YES}];
 }
 NSArray<NSDictionary *> *RSSelectionMenuItems(void) {
+    [RSMenuPrefs() synchronize];
     id saved = [RSMenuPrefs() objectForKey:@"SelectionMenu"];
     if (![saved isKindOfClass:NSArray.class]) return RSMenuDefaults();
     NSMutableArray *result = [NSMutableArray array];
@@ -67,8 +68,12 @@ BOOL RSSelectionMenuHideNames(void) { return [RSMenuPrefs() boolForKey:@"HideSel
     self.items = [NSMutableArray array];
     for (NSDictionary *item in RSSelectionMenuItems()) [self.items addObject:item.mutableCopy];
 }
-- (void)save { [RSMenuPrefs() setObject:self.items forKey:@"SelectionMenu"]; }
-- (void)close { [self dismissViewControllerAnimated:YES completion:self.onClose]; }
+- (void)save { [RSMenuPrefs() setObject:self.items forKey:@"SelectionMenu"]; [RSMenuPrefs() synchronize]; }
+- (void)close {
+    [RSMenuPrefs() synchronize];
+    if (self.navigationController.viewControllers.count > 1) [self.navigationController popViewControllerAnimated:YES];
+    else [self dismissViewControllerAnimated:YES completion:self.onClose];
+}
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView { return 3; }
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
     return section == 0 ? self.items.count : section == 1 ? 3 : 1;

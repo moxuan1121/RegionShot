@@ -6,7 +6,7 @@ INSTALL_TARGET_PROCESSES = SpringBoard
 include $(THEOS)/makefiles/common.mk
 
 TWEAK_NAME = RegionShot
-RegionShot_FILES = Tweak.xm \
+RegionShot_FILES = Trigger.xm \
 	Manager/RSRegionShotManager.m \
 	Capture/RSScreenCapture.m \
 	Capture/RSLongCaptureWindow.m \
@@ -24,3 +24,5 @@ RegionShot_CFLAGS = -fobjc-arc -Wall -Wextra -Wno-unused-parameter
 RegionShot_FRAMEWORKS = Foundation UIKit Photos QuartzCore Security PhotosUI UniformTypeIdentifiers Vision CoreImage PencilKit
 
 include $(THEOS_MAKE_PATH)/tweak.mk
+SUBPROJECTS += Preferences
+include $(THEOS_MAKE_PATH)/aggregate.mk

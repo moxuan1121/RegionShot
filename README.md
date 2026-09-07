@@ -1,5 +1,16 @@
 # RegionShot
 
+## 0.3.1 触发与系统设置修复
+
+新增组合键动作入口 `SBCombinationHardwareButtonActions performTakeScreenshotAction` 和
+`SpringBoard takeScreenshotAndEdit:`，与原有入口共用捕获/重复触发/原生回退处理，并检查运行时签名。
+参考硬件动作接口：[运行时声明](https://github.com/SparkDev97/iOS14-Runtime-Headers/blob/master/PrivateFrameworks/SpringBoard.framework/SBCombinationHardwareButtonActions.h)。
+具体 iOS 15.6 RootHide 实机路径仍需验证，不能用编译成功代替按键测试。
+
+安装后重新启动 SpringBoard，并重新打开系统“设置”→ RegionShot。设置面板提供启用开关、工具条与自定义图标、测试截图入口。
+现在安装包包含 PreferenceLoader 注册文件和独立 arm64e 设置组件，并声明 preferenceloader 依赖。
+若测试入口可显示选区而组合键无效，问题在硬件拦截链；若两者均无响应，需核对 SpringBoard 注入与截图捕获日志。
+
 RegionShot 是面向 iPhone 13 Pro Max、iOS 15.6、Dopamine、RootHide 和 arm64e 的 SpringBoard 区域截图 tweak。它拦截 `SpringBoard -takeScreenshot`，冻结当前屏幕，允许框选和二次调整，然后把裁剪结果作为可跨 App 保留的悬浮图片。
 
 ## 当前功能
