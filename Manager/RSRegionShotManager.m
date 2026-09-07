@@ -7,6 +7,7 @@
 #import "../Capture/RSLongCaptureWindow.h"
 #import <Photos/Photos.h>
 #import "../Preferences/RSOptions.h"
+#import "../History/RSHistoryController.h"
 
 @interface RSRegionShotManager () <RSFloatingImageViewDelegate>
 @property (nonatomic, getter=isCapturing) BOOL capturing;
@@ -134,6 +135,14 @@
 }
 
 - (void)createFloatingSnap:(UIImage *)image windowScene:(UIWindowScene *)scene {
+    [self createFloatingSnap:image windowScene:scene record:YES];
+}
+- (void)showHistory {
+    [self cancelCapture];
+    __weak typeof(self) weakSelf = self;
+    [RSHistoryController showWithRestore:^(UIImage *image, UIWindowScene *scene) { [weakSelf createFloatingSnap:image windowScene:scene record:NO]; }];
+}
+- (void)createFloatingSnap:(UIImage *)image windowScene:(UIWindowScene *)scene record:(BOOL)record {
     if (!self.floatingWindow) {
         self.floatingWindow = scene ? [[RSFloatingWindow alloc] initWithWindowScene:scene]
                                     : [[RSFloatingWindow alloc] initWithFrame:UIScreen.mainScreen.bounds];
@@ -150,6 +159,10 @@
     snap.actionDelegate = self;
     [self.floatingWindow.rootViewController.view addSubview:snap];
     [self.mutableSnaps addObject:snap];
+    if (record) {
+        __weak typeof(self) weakSelf = self;
+        [RSHistoryController recordImage:image completion:^(NSError *error) { if (error) [weakSelf notice:error.localizedDescription]; }];
+    }
     if ([RSOption(@"CaptureHaptic") boolValue]) [[[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleLight] impactOccurred];
     NSLog(@"[RegionShot] floating snap created");
 }
@@ -242,7 +255,7 @@
 
 - (void)saveImage:(UIImage *)image {
     if ([RSOption(@"CopyOnSave") boolValue] || [RSOption(@"CopyOnly") boolValue]) UIPasteboard.generalPasteboard.image = image;
-    if ([RSOption(@"CopyOnly") boolValue]) return;
+    if ([RSOption(@"CopyOnly") boolValue]) { [self notice:@"已复制图片"]; return; }
     PHAuthorizationStatus status = [PHPhotoLibrary authorizationStatusForAccessLevel:PHAccessLevelAddOnly];
     if (status == PHAuthorizationStatusNotDetermined) {
         __weak typeof(self) weakSelf = self;
@@ -251,13 +264,13 @@
                 if (result == PHAuthorizationStatusAuthorized || result == PHAuthorizationStatusLimited)
                     [weakSelf saveImage:image];
                 else
-                    NSLog(@"[RegionShot] photo permission denied");
+                    [weakSelf notice:@"未获得相册写入权限，请在系统设置中允许访问相册。"];
             });
         }];
         return;
     }
     if (status != PHAuthorizationStatusAuthorized && status != PHAuthorizationStatusLimited) {
-        NSLog(@"[RegionShot] photo permission denied");
+        [self notice:@"未获得相册写入权限，请在系统设置中允许访问相册。"];
         return;
     }
     [[PHPhotoLibrary sharedPhotoLibrary] performChanges:^{
@@ -266,8 +279,20 @@
         dispatch_async(dispatch_get_main_queue(), ^{
             NSLog(@"[RegionShot] photo save %@%@", success ? @"succeeded" : @"failed",
                   error ? [NSString stringWithFormat:@": %@", error] : @"");
+            [self notice:success ? @"已保存到相册" : error.localizedDescription ?: @"保存失败，请重试。"];
         });
     }];
+}
+- (void)notice:(NSString *)message {
+    UIView *view = self.floatingWindow.rootViewController.view;
+    if (!view) { NSLog(@"[RegionShot] %@", message); return; }
+    UILabel *label = [UILabel new]; label.text = message; label.numberOfLines = 0;
+    label.textAlignment = NSTextAlignmentCenter; label.font = [UIFont preferredFontForTextStyle:UIFontTextStyleFootnote];
+    label.textColor = UIColor.whiteColor; label.backgroundColor = [UIColor colorWithWhite:0.12 alpha:0.95];
+    label.layer.cornerRadius = 12; label.clipsToBounds = YES;
+    label.frame = CGRectMake(16, view.safeAreaInsets.top + 12, view.bounds.size.width - 32, 72);
+    [view addSubview:label]; UIAccessibilityPostNotification(UIAccessibilityAnnouncementNotification, message);
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 3 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{ [label removeFromSuperview]; });
 }
 
 - (void)shareImage:(UIImage *)image {

@@ -18,6 +18,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)hideAllSnaps;
 - (void)showAllSnaps;
 - (void)closeAllSnaps;
+- (void)showHistory;
 
 @end
 

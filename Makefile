@@ -8,6 +8,8 @@ include $(THEOS)/makefiles/common.mk
 TWEAK_NAME = RegionShot
 RegionShot_FILES = Trigger.xm \
 	Preferences/RSOptions.m \
+	History/RSHistoryStore.m \
+	History/RSHistoryController.m \
 	Manager/RSRegionShotManager.m \
 	Capture/RSScreenCapture.m \
 	Capture/RSLongCaptureWindow.m \

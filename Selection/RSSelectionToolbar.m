@@ -72,6 +72,8 @@
         if (self.ocrHandler) self.ocrHandler();
     } else if (button.tag == 7) {
         if (self.fullscreenHandler) self.fullscreenHandler();
+    } else if (button.tag == 8) {
+        if (self.historyHandler) self.historyHandler();
     }
 }
 

@@ -17,7 +17,8 @@ static NSArray *RSMenuDefaults(void) {
              @{@"id":@4, @"title":@"取消", @"symbol":@"xmark", @"enabled":@YES},
              @{@"id":@5, @"title":@"图片问答", @"symbol":@"text.bubble", @"enabled":@YES},
              @{@"id":@6, @"title":@"识别文字", @"symbol":@"text.viewfinder", @"enabled":@YES},
-             @{@"id":@7, @"title":@"全屏", @"symbol":@"arrow.up.left.and.arrow.down.right", @"enabled":@YES}];
+             @{@"id":@7, @"title":@"全屏", @"symbol":@"arrow.up.left.and.arrow.down.right", @"enabled":@YES},
+             @{@"id":@8, @"title":@"历史", @"symbol":@"clock.arrow.circlepath", @"enabled":@YES}];
 }
 NSArray<NSDictionary *> *RSSelectionMenuItems(void) {
     [RSMenuPrefs() synchronize];

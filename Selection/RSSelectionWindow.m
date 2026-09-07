@@ -6,6 +6,7 @@
 #import "RSImageEditor.h"
 #import "../Capture/RSScreenCapture.h"
 #import "../AI/RSChatController.h"
+#import "../Manager/RSRegionShotManager.h"
 
 @interface RSSelectionWindow ()
 @property (nonatomic, strong) UIImageView *imageView;
@@ -67,6 +68,7 @@
         _toolbar.cancelHandler = cancel;
         _selectionView.doubleTapHandler = ^{ if (weakSelf.toolbar.captureHandler) weakSelf.toolbar.captureHandler(); };
         _toolbar.fullscreenHandler = ^{ [weakSelf.selectionView selectAll]; };
+        _toolbar.historyHandler = ^{ [RSRegionShotManager.sharedManager showHistory]; };
         _toolbar.ocrHandler = ^{ [weakSelf showRecognition:NO]; };
         _toolbar.aiHandler = ^{
             RSSelectionWindow *window = weakSelf;
@@ -176,6 +178,7 @@
     self.toolbar.recognitionHandler = nil;
     self.toolbar.editHandler = nil;
     self.toolbar.aiHandler = nil; self.toolbar.ocrHandler = nil; self.toolbar.fullscreenHandler = nil;
+    self.toolbar.historyHandler = nil;
     self.selectionView.doubleTapHandler = nil;
     self.editedImageHandler = nil;
     self.longCaptureHandler = nil;
