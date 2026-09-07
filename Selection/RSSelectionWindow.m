@@ -124,6 +124,7 @@
     self.toolbar.frame = CGRectMake(0, 0, contentWidth, height);
     self.toolbarScroll.contentSize = self.toolbar.bounds.size;
     self.settingsButton.frame = CGRectMake(CGRectGetWidth(self.bounds) - 60, self.safeAreaInsets.top + 12, 44, 44);
+    self.settingsButton.hidden = self.selectionView.hasValidSelection;
     [self bringSubviewToFront:self.rootViewController.view];
     [self.rootViewController.view bringSubviewToFront:self.toolbarScroll];
     [self.rootViewController.view bringSubviewToFront:self.settingsButton];
