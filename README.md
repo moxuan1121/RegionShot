@@ -1,5 +1,16 @@
 # RegionShot
 
+## 0.3.2 捕获接口修复与设备诊断
+
+修正截图函数解析：ShellX 3.0.1 的 Mach-O 导入名是 `__UICreateScreenUIImage`，
+去除 Mach-O ABI 前缀后，`dlsym` 应查找 `_UICreateScreenUIImage`。
+之前仅查找 `UICreateScreenUIImage`，接口未找到时选区启动失败并回退原生截图，设置按钮也没有反馈。
+区域截图与长截图共用此修复，保留无下划线名称作为兼容回退。
+
+设置页新增“检查 SpringBoard 状态”，显示当前进程响应、启用状态、截图接口和四个入口挂接状态。
+测试截图失败会提示原因；3 秒未收到本次请求的回应会明确提示未响应，不沿用旧结果。
+安装后重新启动 SpringBoard，并重新打开设置。此版本仍需 iOS 15.6 RootHide 实机确认选区可见和组合键行为。
+
 ## 0.3.1 触发与系统设置修复
 
 新增组合键动作入口 `SBCombinationHardwareButtonActions performTakeScreenshotAction` 和

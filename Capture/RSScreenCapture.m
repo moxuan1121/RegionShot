@@ -1,20 +1,22 @@
 #import "RSScreenCapture.h"
 #import "../Geometry/RSGeometry.h"
-#import <dlfcn.h>
+#import "RSCaptureSymbol.h"
 
 typedef UIImage *(*RSScreenImageFunction)(void);
 
 @implementation RSScreenCapture
+
++ (BOOL)isCaptureAvailable { return RSResolveCaptureSymbol() != NULL; }
 
 + (UIImage *)captureScreen {
     NSAssert([NSThread isMainThread], @"Screen capture must run on the main thread");
     static RSScreenImageFunction captureFunction;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        captureFunction = (RSScreenImageFunction)dlsym(RTLD_DEFAULT, "UICreateScreenUIImage");
+        captureFunction = (RSScreenImageFunction)RSResolveCaptureSymbol();
     });
     if (!captureFunction) {
-        NSLog(@"[RegionShot] UICreateScreenUIImage unavailable");
+        NSLog(@"[RegionShot] _UICreateScreenUIImage unavailable");
         return nil;
     }
     UIImage *image = captureFunction();

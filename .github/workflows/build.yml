@@ -15,6 +15,12 @@ jobs:
     runs-on: macos-14
     steps:
       - uses: actions/checkout@v5
+      - name: Check screenshot symbol resolution
+        run: |
+          clang -Wall -Wextra -Werror -Wl,-export_dynamic Tests/test_capture_symbol.c -o /tmp/regionshot-symbol
+          /tmp/regionshot-symbol
+          clang -Wall -Wextra -Werror -Wl,-export_dynamic -DLEGACY_ONLY Tests/test_capture_symbol.c -o /tmp/regionshot-symbol-legacy
+          /tmp/regionshot-symbol-legacy
       - name: Check crop geometry
         run: cc -std=c11 -Wall -Wextra -Werror Tests/test_geometry.c -lm -o /tmp/regionshot-geometry && /tmp/regionshot-geometry
       - name: Check streaming packet boundaries
