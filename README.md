@@ -1,92 +1,64 @@
-# RegionShot
+# RegionShot 0.4.0
 
-## 0.3.2 捕获接口修复与设备诊断
+面向 iPhone 13 Pro Max、iOS 15.6、Dopamine RootHide、现代 arm64e 的区域截图插件。
+用户已确认 0.3.2 能触发冻结选区面板。本版继续接通设置、识别/AI 操作、截图历史与菜单定制；尚未完成 ShellX 全部区域截图功能复刻。
 
-修正截图函数解析：ShellX 3.0.1 的 Mach-O 导入名是 `__UICreateScreenUIImage`，
-去除 Mach-O ABI 前缀后，`dlsym` 应查找 `_UICreateScreenUIImage`。
-之前仅查找 `UICreateScreenUIImage`，接口未找到时选区启动失败并回退原生截图，设置按钮也没有反馈。
-区域截图与长截图共用此修复，保留无下划线名称作为兼容回退。
+## 使用
 
-设置页新增“检查 SpringBoard 状态”，显示当前进程响应、启用状态、截图接口和四个入口挂接状态。
-测试截图失败会提示原因；3 秒未收到本次请求的回应会明确提示未响应，不沿用旧结果。
-安装后重新启动 SpringBoard，并重新打开设置。此版本仍需 iOS 15.6 RootHide 实机确认选区可见和组合键行为。
+安装后重新启动 SpringBoard，再重新打开 **设置 → RegionShot**。
+系统截图入口打开冻结面板，拖动框选、调整四角或移动选区，点击截图生成跨应用浮图。
+工具条可横向滚动，新增图片问答、识别文字、全屏选择与历史入口。全屏按钮选择整个画面，再点截图确认。
 
-## 0.3.1 触发与系统设置修复
+- 浮图支持拖动、缩放、左右吸边和双击关闭；长按可复制、保存、分享、图片问答、隐藏、关闭、历史及恢复隐藏浮图。
+- 区域工具条与浮图长按菜单分别支持排序、显示开关、改名、相册/文件图片图标、SF Symbol 图标和恢复默认。
+- “浏览系统图标”提供常用图标预览与筛选；输入完整名称可选择当前 iOS 支持的其他 SF Symbol。
+- 区域工具条可隐藏文字、调节图标 16–80 点和文字 8–16 点；浮图长按菜单的字体与布局遵循系统菜单样式。
 
-新增组合键动作入口 `SBCombinationHardwareButtonActions performTakeScreenshotAction` 和
-`SpringBoard takeScreenshotAndEdit:` 及 `SSScreenCapturer takeScreenshotWithPresentationOptions:`，
-与原有入口共用捕获/重复触发/原生回退处理，并检查运行时签名。
-参考硬件动作接口：[运行时声明](https://github.com/SparkDev97/iOS14-Runtime-Headers/blob/master/PrivateFrameworks/SpringBoard.framework/SBCombinationHardwareButtonActions.h)。
-具体 iOS 15.6 RootHide 实机路径仍需验证，不能用编译成功代替按键测试。
+## 功能设置
 
-安装后重新启动 SpringBoard，并重新打开系统“设置”→ RegionShot。设置面板提供启用开关、工具条与自定义图标、测试截图入口。
-现在安装包包含 PreferenceLoader 注册文件和独立 arm64e 设置组件，并声明 preferenceloader 依赖。
-若测试入口可显示选区而组合键无效，问题在硬件拦截链；若两者均无响应，需核对 SpringBoard 注入与截图捕获日志。
+系统设置提供截图、浮图、OCR、长图、AI 和历史参数，所有显示的选项均已接入运行逻辑：
 
-RegionShot 是面向 iPhone 13 Pro Max、iOS 15.6、Dopamine、RootHide 和 arm64e 的 SpringBoard 区域截图 tweak。它拦截 `SpringBoard -takeScreenshot`，冻结当前屏幕，允许框选和二次调整，然后把裁剪结果作为可跨 App 保留的悬浮图片。
+- 截图：双击选区生成浮图、完成震动、遮罩浓度；保存同时复制或仅复制。相册保存结果和失败原因提供提示。
+- 浮图：阴影、吸边、双击关闭、初始宽度和透明度。初始外观在新建浮图时应用。
+- OCR：准确/快速模式、识别语言、语言纠错与合并换行。只使用本机 Vision，并过滤当前模式不支持的语言。
+- 长图：手动逐段与定时采样，采样间隔 0.3–3 秒、最多 5–100 段、合成上限 4–24 百万像素。调整采样间隔后重新开启采样生效。
+- AI：流式开关、图片/文字直接发送、系统提示词、图片默认提问、AI 翻译目标语言、系统/浅色/深色主题、悬浮球大小和透明度。
+- 历史：开启/关闭新增记录、保留张数 5–200、容量上限 16–128 MB。限额在下次写入时执行。
 
-## 当前功能
+## OCR 与 AI
 
-- 统一截图入口、内部捕获保护和重复触发保护
-- 冻结图、选区外暗色遮罩、四角调整和选区移动
-- Home Indicator 上方的五按钮胶囊工具条
-- 从最初 frozenImage 按 CGImage 像素裁剪
-- Selection 与 Floating UIWindow 绑定触发时的 UIWindowScene
-- 多张悬浮截图、点击提升层级、空白区域触摸穿透
-- 单指拖动、双指缩放、左右吸边、双击关闭
-- 系统长按菜单：复制、保存、分享、隐藏当前、关闭当前、关闭全部
-- Manager 的隐藏全部、恢复全部和关闭全部接口
+选区可直接进入图片问答或 OCR；扫码入口仍可选择二维码/条码识别。
+OCR 结果可编辑、选中部分文字后复制/分享/分词/文字问答/AI 翻译，不选文字时使用完整结果。
+分词通过 KeyboardAI 接入；成功调起后退出原 OCR 和选区界面。
+AI 翻译会将文字发送到用户配置的 AI 服务，并在对话中显示译文；不是独立翻译引擎，也不是本地翻译。
 
-截图选择界面右上角齿轮打开“区域工具条”设置：排序、按钮开关、改名、图片图标（相册/文件）、
-SF Symbol 名称、隐藏文字、图标 16–80 点和文字 8–16 点、恢复默认。大图标工具条支持横向滚动。
-目前仅接入区域工具条，尚未覆盖浮窗/标记/编辑菜单、背景样式和 SF Symbols 图形选择器。
+**配置 AI 服务、模型与密钥**按钮在 SpringBoard 打开服务配置窗口，避免两个进程分别存取密钥。
+填写支持图片的 Chat Completions 完整 HTTPS 地址、模型和 API Key，密钥保存在系统钥匙串。
+支持图文多轮、流式/非流式、停止、复制、旧回复重生成、最小化/恢复。
+刷新旁的 `character.textbox` 分词按钮需要支持 RegionShot 桥接的 KeyboardAI；RegionShot 独立 AI 对话在分词接受后仍采用最小化行为。
 
-“扫码”可选择系统二维码/条码识别或本地 OCR，结果可选中复制；外部 OCR API、识别设置、翻译仍待实现。
-“标记”接入系统 PencilKit 画笔、颜色、橡皮、套索、尺子、撤销/重做，完成后将原图与标记合成为悬浮图。
-这不是 ShellX 的完整编辑器：独立文字/形状对象、贴纸、马赛克、导入叠图、完整工具条样式和编辑历史仍待实现。
+## 截图历史
 
-## 长截图（开发中）
+默认记录 RegionShot 新生成的裁剪、标记和长截图浮图，默认上限 **80 张 / 64 MB**，达到后自动清理旧记录。
+关闭记录开关只停止新增，既有历史仍可查看或清空。
+历史可按名称或日期搜索，点开预览并双指放大；支持恢复浮图、图片问答与系统分享/保存。
+左滑可改名或删除；清空需要确认。恢复历史浮图不会重复写入历史。
+图片在后台编码和写入，每条记录完整写入后才发布；启动时清理上次未完成的临时记录。
+目前不采集系统原生截图、不保存截图中的 OCR 搜索索引，也不保存 AI 对话历史。
 
-框选滚动内容后点“长截图”：先截取一段，手动向上滑动页面并保留至少四分之一的重叠内容，然后点“截取”。
-也可点“采样”开启每 0.8 秒一次的采集，再自行滚动；“暂停”停止采样，“完成”生成悬浮长图。
-选区应避开固定标题栏和底部栏。重复帧不添加，无法可靠匹配时提示回滚少许后重试。
-临时分段保存在磁盘，成功完成或取消后清理；当前最终图最多 2,400 万像素或 100 段。
+## 长截图
 
-这还不是 ShellX 的三种完整长截图方式：自动短滑、持续自动上滑、固定栏检测、复杂重复内容及多方向拼接尚待实现。
+选区避开固定栏，点击长截图后手动向上滚动页面，保留至少四分之一重叠内容，再点截取；也可开启定时采样后自行滚动。
+重复帧不添加，无法可靠对齐时提示回滚少许。完成生成浮图，取消清理临时文件。
+**自动短滑、持续自动上滑、固定栏检测和完整三种长截图模式仍未实现。**
 
-## 0.3.0 图片问答（开发中）
+## 尚未完成
 
-长按悬浮截图 → 图片问答，点击标题配置支持图片的 Chat Completions 完整 HTTPS 地址、模型和 API Key。
-密钥保存在系统钥匙串。支持图片和文字连续提问、流式显示、停止、复制、从旧提问重新生成、最小化和拖动恢复。
-每条回复的刷新按钮旁有 `character.textbox` 分词按钮，通过进程内通知连接 KeyboardAI；需要相应新版 KeyboardAI。
-图片附件支持系统相册和图片文件；拍照仅在宿主具备相机用途声明时启用，否则提示从相册导入。
+完整迁移范围保持不变：自动滚动长截图；外部 OCR 与独立翻译服务；多 AI 引擎/模型抓取/多人设管理；文字、形状、贴纸、马赛克与叠图的完整编辑器；其他菜单背景/样式；状态栏/控制中心等触发入口；插件与自定义指令。
+现有标记仍使用 PencilKit；没有把这些未完成项做成无效按钮或宣称完整复刻。
 
-这不是 ShellX 3.0.1 的完整复刻。自动滚动长截图、OCR/翻译、完整标记编辑、历史管理、全部详细设置、自定义图片/SF Symbols 图标、菜单排序/改名/显示/大小/背景和插件入口等仍待完成。
-SpringBoard 中的系统图片选择器、键盘、相机权限及浮窗触摸需要 iOS 15.6 RootHide 实机验证。
+## 验证
 
-ShellX 二进制分析得到的可验证结论及采用范围见 [REVERSE_ENGINEERING.md](REVERSE_ENGINEERING.md)。
-
-## 构建
-
-需要 macOS/Xcode 和 RootHide Theos：
-
-```sh
-export THEOS=/path/to/roothide-theos
-cc -std=c11 -Wall -Wextra -Werror Tests/test_geometry.c -lm -o /tmp/regionshot-geometry
-/tmp/regionshot-geometry
-make clean package FINALPACKAGE=1
-```
-
-GitHub Actions 工作流使用 `macos-14`，并检查 dylib 的 Mach-O CPU subtype 是否为现代 arm64e `0x80000002`。生成的 deb 位于 `packages/`。
-
-## 实机日志顺序
-
-先安装到具有可恢复环境的测试设备并重启 SpringBoard。用系统组合键和已验证的 `[[UIApplication sharedApplication] takeScreenshot]` 调用分别触发，查看以 `[RegionShot]` 开头的日志。预期入口日志为：
-
-```text
-[RegionShot] screenshot trigger
-[RegionShot] beginCapture
-[RegionShot] frozen image captured
-```
-
-如果没有找到 `_UICreateScreenUIImage` 或兼容名称 或捕获失败，RegionShot 会清理状态并调用原生截图实现。
+工作流使用固定版本 RootHide Theos、iOS 15.6 SDK 和 macOS 14 构建，执行截图符号解析、裁剪、SSE、长图对齐、二维码、设置/菜单校验、历史持久化与限额检查。
+包检查覆盖 PreferenceLoader 注册、设置控制器/版本、签名容器及现代 arm64e ABI。
+安装后请验证框选与裁剪、浮图触摸穿透、OCR/分词跳转、AI 网络与键盘、历史恢复以及自定义菜单；尚无本版真机稳定性结论。

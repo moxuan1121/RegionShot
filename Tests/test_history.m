@@ -17,7 +17,10 @@ int main(void) { @autoreleasepool {
     assert([store addImage:image thumbnail:image title:@"容量清理" countLimit:20 byteLimit:10000 error:nil]);
     assert(store.entries.count == 1);
     // A newly constructed store must read persisted entries, not a memory-only cache.
+    NSURL *staging = [directory URLByAppendingPathComponent:[@"." stringByAppendingString:NSUUID.UUID.UUIDString]];
+    [NSFileManager.defaultManager createDirectoryAtURL:staging withIntermediateDirectories:NO attributes:nil error:nil];
     RSHistoryStore *reopened = [[RSHistoryStore alloc] initWithDirectory:directory];
+    assert(![NSFileManager.defaultManager fileExistsAtPath:staging.path]);
     assert(reopened.entries.count == 1);
     assert([reopened removeIDs:[reopened.entries valueForKey:@"id"] error:nil]);
     assert(reopened.entries.count == 0);

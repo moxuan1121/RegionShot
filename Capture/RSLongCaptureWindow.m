@@ -26,7 +26,7 @@
     self = scene ? [super initWithWindowScene:scene] : [super initWithFrame:UIScreen.mainScreen.bounds];
     if (!self) return nil;
     self.frame = scene ? scene.coordinateSpace.bounds : UIScreen.mainScreen.bounds;
-    self.windowLevel = UIWindowLevelAlert + 120;
+    self.windowLevel = UIWindowLevelAlert + 220;
     self.backgroundColor = UIColor.clearColor;
     _captureRect = rect; _displaySize = size; _capture = [capture copy]; _completion = [completion copy];
     _slices = [NSMutableArray array];

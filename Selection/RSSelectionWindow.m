@@ -35,7 +35,7 @@
     self = scene ? [super initWithWindowScene:scene] : [super initWithFrame:UIScreen.mainScreen.bounds];
     if (self) {
         self.frame = scene ? scene.coordinateSpace.bounds : UIScreen.mainScreen.bounds;
-        self.windowLevel = UIWindowLevelAlert + 100;
+        self.windowLevel = UIWindowLevelAlert + 200;
         self.backgroundColor = UIColor.blackColor;
         UIViewController *controller = [UIViewController new];
         controller.view.backgroundColor = UIColor.blackColor;

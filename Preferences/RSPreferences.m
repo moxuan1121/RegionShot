@@ -37,7 +37,7 @@
     [self.diagnosticGroup setProperty:@"尚未检查。点击上方按钮可检查插件加载、截图接口和按键入口。" forKey:@"footerText"];
     [items addObject:self.diagnosticGroup];
     group = [PSSpecifier groupSpecifierWithName:@"当前开发预览"];
-    [group setProperty:@"支持工具条排序、显示、名称、图片/SF Symbol 图标和大小。AI 服务仍在图片问答窗口标题处配置。完整设置、自动上滑长截图及其他功能仍在开发中。" forKey:@"footerText"];
+    [group setProperty:@"已接入截图历史、区域/浮图菜单定制及截图、OCR、长图、AI 参数。AI 服务配置在 SpringBoard 窗口打开，密钥保存于该进程的钥匙串。自动上滑长截图、外部 OCR 与独立翻译引擎、完整编辑器及其余设置仍在开发中。" forKey:@"footerText"];
     [items addObject:group]; _specifiers = items.copy; return _specifiers;
 }
 - (id)readPreferenceValue:(PSSpecifier *)specifier {

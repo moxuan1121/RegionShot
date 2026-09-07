@@ -3,7 +3,18 @@
 @implementation RSHistoryStore {
     NSURL *_directory;
 }
-- (instancetype)initWithDirectory:(NSURL *)directory { if ((self = [super init])) _directory = directory; return self; }
+- (instancetype)initWithDirectory:(NSURL *)directory {
+    if ((self = [super init])) {
+        _directory = directory;
+        // Only our unpublished UUID staging folders can be discarded after a crash.
+        for (NSURL *entry in [NSFileManager.defaultManager contentsOfDirectoryAtURL:directory includingPropertiesForKeys:nil options:0 error:nil]) {
+            NSString *name = entry.lastPathComponent;
+            if ([name hasPrefix:@"."] && [[NSUUID alloc] initWithUUIDString:[name substringFromIndex:1]])
+                [NSFileManager.defaultManager removeItemAtURL:entry error:nil];
+        }
+    }
+    return self;
+}
 - (NSURL *)folder:(NSString *)identifier {
     if (![identifier isKindOfClass:NSString.class] || ![[NSUUID alloc] initWithUUIDString:identifier]) return nil;
     return [_directory URLByAppendingPathComponent:identifier isDirectory:YES];

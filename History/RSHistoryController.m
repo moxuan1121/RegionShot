@@ -86,7 +86,7 @@ static RSHistoryController *RSActiveHistory;
     UIWindowScene *scene = previous.windowScene;
     controller.host = scene ? [[UIWindow alloc] initWithWindowScene:scene] : [[UIWindow alloc] initWithFrame:UIScreen.mainScreen.bounds];
     controller.host.frame = scene ? scene.coordinateSpace.bounds : UIScreen.mainScreen.bounds;
-    controller.host.windowLevel = UIWindowLevelAlert + 140;
+    controller.host.windowLevel = UIWindowLevelAlert + 160;
     controller.host.rootViewController = [[UINavigationController alloc] initWithRootViewController:controller];
     RSActiveHistory = controller; [controller.host makeKeyAndVisible];
 }
