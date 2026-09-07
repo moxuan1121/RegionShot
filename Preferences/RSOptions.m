@@ -18,7 +18,6 @@ NSArray<NSDictionary *> *RSOptionGroups(void) {
             @{@"key":@"SelectionShade", @"title":@"选区外遮罩浓度", @"default":@0.38, @"min":@0.05, @"max":@0.8} ]},
         @{@"title":@"悬浮图片", @"items":@[
             @{@"key":@"FloatShadow", @"title":@"显示阴影", @"default":@YES},
-            @{@"key":@"FloatSnap", @"title":@"拖动后左右吸边", @"default":@YES},
             @{@"key":@"FloatDoubleClose", @"title":@"双击关闭当前浮图", @"default":@YES},
             @{@"key":@"FloatOpacity", @"title":@"浮图不透明度", @"default":@1.0, @"min":@0.25, @"max":@1.0},
             @{@"key":@"FloatWidth", @"title":@"初始最大宽度（点）", @"default":@260, @"min":@80, @"max":@380} ]},

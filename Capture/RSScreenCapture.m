@@ -1,6 +1,8 @@
 #import "RSScreenCapture.h"
 #import "../Geometry/RSGeometry.h"
 #import "RSCaptureSymbol.h"
+#include <stdint.h>
+#import "RSCopyPixels.h"
 
 typedef UIImage *(*RSScreenImageFunction)(void);
 
@@ -48,7 +50,7 @@ typedef UIImage *(*RSScreenImageFunction)(void);
                                     pixelWidth, pixelHeight);
     if (pixels.width < 1 || pixels.height < 1) return nil;
     CGRect cropRect = CGRectMake(pixels.x, pixels.y, pixels.width, pixels.height);
-    CGImageRef cropped = CGImageCreateWithImageInRect(source.CGImage, cropRect);
+    CGImageRef cropped = RSCopyPixels(source.CGImage, cropRect);
     if (!cropped) return nil;
     CGFloat scale = pixelWidth / displaySize.width;
     UIImage *result = [UIImage imageWithCGImage:cropped scale:scale orientation:UIImageOrientationUp];

@@ -57,9 +57,6 @@
     CGPoint translation = [gesture translationInView:self.superview];
     self.center = CGPointMake(self.center.x + translation.x, self.center.y + translation.y);
     [gesture setTranslation:CGPointZero inView:self.superview];
-    [self keepTouchableInBounds];
-    if (gesture.state == UIGestureRecognizerStateEnded || gesture.state == UIGestureRecognizerStateCancelled)
-        [self snapToNearestHorizontalEdge];
 }
 
 - (void)pinched:(UIPinchGestureRecognizer *)gesture {
@@ -69,35 +66,6 @@
     self.currentScale = nextScale;
     self.transform = CGAffineTransformMakeScale(nextScale, nextScale);
     gesture.scale = 1;
-    [self keepTouchableInBounds];
-}
-
-- (void)keepTouchableInBounds {
-    if (!self.superview) return;
-    CGRect frame = self.frame;
-    CGFloat visible = 44;
-    CGFloat width = CGRectGetWidth(self.superview.bounds);
-    CGFloat height = CGRectGetHeight(self.superview.bounds);
-    CGFloat dx = 0, dy = 0;
-    if (CGRectGetMaxX(frame) < visible) dx = visible - CGRectGetMaxX(frame);
-    if (CGRectGetMinX(frame) > width - visible) dx = width - visible - CGRectGetMinX(frame);
-    if (CGRectGetMaxY(frame) < visible) dy = visible - CGRectGetMaxY(frame);
-    if (CGRectGetMinY(frame) > height - visible) dy = height - visible - CGRectGetMinY(frame);
-    self.center = CGPointMake(self.center.x + dx, self.center.y + dy);
-}
-
-- (void)snapToNearestHorizontalEdge {
-    if (!self.superview || ![RSOption(@"FloatSnap") boolValue]) return;
-    CGRect safe = UIEdgeInsetsInsetRect(self.superview.bounds, self.superview.safeAreaInsets);
-    CGRect frame = self.frame;
-    CGFloat left = CGRectGetMinX(safe) + CGRectGetWidth(frame) / 2.0 + 8;
-    CGFloat right = CGRectGetMaxX(safe) - CGRectGetWidth(frame) / 2.0 - 8;
-    if (left > right) return;
-    CGFloat target = fabs(self.center.x - left) <= fabs(self.center.x - right) ? left : right;
-    [UIView animateWithDuration:0.2 animations:^{
-        self.center = CGPointMake(target, self.center.y);
-        [self keepTouchableInBounds];
-    }];
 }
 
 - (BOOL)gestureRecognizer:(UIGestureRecognizer *)gesture
