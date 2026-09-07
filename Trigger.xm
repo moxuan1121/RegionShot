@@ -1,5 +1,6 @@
 #import <UIKit/UIKit.h>
 #import <objc/runtime.h>
+#include <string.h>
 #import "Manager/RSRegionShotManager.h"
 @interface SpringBoard : UIApplication
 - (void)takeScreenshot;
@@ -7,6 +8,9 @@
 @end
 @interface SBCombinationHardwareButtonActions : NSObject
 - (void)performTakeScreenshotAction;
+@end
+@interface SSScreenCapturer : NSObject
+- (void)takeScreenshotWithPresentationOptions:(id)options;
 @end
 static BOOL RSEnabled = YES;
 static __thread NSUInteger RSOriginalDepth;
@@ -61,14 +65,23 @@ static BOOL RSTryCapture(NSString *source) {
 }
 %end
 %end
-static BOOL RSCompatible(Class cls, NSString *name, BOOL booleanArgument) {
+%group RSCapturerEntry
+%hook SSScreenCapturer
+- (void)takeScreenshotWithPresentationOptions:(id)options {
+    if (RSTryCapture(@"SSScreenCapturer.takeScreenshotWithPresentationOptions:")) return;
+    RSOriginalDepth++;
+    @try { %orig(options); } @finally { RSOriginalDepth--; }
+}
+%end
+%end
+static BOOL RSCompatible(Class cls, NSString *name, const char *argumentTypes) {
     Method method = cls ? class_getInstanceMethod(cls, NSSelectorFromString(name)) : NULL;
-    if (!method || method_getNumberOfArguments(method) != (booleanArgument ? 3u : 2u)) return NO;
+    if (!method || method_getNumberOfArguments(method) != (argumentTypes ? 3u : 2u)) return NO;
     char type[16] = {0}; method_getReturnType(method, type, sizeof(type));
     if (type[0] != 'v') return NO;
-    if (booleanArgument) {
+    if (argumentTypes) {
         method_getArgumentType(method, 2, type, sizeof(type));
-        if (type[0] != 'B' && type[0] != 'c') return NO;
+        if (!type[0] || !strchr(argumentTypes, type[0])) return NO;
     }
     return YES;
 }
@@ -83,15 +96,17 @@ static void RSPreferenceEvent(CFNotificationCenterRef center, void *observer, CF
         RSReload();
         Class app = NSClassFromString(@"SpringBoard");
         Class hardware = NSClassFromString(@"SBCombinationHardwareButtonActions");
-        BOOL direct = RSCompatible(app, @"takeScreenshot", NO);
-        BOOL edit = RSCompatible(app, @"takeScreenshotAndEdit:", YES);
-        BOOL keys = RSCompatible(hardware, @"performTakeScreenshotAction", NO);
+        BOOL direct = RSCompatible(app, @"takeScreenshot", NULL);
+        BOOL edit = RSCompatible(app, @"takeScreenshotAndEdit:", "Bc");
+        BOOL keys = RSCompatible(hardware, @"performTakeScreenshotAction", NULL);
+        BOOL capturer = RSCompatible(NSClassFromString(@"SSScreenCapturer"), @"takeScreenshotWithPresentationOptions:", "@");
         if (direct) { %init(RSApplicationEntry); }
         if (edit) { %init(RSEditEntry); }
         if (keys) { %init(RSHardwareEntry); }
+        if (capturer) { %init(RSCapturerEntry); }
         CFNotificationCenterRef center = CFNotificationCenterGetDarwinNotifyCenter();
         CFNotificationCenterAddObserver(center, NULL, RSPreferenceEvent, CFSTR("com.moxuan.regionshot/ReloadPrefs"), NULL, CFNotificationSuspensionBehaviorDeliverImmediately);
         CFNotificationCenterAddObserver(center, NULL, RSPreferenceEvent, CFSTR("com.moxuan.regionshot/TakeScreenshot"), NULL, CFNotificationSuspensionBehaviorDeliverImmediately);
-        NSLog(@"[RegionShot] installed entries: hardware=%d application=%d edit=%d", keys, direct, edit);
+        NSLog(@"[RegionShot] installed entries: hardware=%d application=%d edit=%d capturer=%d", keys, direct, edit, capturer);
     }
 }

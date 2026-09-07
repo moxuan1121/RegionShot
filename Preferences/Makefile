@@ -4,7 +4,7 @@ THEOS_PACKAGE_SCHEME = roothide
 include $(THEOS)/makefiles/common.mk
 BUNDLE_NAME = RegionShotPreferences
 RegionShotPreferences_FILES = RSPreferences.m ../Selection/RSMenuSettings.m
-RegionShotPreferences_CFLAGS = -fobjc-arc -Wall -Wextra
+RegionShotPreferences_CFLAGS = -fobjc-arc -Wall -Wextra -Wno-unused-parameter
 RegionShotPreferences_FRAMEWORKS = UIKit Foundation PhotosUI UniformTypeIdentifiers
 RegionShotPreferences_PRIVATE_FRAMEWORKS = Preferences
 RegionShotPreferences_INSTALL_PATH = /Library/PreferenceBundles
