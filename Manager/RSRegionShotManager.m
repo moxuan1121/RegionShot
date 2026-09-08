@@ -250,12 +250,14 @@
             UIPasteboard.generalPasteboard.image = image;
             [self removeSnap:snap];
             break;
-        case RSFloatingActionSave:
+        case RSFloatingActionSave: {
             [self saveImage:image completion:^{ [self removeSnap:snap]; }];
             break;
-        case RSFloatingActionShare:
+        }
+        case RSFloatingActionShare: {
             [self shareImage:image completion:^{ [self removeSnap:snap]; }];
             break;
+        }
         case RSFloatingActionCloseAll:
             [self closeAllSnaps];
             break;
