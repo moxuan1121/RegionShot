@@ -31,12 +31,12 @@ static inline NSArray<NSDictionary *> *RSInputDefaultActions(void) {
 }
 
 static inline BOOL RSInputValidActions(id actions) {
-    if (![actions isKindOfClass:NSArray.class] || ![actions count] || [actions count] > 8) return NO;
+    if (![actions isKindOfClass:NSArray.class] || ![actions count] || [actions count] > 100) return NO;
     for (id item in actions) {
         if (![item isKindOfClass:NSDictionary.class]) return NO;
         id title = item[@"title"], prompt = item[@"prompt"];
-        if (![title isKindOfClass:NSString.class] || !RSInputTrim(title).length || [title length] > 20 ||
-            ![prompt isKindOfClass:NSString.class] || !RSInputTrim(prompt).length || [prompt length] > 4000) return NO;
+        if (![title isKindOfClass:NSString.class] || !RSInputTrim(title).length || [title length] > 100 ||
+            ![prompt isKindOfClass:NSString.class] || !RSInputTrim(prompt).length || [prompt length] > 8000) return NO;
     }
     return YES;
 }

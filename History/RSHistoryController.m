@@ -165,7 +165,7 @@ static RSHistoryController *RSActiveHistory;
         for (NSDictionary *entry in self.entries) if ([entry[@"source"] isEqual:source]) { name = entry[@"title"]; break; }
         SEL iconSelector = NSSelectorFromString(@"_applicationIconImageForBundleIdentifier:format:scale:");
         UIImage *icon = source.length && [UIImage respondsToSelector:iconSelector] ? ((id (*)(id, SEL, id, int, CGFloat))objc_msgSend)(UIImage.class, iconSelector, source, 0, UIScreen.mainScreen.scale) : nil;
-        if (icon) { [button setImage:icon forState:UIControlStateNormal]; button.imageView.contentMode = UIViewContentModeScaleAspectFit; button.imageEdgeInsets = UIEdgeInsetsMake(6, 8, 6, 8); }
+        if (icon) { [button setImage:icon forState:UIControlStateNormal]; button.imageView.contentMode = UIViewContentModeScaleAspectFit; UIButtonConfiguration *configuration = UIButtonConfiguration.plainButtonConfiguration; configuration.image = [[[UIGraphicsImageRenderer alloc] initWithSize:CGSizeMake(30, 30)] imageWithActions:^(UIGraphicsImageRendererContext *context) { [icon drawInRect:CGRectMake(0, 0, 30, 30)]; }]; configuration.contentInsets = NSDirectionalEdgeInsetsMake(6, 8, 6, 8); button.configuration = configuration; }
         else { [button setTitle:source.length ? name : @"全部" forState:UIControlStateNormal]; button.titleLabel.font = [UIFont systemFontOfSize:12]; }
         button.accessibilityLabel = name; button.layer.cornerRadius = 10;
         button.backgroundColor = [source isEqual:self.sourceFilter ?: @""] ? UIColor.systemGray4Color : UIColor.secondarySystemBackgroundColor;

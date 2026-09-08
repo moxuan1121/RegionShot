@@ -92,7 +92,7 @@ static char RSStatusBarGestureKey;
 %hook SpringBoard
 - (void)noteInterfaceOrientationChanged:(long long)orientation duration:(double)duration updateMirroredDisplays:(BOOL)update force:(BOOL)force logMessage:(id)message {
     %orig;
-    [NSNotificationCenter.defaultCenter postNotificationName:@"com.moxuan.regionshot.orientation" object:nil userInfo:@{@"orientation":@(orientation)}];
+    dispatch_async(dispatch_get_main_queue(), ^{ [NSNotificationCenter.defaultCenter postNotificationName:@"com.moxuan.regionshot.orientation.target" object:nil userInfo:@{@"orientation":@(orientation)}]; });
 }
 - (void)_postActiveInterfaceOrientationChangedNotificationAnimated:(BOOL)animated {
     %orig;

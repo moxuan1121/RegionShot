@@ -49,7 +49,13 @@ NSArray<NSDictionary *> *RSFrozenMenuItems(void) {
         if ([entry[@"id"] integerValue] > 4 && [entry[@"id"] integerValue] != 9) entry[@"enabled"] = @NO;
         [defaults addObject:entry];
     }
-    return RSNormalizeMenu([RSMenuPrefs() objectForKey:@"FrozenMenu"], defaults, nil);
+    NSMutableArray *items = [NSMutableArray array];
+    for (NSDictionary *item in RSNormalizeMenu([RSMenuPrefs() objectForKey:@"FrozenMenu"], defaults, nil)) {
+        NSMutableDictionary *entry = item.mutableCopy;
+        if ([entry[@"id"] integerValue] == 0 && [@[@"浮窗", @"截图"] containsObject:entry[@"title"]]) entry[@"title"] = @"截屏";
+        [items addObject:entry];
+    }
+    return items;
 }
 UIImage *RSSelectionMenuIcon(NSDictionary *item) {
     NSData *data = item[@"image"];

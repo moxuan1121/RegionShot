@@ -18,13 +18,14 @@
 @end
 
 @interface RSChatController () <NSURLSessionDataDelegate, PHPickerViewControllerDelegate,
-    UIDocumentPickerDelegate, UIImagePickerControllerDelegate, UINavigationControllerDelegate>
+    UIDocumentPickerDelegate, UIImagePickerControllerDelegate, UINavigationControllerDelegate, UITextViewDelegate>
 @property (nonatomic, strong) RSChatWindow *host;
 @property (nonatomic, weak) UIWindow *previousKey;
 @property (nonatomic, strong) UIView *card;
 @property (nonatomic, strong) UIStackView *chat;
 @property (nonatomic, strong) UIScrollView *scroll;
 @property (nonatomic, strong) UITextView *input;
+@property (nonatomic, strong) UILabel *placeholder;
 @property (nonatomic, strong) UIImageView *chip;
 @property (nonatomic, strong) UIButton *sendButton;
 @property (nonatomic, strong) UIButton *modelButton;
@@ -108,7 +109,7 @@ static NSUserDefaults *RSChatPreferences(void) {
 }
 + (void)showText:(NSString *)text scene:(UIWindowScene *)scene sendImmediately:(BOOL)send {
     [self showImage:nil scene:scene];
-    RSActiveChat.input.text = text;
+    RSActiveChat.input.text = text; [RSActiveChat textViewDidChange:RSActiveChat.input];
     if (send && !RSActiveChat.task) [RSActiveChat send];
 }
 + (void)showServiceSettings {
@@ -181,7 +182,10 @@ static NSUserDefaults *RSChatPreferences(void) {
     self.input.backgroundColor = UIColor.tertiarySystemBackgroundColor;
     self.input.layer.cornerRadius = 22;
     self.input.textContainerInset = UIEdgeInsetsMake(10, 12, 10, 12);
-    self.input.accessibilityLabel = @"输入问题";
+    self.input.accessibilityLabel = @"输入问题"; self.input.delegate = self;
+    self.placeholder = [[UILabel alloc] initWithFrame:CGRectMake(16, 10, 140, 24)];
+    self.placeholder.text = @"问点什么…"; self.placeholder.textColor = UIColor.placeholderTextColor;
+    self.placeholder.font = self.input.font; self.placeholder.userInteractionEnabled = NO; [self.input addSubview:self.placeholder];
     [self.input.heightAnchor constraintEqualToConstant:44].active = YES;
     self.sendButton = [UIButton buttonWithType:UIButtonTypeSystem];
     [self.sendButton setTitle:@"发送" forState:UIControlStateNormal];
@@ -190,8 +194,9 @@ static NSUserDefaults *RSChatPreferences(void) {
     [self.sendButton.widthAnchor constraintEqualToConstant:64].active = YES;
     [self.sendButton.heightAnchor constraintEqualToConstant:44].active = YES;
     [self.sendButton addTarget:self action:@selector(send) forControlEvents:UIControlEventTouchUpInside];
-    UIStackView *bottom = [[UIStackView alloc] initWithArrangedSubviews:@[
-        self.input, [self button:@"plus" title:@"添加图片" action:@selector(attachments)], self.sendButton]];
+    UIButton *attach = [self button:@"plus" title:@"添加图片" action:@selector(attachments)];
+    attach.backgroundColor = UIColor.systemBlueColor; attach.tintColor = UIColor.whiteColor; attach.layer.cornerRadius = 22;
+    UIStackView *bottom = [[UIStackView alloc] initWithArrangedSubviews:@[self.input, attach, self.sendButton]];
     bottom.alignment = UIStackViewAlignmentCenter;
     bottom.spacing = 6;
     [content addArrangedSubview:bottom];
@@ -236,6 +241,7 @@ static NSUserDefaults *RSChatPreferences(void) {
     NSString *model = [RSChatPreferences() stringForKey:@"AIModel"];
     [self.modelButton setTitle:model.length ? model : @"图片问答 · 配置" forState:UIControlStateNormal];
 }
+- (void)textViewDidChange:(UITextView *)textView { if (textView == self.input) self.placeholder.hidden = textView.text.length > 0; }
 - (void)hideKeyboard { [self.view endEditing:YES]; }
 - (void)minimize {
     [self hideKeyboard];
@@ -304,7 +310,7 @@ static NSUserDefaults *RSChatPreferences(void) {
 
 - (UITextView *)addRow:(NSString *)text image:(UIImage *)image assistant:(BOOL)assistant index:(NSUInteger)index {
     UIStackView *row = [UIStackView new]; row.axis = UILayoutConstraintAxisVertical; row.spacing = 2;
-    row.backgroundColor = assistant ? UIColor.systemGray5Color : UIColor.systemBlueColor;
+    row.backgroundColor = assistant ? UIColor.systemGray5Color : (image && !text.length ? [UIColor.systemBlueColor colorWithAlphaComponent:0.10] : UIColor.systemBlueColor);
     row.layer.cornerRadius = 20; row.clipsToBounds = YES;
     row.layoutMarginsRelativeArrangement = YES; row.layoutMargins = UIEdgeInsetsMake(8, 10, 4, 10);
     if (image) {
@@ -386,7 +392,7 @@ static NSUserDefaults *RSChatPreferences(void) {
     }
     [self addRow:displayText image:self.attachment assistant:NO index:self.history.count];
     [self.history addObject:[@{@"role":@"user", @"content":content} mutableCopy]];
-    self.input.text = @""; [self clearAttachment]; [self hideKeyboard];
+    self.input.text = @""; [self textViewDidChange:self.input]; [self clearAttachment]; [self hideKeyboard];
     [self startRequest];
 }
 - (void)startRequest {

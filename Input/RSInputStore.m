@@ -4,6 +4,7 @@
 #import "RSInputOptions.h"
 static BOOL RSInputWriteConfig(NSDictionary *clean);
 #import <unistd.h>
+#include <stdio.h>
 #ifndef RSInput_STORE_TESTING
 #import <roothide.h>
 #endif
@@ -36,7 +37,7 @@ NSArray<NSDictionary *> *RSInputActions(void) {
     return RSInputValidActions(actions) ? actions : RSInputDefaultActions();
 }
 BOOL RSInputSaveConfig(NSDictionary *config, NSString *key) {
-    if (![config isKindOfClass:NSDictionary.class] || RSInputConfigError(config[@"endpoint"], config[@"model"], key) || !RSInputValidActions(config[@"actions"])) return NO;
+    if (![config isKindOfClass:NSDictionary.class] || (![key isKindOfClass:NSString.class] || RSInputConfigError(config[@"endpoint"], config[@"model"], key.length ? key : @"not-configured")) || !RSInputValidActions(config[@"actions"])) return NO;
     NSMutableArray *actions = [NSMutableArray array];
     for (NSDictionary *action in config[@"actions"]) {
         NSMutableDictionary *clean = [@{@"title": action[@"title"], @"prompt": action[@"prompt"]} mutableCopy];
@@ -68,8 +69,12 @@ static BOOL RSInputWriteConfig(NSDictionary *clean) {
     NSString *path = RSInputPath();
     NSFileManager *manager = NSFileManager.defaultManager;
     if (![manager createDirectoryAtPath:path.stringByDeletingLastPathComponent withIntermediateDirectories:YES attributes:nil error:NULL]) return NO;
-    if (![data writeToFile:path options:NSDataWritingAtomic error:NULL]) return NO;
-    return [manager setAttributes:@{NSFilePosixPermissions: @0600} ofItemAtPath:path error:NULL];
+    NSString *temporary = [path.stringByDeletingLastPathComponent stringByAppendingPathComponent:NSUUID.UUID.UUIDString];
+    if (![manager createFileAtPath:temporary contents:data attributes:@{NSFilePosixPermissions:@0600}]) return NO;
+    // rename replaces the snapshot atomically; its permissions are private from creation.
+    BOOL written = rename(temporary.fileSystemRepresentation, path.fileSystemRepresentation) == 0;
+    if (!written) [manager removeItemAtPath:temporary error:nil];
+    return written;
 }
 BOOL RSInputClearConfig(void) {
     NSError *error = nil;

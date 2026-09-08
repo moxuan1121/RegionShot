@@ -4,11 +4,14 @@
 
 @interface RSFloatingController : UIViewController
 @property (nonatomic) BOOL centerImages;
+@property (nonatomic) UIInterfaceOrientation targetOrientation;
 @end
 @implementation RSFloatingController
 - (void)viewDidLayoutSubviews {
     [super viewDidLayoutSubviews];
     if (!self.centerImages) return;
+    BOOL landscape = UIInterfaceOrientationIsLandscape(self.targetOrientation);
+    if (landscape != (self.view.bounds.size.width > self.view.bounds.size.height)) return;
     self.centerImages = NO;
     CGPoint center = CGPointMake(CGRectGetMidX(self.view.bounds), CGRectGetMidY(self.view.bounds));
     for (UIView *view in self.view.subviews)
@@ -31,7 +34,7 @@
     UIViewController *controller = [RSFloatingController new];
     controller.view.backgroundColor = UIColor.clearColor;
     self.rootViewController = controller;
-    [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(deviceRotated:) name:@"com.moxuan.regionshot.orientation" object:nil];
+    [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(deviceRotated:) name:@"com.moxuan.regionshot.orientation.target" object:nil];
     [self updateOrientation];
 }
 
@@ -56,7 +59,8 @@
     NSNumber *target = note.userInfo[@"orientation"];
     UIInterfaceOrientation orientation = target ? target.integerValue : RSActiveOrientation(self.windowScene);
     RSFloatingController *controller = (RSFloatingController *)self.rootViewController;
-    controller.centerImages = YES;
+    if (orientation < UIInterfaceOrientationPortrait || orientation > UIInterfaceOrientationLandscapeRight) return;
+    controller.targetOrientation = orientation; controller.centerImages = YES;
     RSApplyWindowOrientation(self, orientation);
     [controller.view setNeedsLayout]; [controller.view layoutIfNeeded];
 }

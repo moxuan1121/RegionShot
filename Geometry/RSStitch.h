@@ -29,5 +29,16 @@ static inline int RSStitchOffset(const uint8_t *previous, const uint8_t *next,
     if (best > tolerance) return -1;
     if (bestOffset == 0 && best < 0.5) return 0;
     if (second - best < 0.8) return -1;
+    // Verify all rows in three horizontal bands: a small moving overlay must not
+    // hide inside a low average score and cause a wrong seam to be appended.
+    for (int band = 0; band < 3; band++) {
+        uint64_t error = 0, samples = 0;
+        int left = 2 + (width - 4) * band / 3, right = 2 + (width - 4) * (band + 1) / 3;
+        for (int y = margin; y < height - bestOffset - margin; y++) for (int x = left; x < right; x += 2) {
+            int difference = previous[(size_t)(y + bestOffset) * width + x] - next[(size_t)y * width + x];
+            error += difference < 0 ? -difference : difference; samples++;
+        }
+        if (!samples || (double)error / samples > tolerance) return -1;
+    }
     return bestOffset;
 }

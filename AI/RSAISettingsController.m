@@ -98,7 +98,10 @@ static BOOL RSPublishInputSettings(void) {
 - (void)save {
     NSString *name = [self.nameField.text stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
     NSString *prompt = [self.promptView.text stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
-    if (!name.length || !prompt.length) return;
+    if (!name.length || !prompt.length || name.length > 100 || prompt.length > 8000) {
+        UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"无法保存人设" message:@"名称需 1–100 字符，人设内容需 1–8,000 字符。" preferredStyle:UIAlertControllerStyleAlert];
+        [alert addAction:[UIAlertAction actionWithTitle:@"好" style:UIAlertActionStyleCancel handler:nil]]; [self presentViewController:alert animated:YES completion:nil]; return;
+    }
     NSMutableDictionary *value = [self.persona mutableCopy] ?: [NSMutableDictionary dictionary];
     value[@"presentation"] = self.presentation.selectedSegmentIndex == 1 ? @"keyboardai" : @"chat";
     value[@"name"] = name; value[@"prompt"] = prompt; value[@"scope"] = value[@"scope"] ?: @"自定义人设"; value[@"builtin"] = value[@"builtin"] ?: @NO;

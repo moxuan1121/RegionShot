@@ -20,6 +20,9 @@ int main(void) {
         assert(RSStitchOffset(page, next, W, H, 12) == shift);
     }
     assert(RSStitchOffset(page + 40 * W, page, W, H, 12) == -1);
+    memcpy(next, page + W * 40, sizeof(next));
+    for (int y = 20; y < 180; y++) for (int x = 3; x < 14; x++) next[y * W + x] = 0;
+    assert(RSStitchOffset(page, next, W, H, 6) == -1);
     memset(next, 128, sizeof(next));
     assert(RSStitchOffset(page, next, W, H, 12) == -1);
     assert(RSStitchOffset(NULL, next, W, H, 12) == -1);

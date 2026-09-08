@@ -82,7 +82,7 @@
     if (CGRectIsEmpty(_captureRect) || CGRectIsNull(_captureRect)) { _status.text = @"选区只有状态栏，请取消后重新框选正文。"; self.hidden = NO; return; }
     self.hidden = NO;
     if (notify_register_check("com.moxuan.regionshot/LongCaptureState", &_indicatorToken) == NOTIFY_STATUS_OK) {
-        notify_set_state(_indicatorToken, 1); notify_post("com.moxuan.regionshot/LongCaptureState");
+        notify_set_state(_indicatorToken, (uint64_t)NSDate.date.timeIntervalSince1970 + 4); notify_post("com.moxuan.regionshot/LongCaptureState");
     }
     [self toggleSampling]; [self captureFrame];
 }
@@ -97,7 +97,9 @@
     }
 }
 - (void)captureFrame {
-    if (_busy || _closed) return;
+    if (_closed) return;
+    if (_indicatorToken >= 0) { notify_set_state(_indicatorToken, (uint64_t)NSDate.date.timeIntervalSince1970 + 4); notify_post("com.moxuan.regionshot/LongCaptureState"); }
+    if (_busy) return;
     if (!CGSizeEqualToSize(self.rootViewController.view.bounds.size, _displaySize)) {
         _status.text = @"屏幕方向已变化，请恢复原方向后继续。"; return;
     }
