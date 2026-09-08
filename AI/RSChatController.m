@@ -86,7 +86,8 @@ static NSUserDefaults *RSChatPreferences(void) {
 }
 + (void)showImage:(UIImage *)image scene:(UIWindowScene *)scene persona:(NSDictionary *)persona {
     if (!image || !persona) return;
-    if (RSActiveChat) [RSActiveChat close];
+    BOOL keyboard = [persona[@"presentation"] isEqual:@"keyboardai"];
+    if (keyboard && RSActiveChat) [RSActiveChat close];
     [self showImage:nil scene:scene];
     RSActiveChat.personaPrompt = persona[@"prompt"] ?: @"";
     if ([persona[@"presentation"] isEqual:@"keyboardai"] && [RSChatPreferences() stringForKey:@"AIEndpoint"].length) {
@@ -98,7 +99,8 @@ static NSUserDefaults *RSChatPreferences(void) {
     }
     RSActiveChat.input.text = @"请按当前人设处理这张图片。";
     RSActiveChat.attachment = image; RSActiveChat.chip.image = image; RSActiveChat.chip.hidden = NO;
-    [RSActiveChat send];
+    if (!RSActiveChat.task) [RSActiveChat send];
+    else [RSActiveChat message:@"图片已放入当前对话，待本次回答结束后点击发送。"];
 }
 + (void)showText:(NSString *)text scene:(UIWindowScene *)scene sendImmediately:(BOOL)send {
     [self showImage:nil scene:scene];

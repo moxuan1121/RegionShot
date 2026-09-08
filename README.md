@@ -70,6 +70,6 @@ L 角标向外移动距离包含半个线宽，让线条内缘与实际选区间
 
 ## 0.5.0 KeyboardAI 界面整合
 
-每个人设的编辑页可选择现有对话窗口或 KeyboardAI 窗口。KeyboardAI 窗口接收同一图片 AI 请求的流式回答，支持复制、搜索，长按回答进入分词；分词支持拖选、拆词与返回全文。RegionShot 原对话中的分词按钮也使用内置实现，无需另装 KeyboardAI。
+每个人设的编辑页可选择现有对话窗口或 KeyboardAI 窗口。现有窗口模式保留当前对话历史；若仍在回答，则保留新图片待发送。KeyboardAI 窗口接收同一图片 AI 请求的流式回答，支持复制、搜索，长按回答进入分词；分词支持拖选、拆词与返回全文。RegionShot 原对话中的分词按钮也使用内置实现，无需另装 KeyboardAI。
 
 保留同一套 RegionShot 模型、密钥和人设配置。合入代码使用 RSKA 前缀，避免与单独安装的 KeyboardAI 类名冲突。来源及 GPL-3.0 许可见 KeyboardAI/THIRD_PARTY.md 和 COPYING。

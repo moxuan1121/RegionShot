@@ -219,7 +219,7 @@ static UIWindowLevel RSKAPanelWindowLevel(NSDictionary *options, NSString *key) 
         chrome += [view systemLayoutSizeFittingSize:CGSizeMake(width, UILayoutFittingCompressedSize.height)
             withHorizontalFittingPriority:UILayoutPriorityRequired verticalFittingPriority:UILayoutPriorityFittingSizeLevel].height;
     }
-    CGFloat available = MAX(0, window.bounds.size.height - window.safeAreaInsets.top - window.safeAreaInsets.bottom - 20);
+    CGFloat available = MAX(0, window.rootViewController.view.bounds.size.height - window.rootViewController.view.safeAreaInsets.top - window.rootViewController.view.safeAreaInsets.bottom - 20);
     CGFloat percent = [self.windowOptions[self.tokenView ? @"tokenMaxHeight" : @"aiMaxHeight"] doubleValue];
     self.heightConstraint.constant = RSKAFittedPanelHeight(contentHeight, chrome, available, percent);
     [window layoutIfNeeded];
@@ -241,7 +241,7 @@ static UIWindowLevel RSKAPanelWindowLevel(NSDictionary *options, NSString *key) 
 - (void)enterTokens {
     if (self.generating || !self.completedResult || self.tokenView) return;
     NSArray *pieces = RSKATextPieces(self.result);
-    if (!pieces.count) return;
+    if (!pieces.count) { self.statusLabel.text = @"文字超过 24,000 字，暂不支持分词；可复制全文。"; return; }
     self.tokenView = [[RSKATokenView alloc] initWithPieces:pieces];
     self.overlayWindow.windowLevel = RSKAPanelWindowLevel(self.windowOptions, @"tokenWindowPriority");
     __weak RSKAPanel *weakSelf = self;
