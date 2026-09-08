@@ -679,7 +679,11 @@ static NSUserDefaults *RSChatPreferences(void) {
     self.cameraToken = token;
     [self hideKeyboard]; self.host.hidden = YES;
     [UIApplication.sharedApplication openURL:[NSURL URLWithString:@"regionshot-camera://capture"] options:@{} completionHandler:^(BOOL success) {
-        if (!success) { [weakSelf restore]; [weakSelf message:@"无法启动拍照页面，请重新安装完整安装包并重启 SpringBoard。"]; }
+        if (!success) {
+            if (weakSelf.cameraToken >= 0) { notify_cancel(weakSelf.cameraToken); weakSelf.cameraToken = -1; }
+            weakSelf.cameraRequest = nil;
+            [NSFileManager.defaultManager removeItemAtPath:RSCameraRequestPath() error:nil];
+            [weakSelf restore]; [weakSelf message:@"无法启动拍照页面，请重新安装完整安装包并重启 SpringBoard。"]; }
     }];
 }
 - (void)cameraFinished {

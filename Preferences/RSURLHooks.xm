@@ -89,14 +89,6 @@ static BOOL RSHandleURL(id url) {
 - (void)applicationOpenURL:(id)url { if (!RSHandleURL(url)) %orig; }
 %end
 %end
-%group RSSystemCoreURL
-%hook SpringBoard
-- (void)_openURLCore:(id)url display:(id)display animating:(BOOL)animated activationSettings:(id)settings origin:(id)origin withResult:(void (^)(BOOL))result {
-    if (!RSHandleURL(url)) { %orig; return; }
-    if (result) result(YES);
-}
-%end
-%end
 %group RSApplicationURL
 %hook UIApplication
 - (BOOL)openURL:(NSURL *)url { if (RSHandleURL(url)) return YES; return %orig; }
@@ -126,7 +118,6 @@ static void RSInstallURLHooks(void) {
     if ([bundle isEqual:@"com.apple.springboard"]) {
         Class app = NSClassFromString(@"SpringBoard"), service = NSClassFromString(@"FBSSystemService");
         if (RSURLMethod(app, @"applicationOpenURL:", "v", @[@"@"])) { %init(RSSystemShortURL); }
-        if (RSURLMethod(app, @"_openURLCore:display:animating:activationSettings:origin:withResult:", "v", @[@"@", @"@", @"Bc", @"@", @"@", @"@"])) { %init(RSSystemCoreURL); }
         if (RSURLMethod(app, @"applicationOpenURL:withApplication:sender:publicURLsOnly:animating:needsConfirm:options:windowContext:", "v", @[@"@", @"@", @"@", @"Bc", @"Bc", @"Bc", @"@", @"@"])) { %init(RSSystemExternalURL); }
         if (RSURLMethod(service, @"openURL:application:options:clientPort:withResult:", "v", @[@"@", @"@", @"@", @"I", @"@"])) { %init(RSSystemURLPort); }
         if (RSURLMethod(service, @"openURL:application:options:clientProcess:withResult:", "v", @[@"@", @"@", @"@", @"@", @"@"])) { %init(RSSystemURLProcess); }
