@@ -93,3 +93,12 @@ static inline RSRectD RSRectToPixels(RSRectD rect, double displayWidth,
     double y2 = ceil((rect.y + rect.height) * sy);
     return RSRectClamp((RSRectD){x1, y1, x2 - x1, y2 - y1}, pixelWidth, pixelHeight);
 }
+
+// Prompt height is a percentage of the visible orientation's height, not the
+// portrait screen height. Clamp the complete touch target inside that canvas.
+static inline RSRectD RSPromptRect(double width, double height, double scale, double percent) {
+    double w = fmin(fmax(0, width), 72 * scale), h = fmin(fmax(0, height), 44 * scale);
+    double x = fmax(0, width - w - 16);
+    double y = fmax(0, fmin(height - h, height * percent / 100 - h / 2));
+    return (RSRectD){x, y, w, h};
+}

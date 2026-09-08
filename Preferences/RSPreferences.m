@@ -1,5 +1,4 @@
 #import <UIKit/UIKit.h>
-#import <objc/runtime.h>
 extern UIViewController *RSInputCreateOptions(BOOL search);
 #import "../AI/RSAISettingsController.h"
 #import <Preferences/PSListController.h>
@@ -10,38 +9,13 @@ extern UIViewController *RSInputCreateOptions(BOOL search);
 @interface RSPreferences : PSListController
 @property (nonatomic, strong) PSSpecifier *diagnosticGroup;
 @property (nonatomic) BOOL diagnosticPending;
+@property (nonatomic, strong) UINavigationController *pages;
 @end
-static NSArray<UIViewController *> *RSSuspendedPages;
-static BOOL RSRestorePagesPending;
-// Preserve live UIKit subpages while Preferences rebuilds its PS-only path.
-// Guard only the captured RegionShot navigation stack; ordinary back stays native.
-static __weak UINavigationController *RSSuspendedNavigation;
-static BOOL RSPreservingPages(UINavigationController *navigation, UIViewController *destination) {
-    return RSRestorePagesPending && RSSuspendedPages.count && navigation == RSSuspendedNavigation &&
-        [destination isKindOfClass:RSPreferences.class];
-}
-static void RSInstallNavigationGuard(void) {
-    static dispatch_once_t once;
-    dispatch_once(&once, ^{
-        Method method = class_getInstanceMethod(UINavigationController.class, @selector(setViewControllers:animated:));
-        IMP original = method_getImplementation(method);
-        method_setImplementation(method, imp_implementationWithBlock(^(UINavigationController *nav, NSArray *pages, BOOL animated) {
-            if (RSPreservingPages(nav, pages.lastObject)) { pages = [pages arrayByAddingObjectsFromArray:RSSuspendedPages]; animated = NO; }
-            ((void (*)(id, SEL, id, BOOL))original)(nav, @selector(setViewControllers:animated:), pages, animated);
-        }));
-        Method pop = class_getInstanceMethod(UINavigationController.class, @selector(popToViewController:animated:));
-        IMP originalPop = method_getImplementation(pop);
-        method_setImplementation(pop, imp_implementationWithBlock(^NSArray *(UINavigationController *nav, UIViewController *page, BOOL animated) {
-            if (RSPreservingPages(nav, page)) return @[];
-            return ((id (*)(id, SEL, id, BOOL))originalPop)(nav, @selector(popToViewController:animated:), page, animated);
-        }));
-    });
-}
 @implementation RSPreferences
 - (NSArray *)specifiers {
     if (_specifiers) return _specifiers;
     NSMutableArray *items = [NSMutableArray array];
-    PSSpecifier *group = [PSSpecifier groupSpecifierWithName:@"RegionShot 0.6.3"];
+    PSSpecifier *group = [PSSpecifier groupSpecifierWithName:@"RegionShot 0.6.4"];
     [group setProperty:@"侧边键 + 音量加进入区域截图。安装后需重新启动 SpringBoard。关闭开关恢复系统截图。" forKey:@"footerText"];
     [items addObject:group];
     PSSpecifier *enabled = [PSSpecifier preferenceSpecifierNamed:@"启用区域截图" target:self set:@selector(setPreferenceValue:specifier:) get:@selector(readPreferenceValue:) detail:nil cell:PSSwitchCell edit:nil];
@@ -87,37 +61,48 @@ static void RSInstallNavigationGuard(void) {
     CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(), CFSTR("com.moxuan.regionshot/ReloadPrefs"), NULL, NULL, YES);
 }
 - (void)viewDidLoad {
-    [super viewDidLoad]; self.title = @"RegionShot"; RSInstallNavigationGuard();
-    NSNotificationCenter *center = NSNotificationCenter.defaultCenter;
-    [center addObserver:self selector:@selector(rememberPages:) name:UIApplicationWillResignActiveNotification object:nil];
-    [center addObserver:self selector:@selector(rememberPages:) name:UISceneWillDeactivateNotification object:nil];
-    [center addObserver:self selector:@selector(restorePages:) name:UIApplicationDidBecomeActiveNotification object:nil];
-    [center addObserver:self selector:@selector(restorePages:) name:UISceneDidActivateNotification object:nil];
+    [super viewDidLoad]; self.title = @"RegionShot";
+    UIView *list = self.view;
+    UIView *container = [[UIView alloc] initWithFrame:list.frame];
+    list.frame = container.bounds; list.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+    [container addSubview:list]; self.view = container;
 }
-- (void)rememberPages:(NSNotification *)note {
-    NSArray *stack = self.navigationController.viewControllers;
-    NSUInteger index = [stack indexOfObjectIdenticalTo:self];
-    if (index == NSNotFound || index + 1 >= stack.count) return;
-    // Capture before Settings serializes its PS-only navigation path. A second
-    // scene notification must not overwrite the snapshot with a trimmed stack.
-    RSSuspendedPages = [stack subarrayWithRange:NSMakeRange(index + 1, stack.count - index - 1)];
-    RSSuspendedNavigation = self.navigationController;
-    RSRestorePagesPending = YES;
+- (void)viewWillAppear:(BOOL)animated {
+    [super viewWillAppear:animated];
+    [self.navigationController setNavigationBarHidden:self.pages != nil animated:NO];
 }
-- (void)restorePages:(NSNotification *)note {
-    if (!RSRestorePagesPending || !RSSuspendedPages.count || !self.navigationController.view.window || UIApplication.sharedApplication.applicationState != UIApplicationStateActive) return;
-    UINavigationController *navigation = self.navigationController;
-    if (navigation.topViewController == RSSuspendedPages.lastObject) {
-        RSSuspendedPages = nil; RSRestorePagesPending = NO; return;
-    }
-    if (navigation.topViewController != self) return;
-    NSArray *pages = RSSuspendedPages;
-    RSSuspendedPages = nil; RSRestorePagesPending = NO;
-    [navigation setViewControllers:[navigation.viewControllers arrayByAddingObjectsFromArray:pages] animated:NO];
+- (void)viewWillDisappear:(BOOL)animated {
+    [super viewWillDisappear:animated];
+    if (self.isMovingFromParentViewController) [self.navigationController setNavigationBarHidden:NO animated:NO];
 }
-- (void)viewDidAppear:(BOOL)animated { [super viewDidAppear:animated]; [self restorePages:nil]; }
+- (void)viewDidLayoutSubviews {
+    [super viewDidLayoutSubviews];
+    self.pages.view.frame = self.view.bounds;
+}
+- (void)closePages {
+    [self.pages willMoveToParentViewController:nil];
+    [self.pages.view removeFromSuperview]; [self.pages removeFromParentViewController];
+    self.pages = nil;
+    [self.navigationController setNavigationBarHidden:NO animated:NO];
+}
+- (void)backGesture:(UIScreenEdgePanGestureRecognizer *)gesture {
+    if (gesture.state == UIGestureRecognizerStateEnded && self.pages.viewControllers.count == 1 &&
+        ([gesture translationInView:self.view].x > 60 || [gesture velocityInView:self.view].x > 400)) [self closePages];
+}
 - (void)openPage:(UIViewController *)page {
-    [self.navigationController pushViewController:page animated:YES];
+    // Settings serializes its PSListController path. Keep UIKit children inside
+    // this stable PS page instead of putting them on Settings' navigation stack.
+    page.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithTitle:@"‹ RegionShot" style:UIBarButtonItemStylePlain target:self action:@selector(closePages)];
+    self.pages = [[UINavigationController alloc] initWithRootViewController:page];
+    [self addChildViewController:self.pages];
+    self.pages.view.frame = self.view.bounds;
+    self.pages.view.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+    [self.view addSubview:self.pages.view]; [self.pages didMoveToParentViewController:self];
+    UIScreenEdgePanGestureRecognizer *back = [[UIScreenEdgePanGestureRecognizer alloc] initWithTarget:self action:@selector(backGesture:)];
+    back.edges = UIRectEdgeLeft;
+    [back requireGestureRecognizerToFail:self.pages.interactivePopGestureRecognizer];
+    [self.pages.view addGestureRecognizer:back];
+    [self.navigationController setNavigationBarHidden:YES animated:NO];
 }
 - (void)openMenu { [self openPage:[RSMenuSettings new]]; }
 - (void)openFrozenMenu { RSMenuSettings *settings = [RSMenuSettings new]; settings.frozenMenu = YES; [self openPage:settings]; }
@@ -165,7 +150,7 @@ static void RSInstallNavigationGuard(void) {
         uint32_t status = (uint32_t)response;
         NSString *message;
         if (!received) {
-            message = @"SpringBoard 在 3 秒内未响应。请确认安装的是 0.6.3、已重新启动 SpringBoard，并检查 RootHide 注入管理器是否允许 RegionShot 注入 SpringBoard。此状态尚不能确认插件已加载。";
+            message = @"SpringBoard 在 3 秒内未响应。请确认安装的是 0.6.4、已重新启动 SpringBoard，并检查 RootHide 注入管理器是否允许 RegionShot 注入 SpringBoard。此状态尚不能确认插件已加载。";
         } else {
             NSString *result = !launch ? @"状态检查完成。" : (status & RSStatusStarted) ? @"截图请求已接受并建立选区窗口；请确认屏幕上实际可见。" : @"区域截图启动失败。";
             message = [NSString stringWithFormat:@"SpringBoard 已响应。\n插件开关：%@\n截图接口：%@\n入口：按键 %@ / 应用 %@ / 编辑 %@ / 捕获器 %@\n%@",

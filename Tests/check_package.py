@@ -28,7 +28,7 @@ bundle = 'Library/PreferenceBundles/' + loader['bundle'] + '.bundle/'
 info = plistlib.loads(files[bundle + 'Info.plist'])
 assert loader['detail'] == info['NSPrincipalClass'] == 'RSPreferences'
 assert info['CFBundleVersion'] == control['Version'].removesuffix('-roothide')
-for path in ['Library/MobileSubstrate/DynamicLibraries/' + name + '.dylib' for name in ['RegionShot', 'RegionShotInput', 'RegionShotURLs']] + [bundle + info['CFBundleExecutable'], 'Applications/RegionShotCamera.app/RegionShotCamera']:
+for path in ['Library/MobileSubstrate/DynamicLibraries/' + name + '.dylib' for name in ['RegionShot', 'RegionShotInput']] + [bundle + info['CFBundleExecutable'], 'Applications/RegionShotCamera.app/RegionShotCamera']:
     binary = files[path]
     assert struct.unpack_from('<III', binary) == (0xfeedfacf, 0x100000c, 0x80000002), path
     offset, signed = 32, False
@@ -50,3 +50,9 @@ camera = plistlib.loads(files['Applications/RegionShotCamera.app/Info.plist'])
 assert camera['NSCameraUsageDescription']
 assert 'regionshot-camera' in camera['CFBundleURLTypes'][0]['CFBundleURLSchemes']
 assert 'uicache' in files['postinst'].decode()
+
+assert sorted(p.rsplit('/', 1)[-1] for p in files if p.startswith('Library/MobileSubstrate/DynamicLibraries/') and p.endswith('.dylib')) == ['RegionShot.dylib', 'RegionShotInput.dylib']
+assert not any('RegionShotURLs' in p for p in files)
+
+input_filter = plistlib.loads(files['Library/MobileSubstrate/DynamicLibraries/RegionShotInput.plist'])['Filter']['Bundles']
+assert 'com.apple.Preferences' not in input_filter and 'com.apple.mobilesafari' not in input_filter

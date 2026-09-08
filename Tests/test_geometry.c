@@ -60,5 +60,11 @@ int main(void) {
         double innerEdge = RSCornerOutset(scale, 3) - 1.5;
         assert(fabs(innerEdge - 1) < 1e-9);
     }
+    for (int landscape = 0; landscape < 2; landscape++) for (int percent = 10; percent <= 90; percent += 10) {
+        double w = landscape ? 844 : 390, h = landscape ? 390 : 844;
+        RSRectD button = RSPromptRect(w, h, 1.6, percent);
+        assert(button.x >= 0 && button.y >= 0 && button.x + button.width <= w && button.y + button.height <= h);
+        assert(fabs(button.y + button.height / 2 - h * percent / 100) < 1e-9);
+    }
     puts("RegionShot geometry checks passed");
 }

@@ -36,10 +36,32 @@ void RSInputOpenSearch(NSString *text) { RSInputOpenSearchEngine(RSInputSearchEn
     return self.interactiveView && (hit == self.interactiveView || [hit isDescendantOfView:self.interactiveView]) ? hit : nil;
 }
 @end
-@interface RSInputPromptController : UIViewController @end
+@interface RSInputPromptController : UIViewController
+@property(strong) UIView *canvas;
+@property(weak) UIButton *button;
+@property UIInterfaceOrientation orientation;
+@property CGFloat heightPercent;
+@property CGFloat buttonScale;
+@end
 @implementation RSInputPromptController
 - (BOOL)shouldAutorotate { return NO; }
-- (UIInterfaceOrientationMask)supportedInterfaceOrientations { return UIInterfaceOrientationMaskAllButUpsideDown; }
+- (UIInterfaceOrientationMask)supportedInterfaceOrientations { return UIInterfaceOrientationMaskPortrait; }
+- (void)viewDidLoad {
+    [super viewDidLoad]; self.view.backgroundColor = UIColor.clearColor;
+    self.canvas = [UIView new]; [self.view addSubview:self.canvas];
+}
+- (void)viewDidLayoutSubviews {
+    [super viewDidLayoutSubviews];
+    CGSize physical = self.view.bounds.size;
+    BOOL landscape = UIInterfaceOrientationIsLandscape(self.orientation);
+    CGSize visible = landscape ? CGSizeMake(physical.height, physical.width) : physical;
+    self.canvas.bounds = (CGRect){CGPointZero, visible};
+    self.canvas.center = CGPointMake(physical.width / 2, physical.height / 2);
+    CGFloat angle = self.orientation == UIInterfaceOrientationLandscapeLeft ? M_PI_2 : self.orientation == UIInterfaceOrientationLandscapeRight ? -M_PI_2 : 0;
+    self.canvas.transform = CGAffineTransformMakeRotation(angle);
+    RSRectD rect = RSPromptRect(visible.width, visible.height, self.buttonScale, self.heightPercent);
+    self.button.frame = CGRectMake(rect.x, rect.y, rect.width, rect.height);
+}
 @end
 @interface RSInputPromptButton : UIButton
 @property(strong) CAGradientLayer *gradient;
@@ -72,7 +94,8 @@ void RSInputOpenSearch(NSString *text) { RSInputOpenSearchEngine(RSInputSearchEn
 - (void)rotated:(NSNotification *)note {
     if (!self.window) return;
     [self.menu dismiss];
-    RSApplyWindowOrientation(self.window, [note.userInfo[@"orientation"] integerValue]);
+    RSInputPromptController *controller = (id)self.window.rootViewController;
+    controller.orientation = note.userInfo[@"orientation"] ? [note.userInfo[@"orientation"] integerValue] : RSActiveOrientation(nil);
     [self.window.rootViewController.view setNeedsLayout];
     [self.window.rootViewController.view layoutIfNeeded];
 }
@@ -122,7 +145,7 @@ void RSInputOpenSearch(NSString *text) { RSInputOpenSearchEngine(RSInputSearchEn
         };
         self.menu = menu;
         self.window.interactiveView = menu;
-        [menu presentFromView:self.button inView:self.window.rootViewController.view];
+        [menu presentFromView:self.button inView:((RSInputPromptController *)self.window.rootViewController).canvas];
         RSInputSelectionFeedback();
     }
     [self.menu trackGestureRecognizer:gesture];
@@ -145,11 +168,14 @@ void RSInputOpenSearch(NSString *text) { RSInputOpenSearchEngine(RSInputSearchEn
         for (UIScene *candidate in UIApplication.sharedApplication.connectedScenes)
             if ([candidate isKindOfClass:UIWindowScene.class] && candidate.activationState == UISceneActivationStateForegroundActive) { scene = (id)candidate; break; }
         self.window = scene ? [[RSInputPromptWindow alloc] initWithWindowScene:scene] : [[RSInputPromptWindow alloc] initWithFrame:UIScreen.mainScreen.bounds];
-        self.window.frame = UIScreen.mainScreen.bounds;
+        self.window.frame = UIScreen.mainScreen.fixedCoordinateSpace.bounds;
         self.window.backgroundColor = UIColor.clearColor;
-        self.window.windowLevel = CGFLOAT_MAX;
-        self.window.rootViewController = [RSInputPromptController new];
-        UIView *host = self.window.rootViewController.view;
+        self.window.windowLevel = 1000000000;
+        RSInputPromptController *controller = [RSInputPromptController new];
+        self.window.rootViewController = controller;
+        [controller loadViewIfNeeded];
+        controller.orientation = RSActiveOrientation(scene);
+        UIView *host = controller.canvas;
         host.backgroundColor = UIColor.clearColor;
         RSInputPromptButton *button = [RSInputPromptButton buttonWithType:UIButtonTypeCustom];
         self.button = button;
@@ -183,16 +209,16 @@ void RSInputOpenSearch(NSString *text) { RSInputOpenSearchEngine(RSInputSearchEn
         }]];
         [button addTarget:self action:@selector(tap) forControlEvents:UIControlEventTouchUpInside];
         [button addGestureRecognizer:[[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(longPress:)]];
-        button.translatesAutoresizingMaskIntoConstraints = NO;
         [host addSubview:button];
-        NSLayoutConstraint *vertical = [NSLayoutConstraint constraintWithItem:button attribute:NSLayoutAttributeCenterY relatedBy:NSLayoutRelationEqual toItem:host attribute:NSLayoutAttributeBottom multiplier:[self.options[@"height"] doubleValue]/100 constant:0];
-        [NSLayoutConstraint activateConstraints:@[
-            [button.widthAnchor constraintEqualToConstant:72 * scale], [button.heightAnchor constraintEqualToConstant:44 * scale],
-            [button.trailingAnchor constraintEqualToAnchor:host.safeAreaLayoutGuide.trailingAnchor constant:-16], vertical]];
+        controller.button = button; controller.buttonScale = scale;
+        controller.heightPercent = [self.options[@"height"] doubleValue];
         self.window.interactiveView = button;
-        RSApplyWindowOrientation(self.window, RSActiveOrientation(scene));
+        // The window stays in physical portrait coordinates. Rotate only its
+        // canvas, with explicitly swapped bounds for landscape positioning.
+        RSApplyWindowOrientation(self.window, UIInterfaceOrientationPortrait);
         self.window.hidden = NO;
-        RSApplyWindowOrientation(self.window, RSActiveOrientation(scene));
+        RSApplyWindowOrientation(self.window, UIInterfaceOrientationPortrait);
+        [controller.view setNeedsLayout]; [controller.view layoutIfNeeded];
         [self scheduleHide];
     });
 }

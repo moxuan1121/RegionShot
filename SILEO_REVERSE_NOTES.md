@@ -19,3 +19,7 @@ RegionShot 独立实现：每个窗口仅一个长按识别器，触摸按介绍
 `0x189208` 注册 SpringBoard 的 `applicationOpenURL:withApplication:sender:publicURLsOnly:animating:needsConfirm:options:windowContext:` 和 FBSSystemService 的 `openURL:application:options:clientPort:withResult:` / `clientProcess:` 版本。
 `0x189568` / `0x1896b8` 拦截成功时向结果 block 传入 nil；不命中则转发原实现。RegionShot 在同一系统入口识别自身 URL，并检查运行时方法签名。保留 `regionshot_aiwindow`，增加 `regionshot_ai2` 别名；不占用 ShellX 的原 URL。
 Safari 额外覆盖 TabDocument 的用户主动 `loadURL:userDriven:` 与 WebKit 链接导航策略，防止自定义协议在到达设置之前被拒绝。
+
+## 0.6.4 组件合并
+
+取消 RegionShotURLs 独立 dylib，以及 Safari/Preferences 注入。URL 处理仅编译进 SpringBoard 加载的 RegionShot.dylib，沿用上述 ShellX 的系统接收架构。Input 组件不添加 Safari/Preferences 目标。安装包校验强制 DynamicLibraries 目录只有 RegionShot.dylib 和 RegionShotInput.dylib。

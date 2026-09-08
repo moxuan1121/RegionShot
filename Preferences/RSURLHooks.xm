@@ -3,7 +3,6 @@
 #import <objc/message.h>
 #include <string.h>
 #import <notify.h>
-#import <WebKit/WebKit.h>
 #import "RSURLRoute.h"
 static BOOL RSHandleURL(id url) {
     NSString *notification = RSURLNotification(url);
@@ -19,31 +18,6 @@ static BOOL RSHandleURL(id url) {
     });
     return YES;
 }
-%group RSSettingsURL
-%hook PreferencesAppController
-- (void)processURL:(id)url {
-    if (!RSHandleURL(url)) %orig;
-}
-%end
-%end
-%group RSSettingsURLAnimated
-%hook PreferencesAppController
-- (void)processURL:(id)url animated:(BOOL)animated fromSearch:(BOOL)search {
-    if (!RSHandleURL(url)) %orig;
-}
-%end
-%end
-%group RSSettingsURLCompletion
-%hook PreferencesAppController
-- (void)processURL:(id)url animated:(BOOL)animated fromSearch:(BOOL)search withCompletion:(id)completion {
-    if (!RSHandleURL(url)) { %orig; return; }
-    // Keep the private completion opaque: Preferences invokes its own block with
-    // the correct ABI after resolving the real, single RegionShot settings entry.
-    id destination = [url isKindOfClass:NSString.class] ? (id)@"prefs:root=RegionShot" : [NSURL URLWithString:@"prefs:root=RegionShot"];
-    %orig(destination, animated, search, completion);
-}
-%end
-%end
 // Verified against ShellX 3.0.1's external URL registration at 0x189208.
 %group RSSystemExternalURL
 %hook SpringBoard
@@ -65,22 +39,6 @@ static BOOL RSHandleURL(id url) {
 - (void)openURL:(id)url application:(id)application options:(id)options clientProcess:(id)process withResult:(void (^)(NSError *))result {
     if (!RSHandleURL(url)) { %orig; return; }
     if (result) result(nil);
-}
-%end
-%end
-%group RSSafariTypedURL
-%hook TabDocument
-- (id)loadURL:(NSURL *)url userDriven:(BOOL)userDriven {
-    if (userDriven && RSHandleURL(url)) return nil;
-    return %orig;
-}
-%end
-%end
-%group RSSafariLinkURL
-%hook TabDocument
-- (void)webView:(WKWebView *)webView decidePolicyForNavigationAction:(WKNavigationAction *)action preferences:(WKWebpagePreferences *)preferences decisionHandler:(void (^)(WKNavigationActionPolicy, WKWebpagePreferences *))decision {
-    if (action.navigationType == WKNavigationTypeLinkActivated && RSHandleURL(action.request.URL)) { decision(WKNavigationActionPolicyCancel, preferences); return; }
-    %orig;
 }
 %end
 %end
@@ -121,22 +79,10 @@ static void RSInstallURLHooks(void) {
         if (RSURLMethod(app, @"applicationOpenURL:withApplication:sender:publicURLsOnly:animating:needsConfirm:options:windowContext:", "v", @[@"@", @"@", @"@", @"Bc", @"Bc", @"Bc", @"@", @"@"])) { %init(RSSystemExternalURL); }
         if (RSURLMethod(service, @"openURL:application:options:clientPort:withResult:", "v", @[@"@", @"@", @"@", @"I", @"@"])) { %init(RSSystemURLPort); }
         if (RSURLMethod(service, @"openURL:application:options:clientProcess:withResult:", "v", @[@"@", @"@", @"@", @"@", @"@"])) { %init(RSSystemURLProcess); }
-    } else if ([bundle isEqual:@"com.apple.mobilesafari"]) {
-        Class tab = NSClassFromString(@"TabDocument");
-        if (RSURLMethod(tab, @"loadURL:userDriven:", "@", @[@"@", @"Bc"])) { %init(RSSafariTypedURL); }
-        if (RSURLMethod(tab, @"webView:decidePolicyForNavigationAction:preferences:decisionHandler:", "v", @[@"@", @"@", @"@", @"@"])) { %init(RSSafariLinkURL); }
-    } else if ([bundle isEqual:@"com.apple.Preferences"]) {
-        Class controller = NSClassFromString(@"PreferencesAppController");
-        if (class_getInstanceMethod(controller, @selector(processURL:))) { %init(RSSettingsURL); }
-        if (class_getInstanceMethod(controller, @selector(processURL:animated:fromSearch:))) { %init(RSSettingsURLAnimated); }
-        if (class_getInstanceMethod(controller, @selector(processURL:animated:fromSearch:withCompletion:))) { %init(RSSettingsURLCompletion); }
     }
 }
 
 %ctor {
-#ifndef RS_URLS_IN_MAIN
-    if ([NSBundle.mainBundle.bundleIdentifier isEqual:@"com.apple.springboard"]) return;
-#endif
-    // Safari's TabDocument is not guaranteed to exist during early dylib loading.
+    if (![NSBundle.mainBundle.bundleIdentifier isEqual:@"com.apple.springboard"]) return;
     dispatch_async(dispatch_get_main_queue(), ^{ RSInstallURLHooks(); });
 }
