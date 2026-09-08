@@ -97,6 +97,7 @@ static NSUserDefaults *RSChatPreferences(void) {
 }
 + (void)showImage:(UIImage *)image scene:(UIWindowScene *)scene {
     NSAssert(NSThread.isMainThread, @"Chat UI requires main thread");
+    [RSChatPreferences() synchronize];
     RSKAClosePanel();
     if (!scene) for (UIScene *candidate in UIApplication.sharedApplication.connectedScenes)
         if ([candidate isKindOfClass:UIWindowScene.class] && candidate.activationState == UISceneActivationStateForegroundActive) { scene = (UIWindowScene *)candidate; break; }
@@ -294,7 +295,8 @@ static NSUserDefaults *RSChatPreferences(void) {
     [self.previousKey makeKeyWindow];
 }
 - (void)restore {
-    RSReloadOptions(); [self applyAppearance];
+    [RSChatPreferences() synchronize];
+    RSReloadOptions(); [self applyAppearance]; [self updateModelTitle];
     self.host.activeSurface = nil;
     self.card.hidden = NO;
     self.ball.hidden = YES;
