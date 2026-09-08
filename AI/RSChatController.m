@@ -145,6 +145,8 @@ static OSStatus RSWriteKey(NSString *key) {
         [self button:@"keyboard.chevron.compact.down" title:@"收起键盘" action:@selector(hideKeyboard)],
         [self button:@"minus" title:@"最小化" action:@selector(minimize)],
         [self button:@"xmark" title:@"关闭对话" action:@selector(close)]]];
+    top.alignment = UIStackViewAlignmentCenter;
+    top.spacing = 6;
     [content addArrangedSubview:top];
     self.chip = [[UIImageView alloc] initWithImage:self.attachment];
     self.chip.hidden = self.attachment == nil;
@@ -171,16 +173,21 @@ static OSStatus RSWriteKey(NSString *key) {
     [self.input.heightAnchor constraintEqualToConstant:70].active = YES;
     self.sendButton = [self button:@"arrow.up.circle.fill" title:@"发送" action:@selector(send)];
     UIStackView *bottom = [[UIStackView alloc] initWithArrangedSubviews:@[
-        [self button:@"plus" title:@"添加图片" action:@selector(attachments)], self.input, self.sendButton]];
+        self.input, [self button:@"plus" title:@"添加图片" action:@selector(attachments)], self.sendButton]];
     bottom.alignment = UIStackViewAlignmentCenter;
     bottom.spacing = 6;
     [content addArrangedSubview:bottom];
     UILayoutGuide *safe = self.view.safeAreaLayoutGuide;
+    NSLayoutConstraint *height = [self.card.heightAnchor constraintEqualToAnchor:safe.heightAnchor multiplier:0.56];
+    height.priority = UILayoutPriorityDefaultHigh;
+    NSLayoutConstraint *center = [self.card.centerYAnchor constraintEqualToAnchor:safe.centerYAnchor];
+    center.priority = UILayoutPriorityDefaultHigh - 1;
     [NSLayoutConstraint activateConstraints:@[
-        [self.card.leadingAnchor constraintEqualToAnchor:safe.leadingAnchor constant:16],
-        [self.card.trailingAnchor constraintEqualToAnchor:safe.trailingAnchor constant:-16],
-        [self.card.topAnchor constraintEqualToAnchor:safe.topAnchor constant:16],
-        [self.card.bottomAnchor constraintEqualToAnchor:self.view.keyboardLayoutGuide.topAnchor constant:-16],
+        [self.card.leadingAnchor constraintEqualToAnchor:safe.leadingAnchor constant:20],
+        [self.card.trailingAnchor constraintEqualToAnchor:safe.trailingAnchor constant:-20],
+        [self.card.topAnchor constraintGreaterThanOrEqualToAnchor:safe.topAnchor constant:12],
+        [self.card.bottomAnchor constraintLessThanOrEqualToAnchor:self.view.keyboardLayoutGuide.topAnchor constant:-12],
+        height, center,
         [content.leadingAnchor constraintEqualToAnchor:self.card.leadingAnchor constant:12],
         [content.trailingAnchor constraintEqualToAnchor:self.card.trailingAnchor constant:-12],
         [content.topAnchor constraintEqualToAnchor:self.card.topAnchor constant:8],
@@ -308,7 +315,7 @@ static OSStatus RSWriteKey(NSString *key) {
         UIButton *tokenize = [self button:@"character.textbox" title:@"分词" action:@selector(tokenize:)];
         UIButton *copy = [self button:@"doc.on.doc" title:@"复制回答" action:@selector(copyReply:)];
         for (UIButton *button in @[regen, tokenize, copy]) button.tag = index;
-        UIStackView *actions = [[UIStackView alloc] initWithArrangedSubviews:@[regen, tokenize, copy, [UIView new]]];
+        UIStackView *actions = [[UIStackView alloc] initWithArrangedSubviews:@[[UIView new], regen, tokenize, copy]];
         [row addArrangedSubview:actions];
     }
     [self.chat addArrangedSubview:row]; [self.rows addObject:row];
