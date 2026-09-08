@@ -95,8 +95,9 @@
             if (!strongSelf.selectionView.hasValidSelection) {
                 UIImage *image = strongSelf.imageView.image;
                 if (image) [RSHistoryController recordImage:image completion:nil];
+                UIWindowScene *scene = strongSelf.windowScene;
                 if (strongSelf.toolbar.cancelHandler) strongSelf.toolbar.cancelHandler();
-                if (image) [RSRegionShotManager.sharedManager saveImage:image];
+                if (image) [RSRegionShotManager.sharedManager saveScreenshot:image scene:scene];
                 return;
             }
             confirm(strongSelf.selectionRect, strongSelf.displaySize);
@@ -144,12 +145,6 @@
         };
         _toolbar.recognitionHandler = ^{ [weakSelf recognizeSelection]; };
         _toolbar.editHandler = ^{ [weakSelf editSelection]; };
-        _toolbar.longCaptureHandler = ^{
-            RSSelectionWindow *window = weakSelf;
-            if (!window.selectionView.hasValidSelection) [window.selectionView selectAll];
-            if (window.longCaptureHandler)
-                window.longCaptureHandler(window.selectionRect, window.displaySize);
-        };
     }
     return self;
 }
@@ -252,7 +247,6 @@
     [self.previousKeyWindow makeKeyWindow];
     self.toolbar.captureHandler = nil;
     self.toolbar.cancelHandler = nil;
-    self.toolbar.longCaptureHandler = nil;
     self.toolbar.recognitionHandler = nil;
     self.toolbar.editHandler = nil;
     self.toolbar.personaHandler = nil;
@@ -262,7 +256,6 @@
     self.selectionView.cancelHandler = nil;
     self.selectionView.selectionChanged = nil;
     self.editedImageHandler = nil;
-    self.longCaptureHandler = nil;
     self.rootViewController = nil;
 }
 

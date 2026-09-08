@@ -5,3 +5,5 @@ FOUNDATION_EXPORT NSString *RSInputReadKey(void);
 FOUNDATION_EXPORT BOOL RSInputSaveConfig(NSDictionary *config, NSString *key);
 FOUNDATION_EXPORT BOOL RSInputClearConfig(void);
 FOUNDATION_EXPORT BOOL RSInputSaveOptions(NSString *field, id value);
+
+FOUNDATION_EXPORT NSArray<NSDictionary *> *RSInputVisibleActions(NSString *scope);

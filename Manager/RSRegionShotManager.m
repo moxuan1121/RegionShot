@@ -4,7 +4,6 @@
 #import "../Floating/RSFloatingWindow.h"
 #import "../Selection/RSSelectionWindow.h"
 #import "../AI/RSChatController.h"
-#import "../Capture/RSLongCaptureWindow.h"
 #import <Photos/Photos.h>
 #import "../Preferences/RSOptions.h"
 #import "../History/RSHistoryController.h"
@@ -17,7 +16,6 @@
 @property (nonatomic, strong, nullable) RSSelectionWindow *selectionWindow;
 @property (nonatomic, strong, nullable) RSFloatingWindow *floatingWindow;
 @property (nonatomic, strong) NSMutableArray<RSFloatingImageView *> *mutableSnaps;
-@property (nonatomic, strong) RSLongCaptureWindow *longWindow;
 @end
 
 @implementation RSRegionShotManager
@@ -69,7 +67,6 @@
     } cancel:^{
         [weakSelf cancelCapture];
     }];
-    self.selectionWindow.longCaptureHandler = ^(CGRect rect, CGSize size) { [weakSelf beginLongCapture:rect size:size]; };
     self.selectionWindow.editedImageHandler = ^(UIImage *edited) {
         RSRegionShotManager *manager = weakSelf;
         UIWindowScene *scene = manager.selectionWindow.windowScene;
@@ -112,35 +109,12 @@
         dispatch_async(dispatch_get_main_queue(), ^{ [self cancelCapture]; });
         return;
     }
-    [self.longWindow cancel];
-    self.longWindow = nil;
     [self.selectionWindow dismiss];
     self.selectionWindow = nil;
     self.frozenImage = nil;
     self.internalCapture = NO;
     self.capturing = NO;
     NSLog(@"[RegionShot] selection cancelled");
-}
-
-- (void)beginLongCapture:(CGRect)rect size:(CGSize)size {
-    UIWindowScene *scene = self.selectionWindow.windowScene;
-    [self.selectionWindow dismiss]; self.selectionWindow = nil; self.frozenImage = nil;
-    self.floatingWindow.hidden = YES;
-    __weak typeof(self) weakSelf = self;
-    self.longWindow = [[RSLongCaptureWindow alloc] initWithScene:scene rect:rect displaySize:size capture:^UIImage *{
-        RSRegionShotManager *manager = weakSelf;
-        if (!manager) return nil;
-        @try {
-            manager.internalCapture = YES;
-            return [RSScreenCapture captureScreen];
-        } @finally { manager.internalCapture = NO; }
-    } completion:^(UIImage *image) {
-        RSRegionShotManager *manager = weakSelf;
-        manager.longWindow = nil; manager.capturing = NO;
-        manager.floatingWindow.hidden = NO;
-        if (image) [manager createFloatingSnap:image windowScene:scene];
-    }];
-    [self.longWindow start];
 }
 
 - (void)createFloatingSnap:(UIImage *)image windowScene:(UIWindowScene *)scene {
@@ -268,6 +242,21 @@
         case RSFloatingActionCloseCurrent: [self removeSnap:snap]; break;
         case RSFloatingActionHistory: [self showHistory]; break;
     }
+}
+
+- (void)saveScreenshot:(UIImage *)image scene:(UIWindowScene *)scene {
+    [self saveImage:image completion:^{
+        UIWindow *flash = scene ? [[UIWindow alloc] initWithWindowScene:scene] : [[UIWindow alloc] initWithFrame:UIScreen.mainScreen.bounds];
+        flash.windowLevel = UIWindowLevelAlert + 200;
+        flash.userInteractionEnabled = NO;
+        flash.rootViewController = [UIViewController new];
+        flash.rootViewController.view.backgroundColor = UIColor.whiteColor;
+        RSApplyWindowOrientation(flash, RSActiveOrientation(scene));
+        flash.hidden = NO;
+        if ([RSOption(@"CaptureHaptic") boolValue]) [[[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleLight] impactOccurred];
+        [UIView animateWithDuration:UIAccessibilityIsReduceMotionEnabled() ? 0.12 : 0.25 animations:^{ flash.alpha = 0; }
+            completion:^(BOOL finished) { flash.hidden = YES; flash.rootViewController = nil; }];
+    }];
 }
 
 - (void)saveImage:(UIImage *)image { [self saveImage:image completion:nil]; }

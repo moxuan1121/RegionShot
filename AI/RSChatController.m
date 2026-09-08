@@ -18,6 +18,33 @@
 }
 @end
 
+@interface RSChatButton : UIButton @end
+@implementation RSChatButton
+- (BOOL)pointInside:(CGPoint)point withEvent:(UIEvent *)event {
+    CGFloat dx = MAX(0, (44 - self.bounds.size.width) / 2);
+    CGFloat dy = MAX(0, (44 - self.bounds.size.height) / 2);
+    return CGRectContainsPoint(CGRectInset(self.bounds, -dx, -dy), point);
+}
+@end
+@interface RSChatBubble : UIStackView
+@property(nonatomic, strong) UITextView *textView;
+@property(nonatomic, strong) NSLayoutConstraint *bubbleWidth;
+@property(nonatomic) BOOL assistant;
+@property(nonatomic) BOOL hasImage;
+@end
+@implementation RSChatBubble
+- (void)fitWidth:(CGFloat)maximum {
+    maximum = MAX(44, maximum);
+    NSString *text = self.textView.text ?: @"";
+    CGRect textRect = [text boundingRectWithSize:CGSizeMake(MAX(1, maximum - 30), CGFLOAT_MAX)
+        options:NSStringDrawingUsesLineFragmentOrigin | NSStringDrawingUsesFontLeading
+        attributes:@{NSFontAttributeName:self.textView.font ?: [UIFont preferredFontForTextStyle:UIFontTextStyleBody]} context:nil];
+    CGFloat minimum = self.assistant ? 132 : self.hasImage ? 100 : 44;
+    CGFloat width = MIN(maximum, MAX(minimum, ceil(textRect.size.width) + 30));
+    if (fabs(self.bubbleWidth.constant - width) > 0.5) self.bubbleWidth.constant = width;
+}
+@end
+
 @interface RSChatController () <NSURLSessionDataDelegate, PHPickerViewControllerDelegate,
     UIDocumentPickerDelegate, UIImagePickerControllerDelegate, UINavigationControllerDelegate, UITextViewDelegate>
 @property (nonatomic, strong) RSChatWindow *host;
@@ -43,7 +70,7 @@
 @property (nonatomic, copy) NSString *failure;
 @property (nonatomic, copy) NSString *personaPrompt;
 @property (nonatomic) BOOL keyboardPresentation;
-@property (nonatomic, strong) UINavigationController *settingsNavigation;
+@property (nonatomic, strong) NSLayoutConstraint *cardHeight;
 @property (nonatomic) NSInteger responseStatus;
 @property (nonatomic) BOOL streaming;
 @property (nonatomic) BOOL done;
@@ -132,12 +159,13 @@ static NSUserDefaults *RSChatPreferences(void) {
     [chat settings];
 }
 - (UIButton *)button:(NSString *)symbol title:(NSString *)title action:(SEL)selector {
-    UIButton *button = [UIButton buttonWithType:UIButtonTypeSystem];
+    UIButton *button = [RSChatButton buttonWithType:UIButtonTypeSystem];
     [button setImage:[UIImage systemImageNamed:symbol] forState:UIControlStateNormal];
+    [button setPreferredSymbolConfiguration:[UIImageSymbolConfiguration configurationWithPointSize:16] forImageInState:UIControlStateNormal];
     button.accessibilityLabel = title;
     [button addTarget:self action:selector forControlEvents:UIControlEventTouchUpInside];
-    [button.widthAnchor constraintEqualToConstant:44].active = YES;
-    [button.heightAnchor constraintEqualToConstant:44].active = YES;
+    [button.widthAnchor constraintEqualToConstant:36].active = YES;
+    [button.heightAnchor constraintEqualToConstant:36].active = YES;
     return button;
 }
 - (void)viewDidLoad {
@@ -158,7 +186,7 @@ static NSUserDefaults *RSChatPreferences(void) {
     self.modelButton = [UIButton buttonWithType:UIButtonTypeSystem];
     [self.modelButton addTarget:self action:@selector(settings) forControlEvents:UIControlEventTouchUpInside];
     [self updateModelTitle];
-    UILabel *heading = [UILabel new]; heading.text = @"图片问答"; heading.font = [UIFont boldSystemFontOfSize:20];
+    UILabel *heading = [UILabel new]; heading.text = @"图片问答"; heading.font = [UIFont boldSystemFontOfSize:17];
     [heading setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
     self.modelButton.titleLabel.font = [UIFont systemFontOfSize:12];
     self.modelButton.titleLabel.lineBreakMode = NSLineBreakByTruncatingMiddle;
@@ -167,9 +195,9 @@ static NSUserDefaults *RSChatPreferences(void) {
         [self button:@"minus" title:@"最小化" action:@selector(minimize)],
         [self button:@"xmark" title:@"关闭对话" action:@selector(close)]]];
     top.alignment = UIStackViewAlignmentCenter;
-    top.spacing = 4;
+    top.spacing = 8;
     for (UIView *item in top.arrangedSubviews) if (item != self.modelButton && [item isKindOfClass:UIButton.class]) {
-        item.backgroundColor = [UIColor.systemBlueColor colorWithAlphaComponent:0.08]; item.layer.cornerRadius = 22;
+        item.backgroundColor = [UIColor.systemBlueColor colorWithAlphaComponent:0.08]; item.layer.cornerRadius = 18;
     }
     [content addArrangedSubview:top];
     self.chip = [[UIImageView alloc] initWithImage:self.attachment];
@@ -192,28 +220,29 @@ static NSUserDefaults *RSChatPreferences(void) {
     self.input = [UITextView new];
     self.input.font = [UIFont preferredFontForTextStyle:UIFontTextStyleBody];
     self.input.backgroundColor = UIColor.tertiarySystemBackgroundColor;
-    self.input.layer.cornerRadius = 22;
-    self.input.textContainerInset = UIEdgeInsetsMake(10, 12, 10, 12);
+    self.input.layer.cornerRadius = 20;
+    self.input.textContainerInset = UIEdgeInsetsMake(8, 10, 8, 10);
     self.input.accessibilityLabel = @"输入问题"; self.input.delegate = self;
-    self.placeholder = [[UILabel alloc] initWithFrame:CGRectMake(16, 10, 140, 24)];
+    self.placeholder = [[UILabel alloc] initWithFrame:CGRectMake(14, 8, 140, 24)];
     self.placeholder.text = @"问点什么…"; self.placeholder.textColor = UIColor.placeholderTextColor;
     self.placeholder.font = self.input.font; self.placeholder.userInteractionEnabled = NO; [self.input addSubview:self.placeholder];
-    [self.input.heightAnchor constraintEqualToConstant:44].active = YES;
+    [self.input.heightAnchor constraintEqualToConstant:40].active = YES;
     self.sendButton = [UIButton buttonWithType:UIButtonTypeSystem];
     [self.sendButton setTitle:@"发送" forState:UIControlStateNormal];
     [self.sendButton setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
-    self.sendButton.backgroundColor = UIColor.systemBlueColor; self.sendButton.layer.cornerRadius = 22;
-    [self.sendButton.widthAnchor constraintEqualToConstant:64].active = YES;
-    [self.sendButton.heightAnchor constraintEqualToConstant:44].active = YES;
+    self.sendButton.backgroundColor = UIColor.systemBlueColor; self.sendButton.layer.cornerRadius = 20;
+    [self.sendButton.widthAnchor constraintEqualToConstant:56].active = YES;
+    [self.sendButton.heightAnchor constraintEqualToConstant:40].active = YES;
     [self.sendButton addTarget:self action:@selector(send) forControlEvents:UIControlEventTouchUpInside];
     UIButton *attach = [self button:@"plus" title:@"添加图片" action:@selector(attachments)];
-    attach.backgroundColor = UIColor.systemBlueColor; attach.tintColor = UIColor.whiteColor; attach.layer.cornerRadius = 22;
+    attach.backgroundColor = UIColor.systemBlueColor; attach.tintColor = UIColor.whiteColor; attach.layer.cornerRadius = 18;
     UIStackView *bottom = [[UIStackView alloc] initWithArrangedSubviews:@[self.input, attach, self.sendButton]];
     bottom.alignment = UIStackViewAlignmentCenter;
-    bottom.spacing = 6;
+    bottom.spacing = 8;
     [content addArrangedSubview:bottom];
     UILayoutGuide *safe = self.view.safeAreaLayoutGuide;
-    NSLayoutConstraint *height = [self.card.heightAnchor constraintEqualToAnchor:safe.heightAnchor multiplier:0.56];
+    NSLayoutConstraint *height = [self.card.heightAnchor constraintEqualToConstant:220];
+    self.cardHeight = height;
     height.priority = UILayoutPriorityDefaultHigh;
     NSLayoutConstraint *center = [self.card.centerYAnchor constraintEqualToAnchor:safe.centerYAnchor];
     center.priority = UILayoutPriorityDefaultHigh - 1;
@@ -303,25 +332,34 @@ static NSUserDefaults *RSChatPreferences(void) {
 }
 - (void)settings {
     if (self.task) { [self message:@"请先停止当前回复再修改服务配置。"]; return; }
-    if (self.settingsNavigation) return;
+    if (self.presentedViewController) return;
     [self hideKeyboard];
     __weak typeof(self) weakSelf = self;
     RSAISettingsController *settings = [[RSAISettingsController alloc] initWithSaved:^{
-        RSChatController *owner = weakSelf;
-        UINavigationController *nav = owner.settingsNavigation;
-        [nav willMoveToParentViewController:nil]; [nav.view removeFromSuperview]; [nav removeFromParentViewController];
-        owner.settingsNavigation = nil;
-        [owner updateModelTitle]; [owner applyAppearance];
+        [weakSelf updateModelTitle]; [weakSelf applyAppearance];
     }];
     UINavigationController *navigation = [[UINavigationController alloc] initWithRootViewController:settings];
-    self.settingsNavigation = navigation;
-    [self addChildViewController:navigation]; navigation.view.frame = self.card.bounds;
-    navigation.view.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-    [self.card addSubview:navigation.view]; [navigation didMoveToParentViewController:self];
+    navigation.modalPresentationStyle = UIModalPresentationFullScreen;
+    [self presentViewController:navigation animated:YES completion:nil];
+}
+- (void)viewDidLayoutSubviews {
+    [super viewDidLayoutSubviews];
+    CGFloat width = self.scroll.bounds.size.width;
+    if (width <= 0) return;
+    for (UIView *container in self.rows) {
+        RSChatBubble *bubble = (id)container.subviews.firstObject;
+        if ([bubble isKindOfClass:RSChatBubble.class]) [bubble fitWidth:width * 0.84];
+    }
+    CGSize size = [self.chat systemLayoutSizeFittingSize:CGSizeMake(width, UILayoutFittingCompressedSize.height)
+        withHorizontalFittingPriority:UILayoutPriorityRequired verticalFittingPriority:UILayoutPriorityFittingSizeLevel];
+    CGFloat available = self.view.safeAreaLayoutGuide.layoutFrame.size.height;
+    CGFloat maximum = available * [RSOption(@"AIChatMaxHeight") doubleValue] / 100.0;
+    CGFloat desired = MIN(maximum, MAX(180, size.height + 116 + (self.chip.hidden ? 0 : 80)));
+    if (fabs(self.cardHeight.constant - desired) > 0.5) self.cardHeight.constant = desired;
 }
 
 - (UITextView *)addRow:(NSString *)text image:(UIImage *)image assistant:(BOOL)assistant index:(NSUInteger)index {
-    UIStackView *row = [UIStackView new]; row.axis = UILayoutConstraintAxisVertical; row.spacing = 2;
+    RSChatBubble *row = [RSChatBubble new]; row.assistant = assistant; row.hasImage = image != nil; row.axis = UILayoutConstraintAxisVertical; row.spacing = 2;
     row.backgroundColor = assistant ? UIColor.systemGray5Color : (image && !text.length ? [UIColor.systemBlueColor colorWithAlphaComponent:0.10] : UIColor.systemBlueColor);
     row.layer.cornerRadius = 20; row.clipsToBounds = YES;
     row.layoutMarginsRelativeArrangement = YES; row.layoutMargins = UIEdgeInsetsMake(8, 10, 4, 10);
@@ -333,6 +371,7 @@ static NSUserDefaults *RSChatPreferences(void) {
         [row addArrangedSubview:preview];
     }
     UITextView *view = [UITextView new];
+    row.textView = view;
     view.text = text; view.editable = NO; view.scrollEnabled = NO;
     view.font = [UIFont preferredFontForTextStyle:UIFontTextStyleBody];
     view.adjustsFontForContentSizeCategory = YES;
@@ -347,16 +386,18 @@ static NSUserDefaults *RSChatPreferences(void) {
         UIButton *copy = [self button:@"doc.on.doc" title:@"复制回答" action:@selector(copyReply:)];
         for (UIButton *button in @[regen, tokenize, copy]) {
             button.tag = index;
-            [button setPreferredSymbolConfiguration:[UIImageSymbolConfiguration configurationWithPointSize:14] forImageInState:UIControlStateNormal];
+            [button setPreferredSymbolConfiguration:[UIImageSymbolConfiguration configurationWithPointSize:12] forImageInState:UIControlStateNormal];
         }
         UIStackView *actions = [[UIStackView alloc] initWithArrangedSubviews:@[[UIView new], regen, tokenize, copy]];
         [row addArrangedSubview:actions];
     }
     UIView *container = [UIView new]; row.translatesAutoresizingMaskIntoConstraints = NO; [container addSubview:row];
     [self.chat addArrangedSubview:container]; [self.rows addObject:container];
+    row.bubbleWidth = [row.widthAnchor constraintEqualToConstant:132];
+    [self.view setNeedsLayout];
     [NSLayoutConstraint activateConstraints:@[
         [row.topAnchor constraintEqualToAnchor:container.topAnchor], [row.bottomAnchor constraintEqualToAnchor:container.bottomAnchor],
-        [row.widthAnchor constraintEqualToAnchor:container.widthAnchor multiplier:(!assistant && image && !text.length) ? 0.30 : 0.84],
+        row.bubbleWidth,
         assistant ? [row.leadingAnchor constraintEqualToAnchor:container.leadingAnchor] : [row.trailingAnchor constraintEqualToAnchor:container.trailingAnchor]]];
     return view;
 }
@@ -393,7 +434,7 @@ static NSUserDefaults *RSChatPreferences(void) {
     NSString *text = [self.input.text stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
     if (!text.length && !self.attachment) return;
     if (text.length > 24000) { [self message:@"单次问题最多 24,000 字符。"]; return; }
-    NSString *displayText = text;
+    NSString *displayText = (self.attachment && ([text isEqual:@"请按当前人设处理这张图片"] || [text isEqual:@"轻按当前人设处理这张图片"])) ? @"" : text;
     if (!text.length) text = [RSOption(@"AIImagePrompt") length] ? RSOption(@"AIImagePrompt") : @"请描述图片内容。";
     NSMutableArray *content = [NSMutableArray arrayWithObject:@{@"type":@"text", @"text":text}];
     if (self.attachment) {
@@ -483,7 +524,7 @@ static NSUserDefaults *RSChatPreferences(void) {
 - (void)updateReply {
     BOOL atBottom = self.scroll.contentOffset.y + self.scroll.bounds.size.height >= self.scroll.contentSize.height - 60;
     if (self.keyboardPresentation) { RSKAUpdateAnswer(self.answer, NO, nil); self.history.lastObject[@"content"] = self.answer.copy; return; }
-    self.reply.text = self.answer;
+    [self.view setNeedsLayout]; self.reply.text = self.answer;
     self.history.lastObject[@"content"] = self.answer.copy;
     if (atBottom && !self.card.hidden) {
         [self.chat layoutIfNeeded];
@@ -534,7 +575,7 @@ static NSUserDefaults *RSChatPreferences(void) {
     [self updateReply];
     NSString *status = self.stopped ? @"已停止生成" : self.failure;
     if (!status && !self.answer.length) status = @"服务返回了空回答，请重新生成。";
-    if (status) self.reply.text = self.answer.length ? [self.answer stringByAppendingFormat:@"\n\n〔%@〕", status] : status;
+    if (status) { [self.view setNeedsLayout]; self.reply.text = self.answer.length ? [self.answer stringByAppendingFormat:@"\n\n〔%@〕", status] : status; }
     if (self.keyboardPresentation) RSKAUpdateAnswer(self.answer, YES, status);
     self.task = nil; self.decoder = nil; self.body = nil;
     [self.sendButton setTitle:@"发送" forState:UIControlStateNormal];

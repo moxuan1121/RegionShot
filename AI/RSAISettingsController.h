@@ -7,7 +7,10 @@ OSStatus RSAIWriteKey(NSString *key);
 NSString *RSAIPersonaPrompt(BOOL imageQuestion);
 
 @interface RSAISettingsController : UITableViewController
-- (instancetype)initWithSaved:(dispatch_block_t)saved;
+- (instancetype)initWithSaved:(nullable dispatch_block_t)saved;
 @end
 NSArray<NSDictionary *> *RSAIPersonas(void);
 NS_ASSUME_NONNULL_END
+
+@interface RSAIMenuController : UITableViewController
+@end

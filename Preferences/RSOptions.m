@@ -11,7 +11,7 @@ NSArray<NSDictionary *> *RSOptionGroups(void) {
     dispatch_once(&once, ^{ groups = @[
         @{@"title":@"截图与保存", @"items":@[
             @{@"key":@"StatusBarSwipe", @"title":@"状态栏右半侧右滑截图", @"default":@YES},
-            @{@"key":@"CaptureHaptic", @"title":@"截图完成震动", @"default":@NO} ]},
+            @{@"key":@"CaptureHaptic", @"title":@"截图完成震动", @"default":@YES} ]},
         @{@"title":@"选区与菜单外观", @"items":@[
             @{@"key":@"SelectionShade", @"title":@"选区外遮罩浓度", @"default":@0.38, @"min":@0.05, @"max":@0.8},
             @{@"key":@"MenuBlurOpacity", @"title":@"菜单磨砂玻璃透明度", @"default":@0.88, @"min":@0.15, @"max":@1.0} ]},
@@ -24,11 +24,8 @@ NSArray<NSDictionary *> *RSOptionGroups(void) {
             @{@"key":@"HistoryEnabled", @"title":@"记录截图历史", @"default":@YES},
             @{@"key":@"HistoryCount", @"title":@"最多保留张数", @"default":@80, @"min":@5, @"max":@200},
             @{@"key":@"HistoryMB", @"title":@"历史容量上限（MB）", @"default":@64, @"min":@16, @"max":@128} ]},
-        @{@"title":@"长截图采样", @"footer":@"采样需要手动滚动页面并保留重叠部分。上限用于控制 SpringBoard 内存，达到后可完成保存。", @"items":@[
-            @{@"key":@"LongInterval", @"title":@"采样间隔（秒）", @"default":@0.45, @"min":@0.3, @"max":@3.0},
-            @{@"key":@"LongMaxMP", @"title":@"合成像素上限（百万）", @"default":@8, @"min":@4, @"max":@12},
-            @{@"key":@"LongMaxSlices", @"title":@"最多采集段数", @"default":@100, @"min":@5, @"max":@100} ]},
         @{@"title":@"AI 对话", @"footer":@"服务地址、模型和密钥在 AI 服务配置窗口设置。发送的图片和文字会提交到该服务。", @"items":@[
+            @{@"key":@"AIChatMaxHeight", @"title":@"对话窗口最大高度（屏幕百分比）", @"default":@75, @"min":@30, @"max":@95},
             @{@"key":@"AIFastResponse", @"title":@"快速响应（兼容通义模型关闭思考）", @"default":@YES},
             @{@"key":@"AIStream", @"title":@"流式输出", @"default":@YES},
             @{@"key":@"AIAutoImage", @"title":@"图片问答直接发送", @"default":@NO},

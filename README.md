@@ -1,29 +1,32 @@
-# RegionShot 0.6.0 开发预览
+# RegionShot 0.6.1 开发预览
 
-本版整合 AI 对话/服务配置、微信与 LINE 键盘文字处理、复制分词/搜索引擎和 Sileo 介绍页翻译。
+适用 iOS 15.6 / Dopamine RootHide，arm64e。
 
-- AI 卡片按最新参考调整：右侧图片/用户气泡，左侧回答；点击模型在同一卡片配置，返回时保存；输入高度 44pt，回复操作图标 14pt。
-- 浮图使用 SpringBoard 的界面目标方向并在旋转后居中；移除选区 44pt 下限，保留 5pt 边缘吸附。
-- 冻结菜单“截屏”保存相册，“复制”仅写剪贴板。移除 CopyOnly/CopyOnSave 配置及运行分支。
-- 截图历史改为居中浮窗，支持来源 App 筛选。旧记录保留，但没有来源资料。
-- 长截图默认自动采样、隐藏原生滚动条、排除顶部状态栏，严格匹配失败时拒绝追加。片段落盘，宽度最多 1080px，默认合成上限 8MP，可设 4–12MP。
-- Sileo 介绍页长按翻译有独立开关和人设选择，默认关闭；支持原生文字及介绍内嵌网页段落。
+- 系统设置仅保留一个 RegionShot 入口，使用系统导航栏与返回手势。
+- **RegionShot → AI 对话与设置** 是统一母菜单：打开对话、对话外观与行为、服务配置、人设，以及微信、LINE、分词长按菜单的人设显示设置。
+- AI 回答与提问使用随文字变化的气泡宽度；窗口高度随内容变化，最大高度可在 AI 母菜单手动调整。缩小按钮与图标，保留 44pt 点击范围。不显示系统生成的图片提问占位语。
+- 根据 ShellX 3.0.1 的静态分析重新实现 Sileo 长按：覆盖 SileoStore、非交互文字子视图、CSText 和网页介绍；按住介绍文字后直接在整合的 KeyboardAI 窗口翻译。分析记录见 [SILEO_REVERSE_NOTES.md](SILEO_REVERSE_NOTES.md)。独立开关默认关闭。
+- 冻结菜单“截屏”保存后显示白色闪屏和轻振动；“复制”仅复制。
+- 移除长截图及其采样、拼接、滚动条注入、设置和菜单代码。
 
 ## 调用入口
 
 - AI：`prefs://root=regionshot_aiwindow`
 - 历史：`prefs://root=regionshot_history`
-- Darwin 通知：`com.moxuan.regionshot/AIWindow`、`com.moxuan.regionshot/History`
-- Snapper 3 历史兼容：`com.jontelang.snapper3.history`，同时接收 Darwin/Distributed 通知。此名称来自 [Snapper 3 作者接口文档](https://github.com/jontelang/Snapper3#notifications)，不是作者提供的 URL。
+- 支持 `prefs:root=...` 与 `App-prefs:root=...` 形式；通过 Settings 的 URL 接收路径转发，不添加虚假设置入口。
+- Darwin 通知：`com.moxuan.regionshot/AIWindow`、`com.moxuan.regionshot/History`。
+- Snapper 3 历史通知兼容：`com.jontelang.snapper3.history`；这是通知名称，不是 Snapper 3 作者提供的 URL。
 
-## 安装与验证范围
+## 安装与验证
 
-安装后重新启动 SpringBoard，并彻底关闭再打开微信、LINE、Sileo 和需要长截图的 App。
-主截图模块只注入 SpringBoard；文字模块只注入 SpringBoard/微信/LINE/Sileo；滚动条模块注入 UIKit App，只在长截图期间改变原生 UIScrollView 滚动条，结束后恢复。
-如已启用独立 KeyboardAI，请关闭其在这些进程中的注入，以免出现两套键盘菜单和复制按钮。
-AI 服务配置返回时会把当前模型、人设与密钥同步到 mobile 所有、0600 权限的 RootHide 共享配置，供 App 内的文字功能使用，保留原 KeyboardAI 的跨 App 工作方式。配置不上传仓库。只在主动点击人设/长按启用的 Sileo 介绍时发送文本；密码框、未完成输入及原文变化的替换保护保留。
+安装后重新启动 SpringBoard，并彻底关闭再打开设置、微信、LINE 和 Sileo。RootHide 中需允许 RegionShotURLs 注入设置、RegionShotInput 注入 Sileo。Sileo 翻译需先在独立设置页打开开关，并在 AI 服务配置中填写密钥、模型后点击保存。
 
-本版需要 iOS 15.6 RootHide 真机复测方向、系统边缘手势、设置后台恢复和不同 App 拼接效果。动画视频、重复图案、网页自绘滚动条和固定工具栏不能仅靠合成测试证明完全消除；匹配不可靠时提示用户保留重叠内容后重试，不强行拼错。
+主截图模块只注入 SpringBoard；文字模块只注入 SpringBoard/微信/LINE/Sileo；URL 模块只注入设置。如果已安装独立 KeyboardAI，关闭其在这些进程的重复注入，避免出现两套入口。
+AI 服务配置以 Keychain 及 mobile 私有 0600 共享文件供各进程使用。仅主动调用时发送文本/图片到所配置的服务，不上传配置到仓库。
+
+GitHub Actions 检查 URL 路由、人设显示筛选、参数验证、图片裁剪、历史、几何、流式响应、扫码、包内单一设置入口及 arm64e 签名。实际 URL 冷启动、Sileo 触摸、设置后台恢复、动态气泡与横屏布局需 iOS 15.6 真机验证。
+
+## 早期版本记录
 
 # RegionShot 0.5.2
 
@@ -35,17 +38,17 @@ AI 服务配置返回时会把当前模型、人设与密钥同步到 mobile 所
 - 框内外拖动移动选区，角点围绕对角锚点调整；L 角标向外偏移一个物理像素。
 - 浮图圆角、自由移动至屏幕外、缩放；创建时轻微放大淡入，关闭时缩小淡出，遵循减少动态效果设置。
 - 冻结菜单复制全屏、选区菜单复制选区，完成后退出冻结界面；浮图复制后自动关闭当前浮图，不影响其他浮图。
-- 保存、分享、扫码、标记、手动滚动长截图、截图历史、AI 图片/文字问答与 KeyboardAI 分词对接。
-- 系统设置按菜单外观、功能参数、截图记录、入口诊断分组；功能参数按截图保存、浮图、历史、长图、AI 分页。左上角返回上一页，菜单排序位于右上角。
+- 保存、分享、扫码、标记、截图历史、AI 图片/文字问答与 KeyboardAI 分词对接。
+- 系统设置按菜单外观、功能参数、截图记录、入口诊断分组；功能参数按截图保存、浮图、历史、AI 分页。左上角返回上一页，菜单排序位于右上角。
 - 三类菜单独立排序、功能开关、自定义名称与图标；升级保留剩余按钮的原有定制。
 
 0.4.2 已删除 OCR、翻译、隐藏浮图和恢复隐藏浮图的功能实现、菜单入口及参数。扫码与 AI 问答保留。0.4.1 的独立像素裁剪、取消吸边和浮图移动边界限制继续保留。
 
 ## 构建与检查
 
-GitHub Actions 使用固定版本 RootHide Theos 和 iOS 15.6 SDK，检查像素裁剪、菜单升级兼容、参数校验、历史持久化、几何、流式响应、长图对齐、扫码、安装包及 arm64e ABI。动画观感及系统边缘手势需实机验证。
+GitHub Actions 使用固定版本 RootHide Theos 和 iOS 15.6 SDK，检查像素裁剪、菜单升级兼容、参数校验、历史持久化、几何、流式响应、扫码、安装包及 arm64e ABI。动画观感及系统边缘手势需实机验证。
 
-自动滚动长截图与完整编辑器仍在开发中。
+长截图已在 0.6.1 中移除。
 
 ## 0.4.9 修复与新增
 
@@ -93,7 +96,7 @@ GitHub Actions 使用固定版本 RootHide Theos 和 iOS 15.6 SDK，检查像素
 
 L 角标向外移动距离包含半个线宽，让线条内缘与实际选区间隔一个物理像素。冻结菜单的截屏按钮按保存设置直接保存/复制全屏；选区菜单截图和框内双击仍生成浮图。
 
-冻结界面显示时，拦截 SBSystemGestureManager 的 shouldSystemGestureReceiveTouchWithLocation:，阻止系统下拉手势接收触摸。安装前检查运行时方法签名，退出冻结界面即恢复原处理；长截图滚动阶段不拦截。接口依据运行时头文件，iOS 15.6 上是否挂接及触摸表现需实机验证。
+冻结界面显示时，拦截 SBSystemGestureManager 的 shouldSystemGestureReceiveTouchWithLocation:，阻止系统下拉手势接收触摸。安装前检查运行时方法签名，退出冻结界面即恢复原处理。接口依据运行时头文件，iOS 15.6 上是否挂接及触摸表现需实机验证。
 
 ## 0.5.0 KeyboardAI 界面整合
 

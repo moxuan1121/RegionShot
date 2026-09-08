@@ -10,6 +10,7 @@
 			<string>com.tencent.xin</string>
 			<string>jp.naver.line</string>
 			<string>org.coolstar.Sileo</string>
+            <string>org.coolstar.SileoStore</string>
 		</array>
 	</dict>
 </dict>

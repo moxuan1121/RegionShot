@@ -96,7 +96,7 @@ void RSInputOpenSearch(NSString *text) { RSInputOpenSearchEngine(RSInputSearchEn
                 [weakSelf hide]; if (!RSInputLocked()) RSInputOpenSearchEngine(engine, text);
             }];
         }
-        for (NSDictionary *action in RSInputActions()) {
+        for (NSDictionary *action in RSInputVisibleActions(@"clipboardHiddenPersonas")) {
             [menu addItemWithTitle:action[@"title"] image:[UIImage systemImageNamed:@"sparkles"] destructive:NO handler:^{
                 [weakSelf hide]; if (!RSInputLocked()) RSInputRunCopiedAction(action, text, ^(NSString *result) { RSInputOpenSearch(result); });
             }];
@@ -152,8 +152,9 @@ void RSInputOpenSearch(NSString *text) { RSInputOpenSearchEngine(RSInputSearchEn
         button.gradient.colors = [self.options[@"gradient"] boolValue] ? @[(id)start.CGColor, (id)RSInputHexColor(self.options[@"middleColor"]).CGColor, (id)RSInputHexColor(self.options[@"endColor"]).CGColor] : @[(id)start.CGColor, (id)start.CGColor];
         button.gradient.startPoint = CGPointMake(0, 0.5); button.gradient.endPoint = CGPointMake(1, 0.5);
         [button.layer insertSublayer:button.gradient atIndex:0];
-        [button setTitle:@" 分词" forState:UIControlStateNormal];
-        [button setImage:[UIImage systemImageNamed:@"character.textbox"] forState:UIControlStateNormal];
+        [button setTitle:@"分词" forState:UIControlStateNormal];
+        button.contentHorizontalAlignment = UIControlContentHorizontalAlignmentCenter;
+        button.titleLabel.textAlignment = NSTextAlignmentCenter;
         button.tintColor = UIColor.whiteColor;
         [button setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
         button.titleLabel.font = [UIFont systemFontOfSize:16 * scale weight:UIFontWeightSemibold];
@@ -168,7 +169,7 @@ void RSInputOpenSearch(NSString *text) { RSInputOpenSearchEngine(RSInputSearchEn
         [host addSubview:button];
         NSLayoutConstraint *vertical = [NSLayoutConstraint constraintWithItem:button attribute:NSLayoutAttributeCenterY relatedBy:NSLayoutRelationEqual toItem:host attribute:NSLayoutAttributeBottom multiplier:[self.options[@"height"] doubleValue]/100 constant:0];
         [NSLayoutConstraint activateConstraints:@[
-            [button.widthAnchor constraintEqualToConstant:92 * scale], [button.heightAnchor constraintEqualToConstant:44 * scale],
+            [button.widthAnchor constraintEqualToConstant:72 * scale], [button.heightAnchor constraintEqualToConstant:44 * scale],
             [button.trailingAnchor constraintEqualToAnchor:host.safeAreaLayoutGuide.trailingAnchor constant:-16], vertical]];
         self.window.interactiveView = button;
         self.window.hidden = NO;

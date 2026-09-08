@@ -64,8 +64,6 @@
         if (self.captureHandler) self.captureHandler();
     } else if (button.tag == 1) {
         if (self.editHandler) self.editHandler();
-    } else if (button.tag == 2) {
-        if (self.longCaptureHandler) self.longCaptureHandler();
     } else if (button.tag == 3) {
         if (self.recognitionHandler) self.recognitionHandler();
     } else if (button.tag == 4) {

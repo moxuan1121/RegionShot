@@ -1,5 +1,6 @@
 #import "RSInputClipboard.h"
 #import "RSInputInterface.h"
+#import "RSInputStore.h"
 #import <objc/runtime.h>
 @interface UIInputSwitcherItem : NSObject
 - (instancetype)initWithIdentifier:(NSString *)identifier;
@@ -58,7 +59,7 @@ static NSDictionary *RSInputActionAt(id view, NSUInteger index) {
             if (!handBias && !objc_getAssociatedObject(item, &RSInputActionKey)) [items addObject:item];
         }
         UIFont *nativeFont = existing.count ? [self fontForItemAtIndex:0] : nil;
-        NSMutableArray *actions = [RSInputActions() mutableCopy];
+        NSMutableArray *actions = [RSInputVisibleActions([NSBundle.mainBundle.bundleIdentifier isEqual:@"com.tencent.xin"] ? @"wechatHiddenPersonas" : @"lineHiddenPersonas") mutableCopy];
         for (NSDictionary *action in actions) {
             NSString *identifier = [@"com.moxuan1121.keyboardai." stringByAppendingString:NSUUID.UUID.UUIDString];
             UIInputSwitcherItem *item = [[%c(UIInputSwitcherItem) alloc] initWithIdentifier:identifier];

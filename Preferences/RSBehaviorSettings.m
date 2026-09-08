@@ -4,7 +4,7 @@
 @implementation RSBehaviorSettings
 - (instancetype)init { if ((self = [super initWithStyle:UITableViewStyleInsetGrouped])) _groupIndex = NSNotFound; return self; }
 - (void)viewDidLoad { [super viewDidLoad]; self.title = self.groupIndex == NSNotFound ? @"功能设置" : RSOptionGroups()[self.groupIndex][@"title"]; RSReloadOptions(); }
-- (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView { return self.groupIndex == NSNotFound ? RSOptionGroups().count : 1; }
+- (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView { return self.groupIndex == NSNotFound ? RSOptionGroups().count - 1 : 1; }
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section { return self.groupIndex == NSNotFound ? 1 : [RSOptionGroups()[self.groupIndex][@"items"] count]; }
 - (NSString *)tableView:(UITableView *)tableView titleForHeaderInSection:(NSInteger)section { return self.groupIndex == NSNotFound ? nil : RSOptionGroups()[self.groupIndex][@"title"]; }
 - (NSString *)tableView:(UITableView *)tableView titleForFooterInSection:(NSInteger)section { return self.groupIndex == NSNotFound ? nil : RSOptionGroups()[self.groupIndex][@"footer"]; }

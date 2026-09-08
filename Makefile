@@ -5,14 +5,14 @@ INSTALL_TARGET_PROCESSES = SpringBoard
 
 include $(THEOS)/makefiles/common.mk
 
-TWEAK_NAME = RegionShot RegionShotInput RegionShotScroll
+TWEAK_NAME = RegionShot RegionShotInput RegionShotURLs
 RegionShot_FILES = Trigger.xm \
 	Preferences/RSOptions.m \
+	Preferences/RSBehaviorSettings.m \
 	History/RSHistoryStore.m \
 	History/RSHistoryController.m \
 	Manager/RSRegionShotManager.m \
 	Capture/RSScreenCapture.m \
-	Capture/RSLongCaptureWindow.m \
 	Selection/RSSelectionWindow.m \
 	Selection/RSSelectionView.m \
 	Selection/RSSelectionToolbar.m \
@@ -30,9 +30,9 @@ RegionShot_FILES = Trigger.xm \
 RegionShot_CFLAGS = -fobjc-arc -Wall -Wextra -Wno-unused-parameter
 RegionShot_FRAMEWORKS = Foundation UIKit Photos QuartzCore Security PhotosUI UniformTypeIdentifiers Vision CoreImage PencilKit
 
-RegionShotScroll_FILES = Capture/RSScrollCleanup.xm
-RegionShotScroll_CFLAGS = -fobjc-arc -Wall -Wextra
-RegionShotScroll_FRAMEWORKS = UIKit Foundation
+RegionShotURLs_FILES = Preferences/RSURLHooks.xm
+RegionShotURLs_CFLAGS = -fobjc-arc -Wall -Wextra
+RegionShotURLs_FRAMEWORKS = UIKit Foundation
 RegionShotInput_FILES = Input/Tweak.xm Input/RSSileo.xm Input/RSInputInterface.m Input/RSInputStream.m Input/RSInputStore.m Input/RSInputTokenView.m Input/RSInputClipboard.m Input/RSInputAnchoredMenuView.m
 RegionShotInput_CFLAGS = -fobjc-arc -Wall -Wextra -Wno-unused-parameter
 RegionShotInput_FRAMEWORKS = UIKit Foundation WebKit

@@ -31,12 +31,12 @@ jobs:
         run: clang -fobjc-arc -Wall -Wextra -Werror -framework Foundation Tests/test_keyboardai.m -o /tmp/regionshot-keyboardai && /tmp/regionshot-keyboardai
       - name: Check imported input configuration
         run: clang -fobjc-arc -Wall -Wextra -Werror -DRSInput_STORE_TESTING -framework Foundation Tests/test_input.m Input/RSInputStore.m -o /tmp/regionshot-input && /tmp/regionshot-input
+      - name: Check Settings URL routes
+        run: clang -fobjc-arc -Wall -Wextra -Werror -framework Foundation Tests/test_urls.m -o /tmp/regionshot-urls && /tmp/regionshot-urls
       - name: Check crop geometry
         run: cc -std=c11 -Wall -Wextra -Werror Tests/test_geometry.c -lm -o /tmp/regionshot-geometry && /tmp/regionshot-geometry
       - name: Check streaming packet boundaries
         run: clang -fobjc-arc -Wall -Wextra -Werror -framework Foundation Tests/test_stream.m AI/RSSSEDecoder.m -o /tmp/regionshot-stream && /tmp/regionshot-stream
-      - name: Check long screenshot alignment
-        run: cc -std=c11 -Wall -Wextra -Werror Tests/test_stitch.c -lm -o /tmp/regionshot-stitch && /tmp/regionshot-stitch
       - name: Check generated QR recognition
         run: clang -fobjc-arc -Wall -Wextra -Werror -framework Foundation -framework Vision -framework CoreImage -framework CoreGraphics -framework ImageIO Tests/test_recognition.m -o /tmp/regionshot-recognition && /tmp/regionshot-recognition
       - name: Upload QR diagnostic image

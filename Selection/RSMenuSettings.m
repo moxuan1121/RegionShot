@@ -22,7 +22,6 @@ static NSArray *RSMenuDefaults(BOOL floating) {
         @{@"id":@7, @"title":@"截图历史", @"symbol":@"clock.arrow.circlepath", @"enabled":@YES}];
     return @[@{@"id":@0, @"title":@"截图", @"symbol":@"camera", @"enabled":@YES},
              @{@"id":@1, @"title":@"标记", @"symbol":@"pencil.tip", @"enabled":@YES},
-             @{@"id":@2, @"title":@"长截图", @"symbol":@"doc.on.doc", @"enabled":@YES},
              @{@"id":@3, @"title":@"扫码", @"symbol":@"qrcode.viewfinder", @"enabled":@YES},
              @{@"id":@4, @"title":@"取消", @"symbol":@"xmark", @"enabled":@YES},
              @{@"id":@5, @"title":@"图片问答", @"symbol":@"text.bubble", @"enabled":@YES},

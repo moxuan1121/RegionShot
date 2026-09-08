@@ -36,12 +36,21 @@ NSArray<NSDictionary *> *RSInputActions(void) {
     id actions = RSInputConfig()[@"actions"];
     return RSInputValidActions(actions) ? actions : RSInputDefaultActions();
 }
+NSArray<NSDictionary *> *RSInputVisibleActions(NSString *scope) {
+    NSArray *actions = RSInputActions();
+    id hidden = RSInputConfig()[scope];
+    if (![hidden isKindOfClass:NSArray.class]) return actions;
+    NSMutableArray *visible = [NSMutableArray array];
+    for (NSDictionary *action in actions)
+        if (![hidden containsObject:action[@"id"] ?: action[@"title"]]) [visible addObject:action];
+    return visible;
+}
 BOOL RSInputSaveConfig(NSDictionary *config, NSString *key) {
     if (![config isKindOfClass:NSDictionary.class] || (![key isKindOfClass:NSString.class] || RSInputConfigError(config[@"endpoint"], config[@"model"], key.length ? key : @"not-configured")) || !RSInputValidActions(config[@"actions"])) return NO;
     NSMutableArray *actions = [NSMutableArray array];
     for (NSDictionary *action in config[@"actions"]) {
         NSMutableDictionary *clean = [@{@"title": action[@"title"], @"prompt": action[@"prompt"]} mutableCopy];
-        for (NSString *field in @[@"icon", @"summary"])
+        for (NSString *field in @[@"icon", @"summary", @"id"])
             if ([action[field] isKindOfClass:NSString.class] && [action[field] length] <= 4000) clean[field] = action[field];
         [actions addObject:clean];
     }
@@ -58,6 +67,10 @@ BOOL RSInputSaveOptions(NSString *field, id value) {
         NSString *title = [value[@"personaTitle"] isKindOfClass:NSString.class] ? value[@"personaTitle"] : @"";
         if (title.length > 200) return NO;
         value = @{@"enabled":@([value[@"enabled"] boolValue]), @"personaTitle":title};
+    } else if ([@[@"wechatHiddenPersonas", @"lineHiddenPersonas", @"clipboardHiddenPersonas"] containsObject:field]) {
+        if (![value isKindOfClass:NSArray.class] || [value count] > 200) return NO;
+        for (id item in value) if (![item isKindOfClass:NSString.class] || [item length] > 200) return NO;
+        value = [[NSOrderedSet orderedSetWithArray:value] array];
     } else return NO;
     NSMutableDictionary *config = [RSInputConfig() mutableCopy];
     config[field] = value;

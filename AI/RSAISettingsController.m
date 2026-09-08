@@ -1,5 +1,8 @@
 #import "../Input/RSInputStore.h"
 #import "RSAISettingsController.h"
+#import "../Preferences/RSBehaviorSettings.h"
+#import <notify.h>
+extern UIViewController *RSInputCreatePersonaSelection(NSString *scope);
 #import "../Preferences/RSOptions.h"
 
 static NSUserDefaults *RSAIPreferences(void) {
@@ -13,6 +16,7 @@ static NSMutableDictionary *RSAIKeyQuery(void) {
               (__bridge id)kSecAttrAccount:@"api-key"} mutableCopy];
 }
 NSString *RSAIReadKey(void) {
+    NSString *shared = RSInputReadKey(); if (shared != nil) return shared;
     NSMutableDictionary *query = RSAIKeyQuery(); query[(__bridge id)kSecReturnData] = @YES;
     CFTypeRef result = NULL; OSStatus status = SecItemCopyMatching((__bridge CFDictionaryRef)query, &result);
     NSData *data = CFBridgingRelease(result);
@@ -57,10 +61,10 @@ NSString *RSAIPersonaPrompt(BOOL imageQuestion) {
     return @"";
 }
 
-static BOOL RSPublishInputSettings(void) {
+static BOOL RSPublishInputSettings(NSString *key) {
     NSUserDefaults *prefs = RSAIPreferences(); NSMutableArray *actions = [NSMutableArray array];
-    for (NSDictionary *persona in RSAIPersonas()) [actions addObject:@{@"title":persona[@"name"] ?: @"AI", @"prompt":persona[@"prompt"] ?: @""}];
-    return RSInputSaveConfig(@{@"endpoint":[prefs stringForKey:@"AIEndpoint"] ?: @"", @"model":[prefs stringForKey:@"AIModel"] ?: @"", @"actions":actions, @"fastResponse":RSOption(@"AIFastResponse")}, RSAIReadKey() ?: @"");
+    for (NSDictionary *persona in RSAIPersonas()) [actions addObject:@{@"title":persona[@"name"] ?: @"AI", @"prompt":persona[@"prompt"] ?: @"", @"id":[persona[@"menuID"] description] ?: persona[@"name"]}];
+    return RSInputSaveConfig(@{@"endpoint":[prefs stringForKey:@"AIEndpoint"] ?: @"", @"model":[prefs stringForKey:@"AIModel"] ?: @"", @"actions":actions, @"fastResponse":RSOption(@"AIFastResponse")}, key ?: RSAIReadKey() ?: @"");
 }
 @interface RSAIPersonaEditor : UIViewController <UITextViewDelegate>
 @property (nonatomic, strong) UITextField *nameField;
@@ -142,7 +146,7 @@ static BOOL RSPublishInputSettings(void) {
     }]; [self.navigationController pushViewController:editor animated:YES];
 }
 - (void)reset { self.personas = [RSAIDefaultPersonas() mutableCopy]; [self persist]; [self.tableView reloadData]; }
-- (void)persist { [RSAIPreferences() setObject:self.personas.copy forKey:@"AIPersonas"]; [RSAIPreferences() synchronize]; RSPublishInputSettings(); }
+- (void)persist { [RSAIPreferences() setObject:self.personas.copy forKey:@"AIPersonas"]; [RSAIPreferences() synchronize]; self.personas = [RSAIPersonas() mutableCopy]; RSPublishInputSettings(nil); }
 @end
 
 @interface RSAIBallSettingsController : UITableViewController
@@ -209,7 +213,7 @@ static BOOL RSPublishInputSettings(void) {
 @implementation RSAISettingsController
 - (instancetype)initWithSaved:(dispatch_block_t)saved {
     if ((self = [super initWithStyle:UITableViewStyleInsetGrouped])) {
-        _saved = saved; self.title = @"AI 问答"; NSUserDefaults *prefs = RSAIPreferences();
+        _saved = saved; self.title = @"AI 服务配置"; NSUserDefaults *prefs = RSAIPreferences();
         _endpoint = [prefs stringForKey:@"AIEndpoint"] ?: @"https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions";
         _model = [prefs stringForKey:@"AIModel"] ?: @"qwen-vl-max"; _key = RSAIReadKey();
         id models = [prefs objectForKey:@"AIModels"]; _models = [models isKindOfClass:NSArray.class] ? models : @[];
@@ -217,9 +221,7 @@ static BOOL RSPublishInputSettings(void) {
 }
 - (void)viewDidLoad {
     [super viewDidLoad];
-    UIScreenEdgePanGestureRecognizer *back = [[UIScreenEdgePanGestureRecognizer alloc] initWithTarget:self action:@selector(backSwipe:)];
-    back.edges = UIRectEdgeLeft; [self.view addGestureRecognizer:back];
-    self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithTitle:@"返回" style:UIBarButtonItemStylePlain target:self action:@selector(save)];
+    self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithTitle:@"保存" style:UIBarButtonItemStyleDone target:self action:@selector(save)];
 }
 - (void)viewWillAppear:(BOOL)animated { [super viewWillAppear:animated]; [self.tableView reloadData]; }
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView { return tableView == self.modelTable ? 1 : 4; }
@@ -319,11 +321,31 @@ static BOOL RSPublishInputSettings(void) {
     NSURL *url = [NSURL URLWithString:self.endpoint]; if (![url.scheme.lowercaseString isEqual:@"https"] || !url.host.length || url.user || url.password || !self.model.length) { [self show:@"请填写有效的 HTTPS 服务地址和模型名称。"]; return; }
     OSStatus status = RSAIWriteKey(self.key ?: @""); if (status != errSecSuccess) { [self show:[NSString stringWithFormat:@"钥匙串保存失败（%d）。", (int)status]]; return; }
     NSUserDefaults *prefs = RSAIPreferences(); [prefs setObject:self.endpoint forKey:@"AIEndpoint"]; [prefs setObject:self.model forKey:@"AIModel"]; [prefs setObject:self.models forKey:@"AIModels"]; [prefs synchronize];
-    if (!RSPublishInputSettings()) { [self show:@"AI 配置已保存，但微信、LINE 共享配置写入失败，请检查权限后重试。"]; return; }
+    if (!RSPublishInputSettings(self.key)) { [self show:@"AI 配置已保存，但微信、LINE 共享配置写入失败，请检查权限后重试。"]; return; }
     if (self.navigationController.viewControllers.firstObject != self) [self.navigationController popViewControllerAnimated:YES]; else if (self.navigationController.parentViewController) { if (self.saved) self.saved(); } else [self dismissViewControllerAnimated:YES completion:self.saved];
 }
-- (void)backSwipe:(UIScreenEdgePanGestureRecognizer *)gesture {
-    if (gesture.state == UIGestureRecognizerStateEnded && [gesture translationInView:self.view].x > 45) [self save];
-}
 - (void)cancel { [self save]; }
+@end
+
+@implementation RSAIMenuController
+- (instancetype)init { return [super initWithStyle:UITableViewStyleInsetGrouped]; }
+- (void)viewDidLoad { [super viewDidLoad]; self.title = @"AI 对话与设置"; }
+- (NSInteger)numberOfSectionsInTableView:(UITableView *)table { return 2; }
+- (NSInteger)tableView:(UITableView *)table numberOfRowsInSection:(NSInteger)section { return section == 0 ? 4 : 3; }
+- (NSString *)tableView:(UITableView *)table titleForHeaderInSection:(NSInteger)section { return section == 0 ? @"AI 对话" : @"各入口显示的人设"; }
+- (UITableViewCell *)tableView:(UITableView *)table cellForRowAtIndexPath:(NSIndexPath *)path {
+    UITableViewCell *cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:nil];
+    cell.textLabel.text = path.section == 0 ? @[@"打开 AI 对话", @"对话外观与行为", @"AI 服务配置", @"AI 人设"][path.row] : @[@"微信菜单", @"LINE 菜单", @"分词按钮长按菜单"][path.row];
+    cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator; return cell;
+}
+- (void)tableView:(UITableView *)table didSelectRowAtIndexPath:(NSIndexPath *)path {
+    [table deselectRowAtIndexPath:path animated:YES];
+    UIViewController *page = nil;
+    if (path.section == 1) page = RSInputCreatePersonaSelection(@[@"wechatHiddenPersonas", @"lineHiddenPersonas", @"clipboardHiddenPersonas"][path.row]);
+    else if (path.row == 0) { notify_post("com.moxuan.regionshot/AIWindow"); return; }
+    else if (path.row == 1) { RSBehaviorSettings *options = [RSBehaviorSettings new]; options.groupIndex = RSOptionGroups().count - 1; page = options; }
+    else if (path.row == 2) page = [[RSAISettingsController alloc] initWithSaved:nil];
+    else page = [RSAIPersonasController new];
+    [self.navigationController pushViewController:page animated:YES];
+}
 @end
