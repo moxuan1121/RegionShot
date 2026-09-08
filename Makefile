@@ -5,7 +5,7 @@ INSTALL_TARGET_PROCESSES = SpringBoard
 
 include $(THEOS)/makefiles/common.mk
 
-TWEAK_NAME = RegionShot
+TWEAK_NAME = RegionShot RegionShotInput RegionShotScroll
 RegionShot_FILES = Trigger.xm \
 	Preferences/RSOptions.m \
 	History/RSHistoryStore.m \
@@ -30,6 +30,15 @@ RegionShot_FILES = Trigger.xm \
 RegionShot_CFLAGS = -fobjc-arc -Wall -Wextra -Wno-unused-parameter
 RegionShot_FRAMEWORKS = Foundation UIKit Photos QuartzCore Security PhotosUI UniformTypeIdentifiers Vision CoreImage PencilKit
 
+RegionShotScroll_FILES = Capture/RSScrollCleanup.xm
+RegionShotScroll_CFLAGS = -fobjc-arc -Wall -Wextra
+RegionShotScroll_FRAMEWORKS = UIKit Foundation
+RegionShotInput_FILES = Input/Tweak.xm Input/RSSileo.xm Input/RSInputInterface.m Input/RSInputStream.m Input/RSInputStore.m Input/RSInputTokenView.m Input/RSInputClipboard.m Input/RSInputAnchoredMenuView.m
+RegionShotInput_CFLAGS = -fobjc-arc -Wall -Wextra -Wno-unused-parameter
+RegionShotInput_FRAMEWORKS = UIKit Foundation WebKit
+RegionShotInput_LIBRARIES = roothide
+RegionShot_LIBRARIES = roothide
+RegionShot_FILES += Input/RSInputStore.m Input/RSInputOptionsController.m
 include $(THEOS_MAKE_PATH)/tweak.mk
 SUBPROJECTS += Preferences
 include $(THEOS_MAKE_PATH)/aggregate.mk

@@ -1,3 +1,30 @@
+# RegionShot 0.6.0 开发预览
+
+本版整合 AI 对话/服务配置、微信与 LINE 键盘文字处理、复制分词/搜索引擎和 Sileo 介绍页翻译。
+
+- AI 卡片按最新参考调整：右侧图片/用户气泡，左侧回答；点击模型在同一卡片配置，返回时保存；输入高度 44pt，回复操作图标 14pt。
+- 浮图使用 SpringBoard 的界面目标方向并在旋转后居中；移除选区 44pt 下限，保留 5pt 边缘吸附。
+- 冻结菜单“截屏”保存相册，“复制”仅写剪贴板。移除 CopyOnly/CopyOnSave 配置及运行分支。
+- 截图历史改为居中浮窗，支持来源 App 筛选。旧记录保留，但没有来源资料。
+- 长截图默认自动采样、隐藏原生滚动条、排除顶部状态栏，严格匹配失败时拒绝追加。片段落盘，宽度最多 1080px，默认合成上限 8MP，可设 4–12MP。
+- Sileo 介绍页长按翻译有独立开关和人设选择，默认关闭；支持原生文字及介绍内嵌网页段落。
+
+## 调用入口
+
+- AI：`prefs://root=regionshot_aiwindow`
+- 历史：`prefs://root=regionshot_history`
+- Darwin 通知：`com.moxuan.regionshot/AIWindow`、`com.moxuan.regionshot/History`
+- Snapper 3 历史兼容：`com.jontelang.snapper3.history`，同时接收 Darwin/Distributed 通知。此名称来自 [Snapper 3 作者接口文档](https://github.com/jontelang/Snapper3#notifications)，不是作者提供的 URL。
+
+## 安装与验证范围
+
+安装后重新启动 SpringBoard，并彻底关闭再打开微信、LINE、Sileo 和需要长截图的 App。
+主截图模块只注入 SpringBoard；文字模块只注入 SpringBoard/微信/LINE/Sileo；滚动条模块注入 UIKit App，只在长截图期间改变原生 UIScrollView 滚动条，结束后恢复。
+如已启用独立 KeyboardAI，请关闭其在这些进程中的注入，以免出现两套键盘菜单和复制按钮。
+AI 服务配置返回时会把当前模型、人设与密钥同步到 mobile 所有、0600 权限的 RootHide 共享配置，供 App 内的文字功能使用，保留原 KeyboardAI 的跨 App 工作方式。配置不上传仓库。只在主动点击人设/长按启用的 Sileo 介绍时发送文本；密码框、未完成输入及原文变化的替换保护保留。
+
+本版需要 iOS 15.6 RootHide 真机复测方向、系统边缘手势、设置后台恢复和不同 App 拼接效果。动画视频、重复图案、网页自绘滚动条和固定工具栏不能仅靠合成测试证明完全消除；匹配不可靠时提示用户保留重叠内容后重试，不强行拼错。
+
 # RegionShot 0.5.2
 
 适用 iOS 15.6 / Dopamine RootHide，arm64e。安装后重新启动 SpringBoard。

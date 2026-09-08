@@ -13,7 +13,7 @@ typedef NS_ENUM(NSInteger, RSSelectionDragMode) {
     RSSelectionDragBottomRight,
 };
 
-static const CGFloat RSMinimumSelectionSize = 44.0;
+
 static const CGFloat RSHandleHitRadius = 28.0;
 
 @interface RSSelectionPanGestureRecognizer : UIPanGestureRecognizer
@@ -60,8 +60,8 @@ static const CGFloat RSHandleHitRadius = 28.0;
 }
 
 - (BOOL)hasValidSelection {
-    return CGRectGetWidth(self.selectionRect) >= RSMinimumSelectionSize &&
-           CGRectGetHeight(self.selectionRect) >= RSMinimumSelectionSize;
+    return CGRectGetWidth(self.selectionRect) > 0 &&
+           CGRectGetHeight(self.selectionRect) > 0;
 }
 - (void)selectAll { self.selectionRect = self.bounds; [self setNeedsDisplay]; if (self.selectionChanged) self.selectionChanged(NO); }
 

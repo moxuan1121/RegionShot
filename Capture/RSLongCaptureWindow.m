@@ -1,8 +1,16 @@
 #import "RSLongCaptureWindow.h"
 #import "RSScreenCapture.h"
+#import "../Geometry/RSOrientation.h"
+#import <notify.h>
 #import "../Geometry/RSStitch.h"
 #import "../Preferences/RSOptions.h"
 
+@interface RSLongController : UIViewController @end
+@implementation RSLongController
+- (BOOL)shouldAutorotate { return NO; }
+- (UIInterfaceOrientationMask)supportedInterfaceOrientations { return UIInterfaceOrientationMaskAllButUpsideDown; }
+- (UIInterfaceOrientation)preferredInterfaceOrientationForPresentation { return RSActiveOrientation(self.view.window.windowScene); }
+@end
 @implementation RSLongCaptureWindow {
     CGRect _captureRect;
     CGSize _displaySize;
@@ -19,6 +27,7 @@
     CGFloat _scale;
     BOOL _busy, _closed, _sampling;
     NSTimer *_timer;
+    int _indicatorToken;
     dispatch_queue_t _queue;
 }
 - (instancetype)initWithScene:(UIWindowScene *)scene rect:(CGRect)rect displaySize:(CGSize)size
@@ -28,17 +37,21 @@
     self.frame = scene ? scene.coordinateSpace.bounds : UIScreen.mainScreen.bounds;
     self.windowLevel = UIWindowLevelAlert + 220;
     self.backgroundColor = UIColor.clearColor;
-    _captureRect = rect; _displaySize = size; _capture = [capture copy]; _completion = [completion copy];
+    _indicatorToken = -1;
+    CGFloat statusHeight = scene.statusBarManager.statusBarHidden ? 0 : CGRectGetHeight(scene.statusBarManager.statusBarFrame);
+    CGRect contentRect = CGRectMake(0, MIN(statusHeight, size.height), size.width, MAX(0, size.height - statusHeight));
+    _captureRect = CGRectIntersection(rect, contentRect); _displaySize = size; _capture = [capture copy]; _completion = [completion copy];
     _slices = [NSMutableArray array];
     _queue = dispatch_queue_create("com.moxuan.regionshot.stitch", DISPATCH_QUEUE_SERIAL);
     _directory = [[NSURL fileURLWithPath:NSTemporaryDirectory() isDirectory:YES]
         URLByAppendingPathComponent:[@"RegionShot-" stringByAppendingString:NSUUID.UUID.UUIDString] isDirectory:YES];
-    self.rootViewController = [UIViewController new];
+    self.rootViewController = [RSLongController new];
+    RSApplyWindowOrientation(self, RSActiveOrientation(scene));
     self.rootViewController.view.backgroundColor = UIColor.clearColor;
     _panel = [UIView new]; _panel.backgroundColor = UIColor.secondarySystemBackgroundColor; _panel.layer.cornerRadius = 18;
     [self.rootViewController.view addSubview:_panel];
     _status = [UILabel new]; _status.font = [UIFont systemFontOfSize:12]; _status.numberOfLines = 3;
-    _status.text = @"手动向上滑动页面，再点截取；选区内请避开固定工具栏。";
+    _status.text = @"缓慢向上滚动，自动对齐拼接；结束后点完成。";
     [_panel addSubview:_status];
     _preview = [UIImageView new]; _preview.contentMode = UIViewContentModeScaleAspectFit; [_panel addSubview:_preview];
     NSArray *titles = @[@"截取", @"采样", @"完成", @"取消"];
@@ -53,7 +66,7 @@
 }
 - (void)layoutSubviews {
     [super layoutSubviews];
-    _panel.frame = CGRectMake(MAX(8, self.bounds.size.width - 250), self.safeAreaInsets.top + 8, 242, 144);
+    _panel.frame = CGRectMake(MAX(8, self.rootViewController.view.bounds.size.width - 250), self.safeAreaInsets.top + 8, 242, 144);
     _preview.frame = CGRectMake(8, 8, 62, 84);
     _status.frame = CGRectMake(78, 8, 156, 84);
     for (NSUInteger i = 0; i < 4; i++) [_panel viewWithTag:500 + i].frame = CGRectMake(i * 60, 96, 60, 44);
@@ -66,8 +79,12 @@
     if (![NSFileManager.defaultManager createDirectoryAtURL:_directory withIntermediateDirectories:YES attributes:nil error:&error]) {
         _status.text = error.localizedDescription; self.hidden = NO; return;
     }
+    if (CGRectIsEmpty(_captureRect) || CGRectIsNull(_captureRect)) { _status.text = @"选区只有状态栏，请取消后重新框选正文。"; self.hidden = NO; return; }
     self.hidden = NO;
-    [self captureFrame];
+    if (notify_register_check("com.moxuan.regionshot/LongCaptureState", &_indicatorToken) == NOTIFY_STATUS_OK) {
+        notify_set_state(_indicatorToken, 1); notify_post("com.moxuan.regionshot/LongCaptureState");
+    }
+    [self toggleSampling]; [self captureFrame];
 }
 - (void)toggleSampling {
     _sampling = !_sampling;
@@ -75,12 +92,13 @@
     [_timer invalidate]; _timer = nil;
     if (_sampling) {
         __weak typeof(self) weakSelf = self;
-        _timer = [NSTimer scheduledTimerWithTimeInterval:[RSOption(@"LongInterval") doubleValue] repeats:YES block:^(NSTimer *timer) { [weakSelf captureFrame]; }];
+        _timer = [NSTimer timerWithTimeInterval:[RSOption(@"LongInterval") doubleValue] repeats:YES block:^(NSTimer *timer) { [weakSelf captureFrame]; }];
+        [NSRunLoop.mainRunLoop addTimer:_timer forMode:NSRunLoopCommonModes];
     }
 }
 - (void)captureFrame {
     if (_busy || _closed) return;
-    if (!CGSizeEqualToSize(self.bounds.size, _displaySize)) {
+    if (!CGSizeEqualToSize(self.rootViewController.view.bounds.size, _displaySize)) {
         _status.text = @"屏幕方向已变化，请恢复原方向后继续。"; return;
     }
     _busy = YES;
@@ -107,13 +125,18 @@
     });
 }
 - (void)processImage:(UIImage *)image {
+    if (image.size.width * image.scale > 1080) {
+        CGSize size = CGSizeMake(1080, floor(image.size.height / image.size.width * 1080));
+        UIGraphicsImageRendererFormat *format = UIGraphicsImageRendererFormat.defaultFormat; format.scale = 1; format.opaque = YES;
+        image = [[[UIGraphicsImageRenderer alloc] initWithSize:size format:format] imageWithActions:^(UIGraphicsImageRendererContext *ctx) { [image drawInRect:(CGRect){CGPointZero, size}]; }];
+    }
     CGImageRef cg = image.CGImage;
     if (!cg) { [self processed:@"无法裁剪截图，请重试。" preview:nil]; return; }
     NSUInteger width = CGImageGetWidth(cg), height = CGImageGetHeight(cg);
     if (_slices.count && (width != _width || height != _height)) {
         [self processed:@"截图尺寸改变，请结束后重新开始。" preview:nil]; return;
     }
-    const int stripWidth = 48;
+    const int stripWidth = 96;
     int stripHeight = (int)MIN(height, 4096);
     NSMutableData *strip = [NSMutableData dataWithLength:stripWidth * stripHeight];
     CGColorSpaceRef gray = CGColorSpaceCreateDeviceGray();
@@ -122,11 +145,11 @@
     if (!context) { [self processed:@"内存不足，无法分析截图。" preview:nil]; return; }
     CGContextTranslateCTM(context, 0, stripHeight); CGContextScaleCTM(context, 1, -1);
     CGContextDrawImage(context, CGRectMake(0, 0, stripWidth, stripHeight), cg); CGContextRelease(context);
-    int offset = _previousStrip ? RSStitchOffset(_previousStrip.bytes, strip.bytes, stripWidth, stripHeight, 12) : stripHeight;
+    int offset = _previousStrip ? RSStitchOffset(_previousStrip.bytes, strip.bytes, stripWidth, stripHeight, 6) : stripHeight;
     if (offset == 0) { [self processed:@"页面没有移动；继续向上滑动后截取。" preview:nil]; return; }
     if (offset < 0) { [self processed:@"无法可靠对齐；请回滚少许、保留重叠内容后再截取。" preview:nil]; return; }
     NSUInteger added = _previousStrip ? (NSUInteger)llround((double)offset * height / stripHeight) : height;
-    // ponytail: final UIKit image is bounded to 24 million pixels; tiled file export is the upgrade path.
+    // ponytail: final UIKit image is bounded to 12 million pixels; tiled file export is the upgrade path.
     if (width * (_totalHeight + added) > [RSOption(@"LongMaxMP") doubleValue] * 1000000 || _slices.count >= [RSOption(@"LongMaxSlices") unsignedIntegerValue]) {
         [self processed:@"已达到本次长图上限，请点完成保存。" preview:nil]; return;
     }
@@ -181,6 +204,8 @@
 }
 - (void)cancel {
     if (_closed) return;
+    if (_indicatorToken >= 0) { notify_set_state(_indicatorToken, 0); notify_post("com.moxuan.regionshot/LongCaptureState"); notify_cancel(_indicatorToken); _indicatorToken = -1; }
+    _previousStrip = nil;
     _closed = YES; [_timer invalidate]; _timer = nil; self.hidden = YES;
     _capture = nil;
     NSURL *directory = _directory;

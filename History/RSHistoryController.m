@@ -1,5 +1,6 @@
 #import "RSHistoryController.h"
 #import "RSHistoryStore.h"
+#import <objc/message.h>
 #import "../Preferences/RSOptions.h"
 #import "../AI/RSChatController.h"
 
@@ -47,6 +48,24 @@ static RSHistoryStore *RSStore(void) {
 }
 @end
 
+@interface RSHistoryPanel : UIViewController
+@property (nonatomic, strong) UINavigationController *navigation;
+@end
+@implementation RSHistoryPanel
+- (void)viewDidLoad {
+    [super viewDidLoad]; self.view.backgroundColor = [UIColor colorWithWhite:0 alpha:0.35];
+    [self addChildViewController:self.navigation];
+    UIView *panel = self.navigation.view; panel.translatesAutoresizingMaskIntoConstraints = NO;
+    panel.layer.cornerRadius = 20; panel.clipsToBounds = YES;
+    [self.view addSubview:panel]; [self.navigation didMoveToParentViewController:self];
+    UILayoutGuide *safe = self.view.safeAreaLayoutGuide;
+    [NSLayoutConstraint activateConstraints:@[
+        [panel.centerXAnchor constraintEqualToAnchor:safe.centerXAnchor], [panel.centerYAnchor constraintEqualToAnchor:safe.centerYAnchor],
+        [panel.widthAnchor constraintEqualToAnchor:safe.widthAnchor multiplier:0.82],
+        [panel.heightAnchor constraintEqualToAnchor:safe.heightAnchor multiplier:0.64]]];
+}
+@end
+
 @interface RSHistoryController () <UISearchResultsUpdating>
 @property (nonatomic, strong) UIWindow *host;
 @property (nonatomic, weak) UIWindow *previous;
@@ -56,6 +75,8 @@ static RSHistoryStore *RSStore(void) {
 @property (nonatomic, strong) NSCache *thumbnails;
 @property (nonatomic, copy) void (^restore)(UIImage *, UIWindowScene *);
 @property (nonatomic) BOOL loading;
+@property (nonatomic, copy) NSString *sourceFilter;
+@property (nonatomic, strong) UIStackView *filters;
 @end
 static RSHistoryController *RSActiveHistory;
 @implementation RSHistoryController
@@ -63,6 +84,14 @@ static RSHistoryController *RSActiveHistory;
     if (![RSOption(@"HistoryEnabled") boolValue]) return;
     NSUInteger count = [RSOption(@"HistoryCount") unsignedIntegerValue];
     NSUInteger bytes = [RSOption(@"HistoryMB") unsignedIntegerValue] * 1024 * 1024;
+    id app = nil;
+    SEL front = NSSelectorFromString(@"_accessibilityFrontMostApplication");
+    if ([UIApplication.sharedApplication respondsToSelector:front]) app = ((id (*)(id, SEL))objc_msgSend)(UIApplication.sharedApplication, front);
+    NSString *name = @"截图", *source = @"";
+    if ([app respondsToSelector:NSSelectorFromString(@"displayName")]) name = ((id (*)(id, SEL))objc_msgSend)(app, NSSelectorFromString(@"displayName")) ?: name;
+    if ([app respondsToSelector:NSSelectorFromString(@"bundleIdentifier")]) source = ((id (*)(id, SEL))objc_msgSend)(app, NSSelectorFromString(@"bundleIdentifier")) ?: source;
+    if (name.length > 200) name = [name substringToIndex:200];
+    if (source.length > 200) source = @"";
     dispatch_async(RSHistoryQueue(), ^{ @autoreleasepool {
         NSData *png = UIImagePNGRepresentation(image);
         CGFloat factor = MIN(160 / image.size.width, 160 / image.size.height);
@@ -70,7 +99,7 @@ static RSHistoryController *RSActiveHistory;
         UIGraphicsImageRendererFormat *format = UIGraphicsImageRendererFormat.defaultFormat; format.scale = 1;
         UIImage *thumb = [[[UIGraphicsImageRenderer alloc] initWithSize:size format:format] imageWithActions:^(UIGraphicsImageRendererContext *ctx) { [image drawInRect:(CGRect){CGPointZero, size}]; }];
         NSError *error = nil;
-        [RSStore() addImage:png thumbnail:UIImagePNGRepresentation(thumb) title:@"截图" countLimit:count byteLimit:bytes error:&error];
+        [RSStore() addImage:png thumbnail:UIImagePNGRepresentation(thumb) title:name source:source countLimit:count byteLimit:bytes error:&error];
         dispatch_async(dispatch_get_main_queue(), ^{ if (completion) completion(error); [RSActiveHistory reloadHistory]; });
     } });
 }
@@ -81,19 +110,23 @@ static RSHistoryController *RSActiveHistory;
         if (![scene isKindOfClass:UIWindowScene.class]) continue;
         for (UIWindow *window in ((UIWindowScene *)scene).windows) if (window.isKeyWindow) previous = window;
     }
-    RSHistoryController *controller = [[self alloc] initWithStyle:UITableViewStyleInsetGrouped];
+    RSHistoryController *controller = [[self alloc] initWithStyle:UITableViewStylePlain];
     controller.previous = previous; controller.restore = restore;
     UIWindowScene *scene = previous.windowScene;
     controller.host = scene ? [[UIWindow alloc] initWithWindowScene:scene] : [[UIWindow alloc] initWithFrame:UIScreen.mainScreen.bounds];
     controller.host.frame = scene ? scene.coordinateSpace.bounds : UIScreen.mainScreen.bounds;
     controller.host.windowLevel = UIWindowLevelAlert + 160;
-    controller.host.rootViewController = [[UINavigationController alloc] initWithRootViewController:controller];
+    RSHistoryPanel *panel = [RSHistoryPanel new];
+    panel.navigation = [[UINavigationController alloc] initWithRootViewController:controller];
+    controller.host.backgroundColor = UIColor.clearColor;
+    controller.host.rootViewController = panel;
     RSActiveHistory = controller; [controller.host makeKeyAndVisible];
 }
 - (void)viewDidLoad {
     [super viewDidLoad]; self.title = @"截图历史";
     self.thumbnails = [NSCache new]; self.thumbnails.countLimit = 30;
-    self.tableView.rowHeight = 76;
+    self.tableView.rowHeight = 92;
+    self.tableView.backgroundColor = UIColor.systemBackgroundColor;
     self.search = [[UISearchController alloc] initWithSearchResultsController:nil];
     self.search.searchResultsUpdater = self; self.search.obscuresBackgroundDuringPresentation = NO;
     self.search.searchBar.placeholder = @"搜索名称或日期";
@@ -116,9 +149,33 @@ static RSHistoryController *RSActiveHistory;
     __weak typeof(self) weakSelf = self;
     dispatch_async(RSHistoryQueue(), ^{
         NSArray *entries = RSStore().entries;
-        dispatch_async(dispatch_get_main_queue(), ^{ weakSelf.entries = entries; [weakSelf updateSearchResultsForSearchController:weakSelf.search]; });
+        dispatch_async(dispatch_get_main_queue(), ^{ weakSelf.entries = entries; [weakSelf rebuildFilters]; [weakSelf updateSearchResultsForSearchController:weakSelf.search]; });
     });
 }
+- (void)rebuildFilters {
+    UIScrollView *scroll = [[UIScrollView alloc] initWithFrame:CGRectMake(0, 0, self.tableView.bounds.size.width, 54)];
+    scroll.showsHorizontalScrollIndicator = NO;
+    UIStackView *stack = [UIStackView new]; stack.spacing = 8; stack.translatesAutoresizingMaskIntoConstraints = NO;
+    [scroll addSubview:stack]; self.filters = stack;
+    NSMutableOrderedSet *sources = [NSMutableOrderedSet orderedSetWithObject:@""];
+    for (NSDictionary *entry in self.entries) if ([entry[@"source"] isKindOfClass:NSString.class] && [entry[@"source"] length]) [sources addObject:entry[@"source"]];
+    for (NSString *source in sources) {
+        UIButton *button = [UIButton buttonWithType:UIButtonTypeSystem]; button.accessibilityIdentifier = source;
+        NSString *name = @"全部";
+        for (NSDictionary *entry in self.entries) if ([entry[@"source"] isEqual:source]) { name = entry[@"title"]; break; }
+        SEL iconSelector = NSSelectorFromString(@"_applicationIconImageForBundleIdentifier:format:scale:");
+        UIImage *icon = source.length && [UIImage respondsToSelector:iconSelector] ? ((id (*)(id, SEL, id, int, CGFloat))objc_msgSend)(UIImage.class, iconSelector, source, 0, UIScreen.mainScreen.scale) : nil;
+        if (icon) { [button setImage:icon forState:UIControlStateNormal]; button.imageView.contentMode = UIViewContentModeScaleAspectFit; button.imageEdgeInsets = UIEdgeInsetsMake(6, 8, 6, 8); }
+        else { [button setTitle:source.length ? name : @"全部" forState:UIControlStateNormal]; button.titleLabel.font = [UIFont systemFontOfSize:12]; }
+        button.accessibilityLabel = name; button.layer.cornerRadius = 10;
+        button.backgroundColor = [source isEqual:self.sourceFilter ?: @""] ? UIColor.systemGray4Color : UIColor.secondarySystemBackgroundColor;
+        [button.widthAnchor constraintEqualToConstant:50].active = YES; [button.heightAnchor constraintEqualToConstant:44].active = YES;
+        [button addTarget:self action:@selector(filterSource:) forControlEvents:UIControlEventTouchUpInside]; [stack addArrangedSubview:button];
+    }
+    [NSLayoutConstraint activateConstraints:@[[stack.leadingAnchor constraintEqualToAnchor:scroll.contentLayoutGuide.leadingAnchor constant:8], [stack.trailingAnchor constraintEqualToAnchor:scroll.contentLayoutGuide.trailingAnchor constant:-8], [stack.topAnchor constraintEqualToAnchor:scroll.contentLayoutGuide.topAnchor constant:5], [stack.bottomAnchor constraintEqualToAnchor:scroll.contentLayoutGuide.bottomAnchor constant:-5]]];
+    self.tableView.tableHeaderView = scroll;
+}
+- (void)filterSource:(UIButton *)button { self.sourceFilter = button.accessibilityIdentifier; [self rebuildFilters]; [self updateSearchResultsForSearchController:self.search]; }
 - (NSString *)dateText:(NSDictionary *)entry {
     NSDateFormatter *format = [NSDateFormatter new]; format.dateFormat = @"yyyy-MM-dd HH:mm:ss";
     return [format stringFromDate:entry[@"date"]];
@@ -126,6 +183,7 @@ static RSHistoryController *RSActiveHistory;
 - (void)updateSearchResultsForSearchController:(UISearchController *)search {
     NSString *query = search.searchBar.text ?: @"";
     self.filtered = [self.entries filteredArrayUsingPredicate:[NSPredicate predicateWithBlock:^BOOL(NSDictionary *entry, NSDictionary *bindings) {
+        if (self.sourceFilter.length && ![entry[@"source"] isEqual:self.sourceFilter]) return NO;
         return !query.length || [entry[@"title"] localizedCaseInsensitiveContainsString:query] || [[self dateText:entry] containsString:query];
     }]];
     UILabel *empty = [UILabel new]; empty.textAlignment = NSTextAlignmentCenter; empty.numberOfLines = 0;

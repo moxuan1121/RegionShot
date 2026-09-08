@@ -5,6 +5,7 @@
 - (instancetype)initWithDirectory:(NSURL *)directory;
 - (NSArray<NSDictionary *> *)entries;
 - (BOOL)addImage:(NSData *)image thumbnail:(NSData *)thumbnail title:(NSString *)title countLimit:(NSUInteger)countLimit byteLimit:(NSUInteger)byteLimit error:(NSError **)error;
+- (BOOL)addImage:(NSData *)image thumbnail:(NSData *)thumbnail title:(NSString *)title source:(NSString *)source countLimit:(NSUInteger)countLimit byteLimit:(NSUInteger)byteLimit error:(NSError **)error;
 - (NSData *)dataForID:(NSString *)identifier thumbnail:(BOOL)thumbnail error:(NSError **)error;
 - (BOOL)renameID:(NSString *)identifier title:(NSString *)title error:(NSError **)error;
 - (BOOL)removeIDs:(NSArray<NSString *> *)identifiers error:(NSError **)error;

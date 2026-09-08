@@ -39,8 +39,11 @@
     return [entries sortedArrayUsingDescriptors:@[[NSSortDescriptor sortDescriptorWithKey:@"date" ascending:NO]]];
 }
 - (BOOL)addImage:(NSData *)image thumbnail:(NSData *)thumbnail title:(NSString *)title countLimit:(NSUInteger)countLimit byteLimit:(NSUInteger)byteLimit error:(NSError **)error {
+    return [self addImage:image thumbnail:thumbnail title:title source:@"" countLimit:countLimit byteLimit:byteLimit error:error];
+}
+- (BOOL)addImage:(NSData *)image thumbnail:(NSData *)thumbnail title:(NSString *)title source:(NSString *)source countLimit:(NSUInteger)countLimit byteLimit:(NSUInteger)byteLimit error:(NSError **)error {
     NSUInteger bytes = image.length + thumbnail.length + 8192;
-    if (!image.length || !thumbnail.length || !countLimit || bytes > byteLimit || title.length > 200) {
+    if (!image.length || !thumbnail.length || !countLimit || bytes > byteLimit || title.length > 200 || source.length > 200) {
         if (error) *error = [NSError errorWithDomain:@"RegionShot.History" code:1 userInfo:@{NSLocalizedDescriptionKey:@"此图片超过历史容量上限，未写入历史；当前浮图仍可保存。"}];
         return NO;
     }
@@ -50,7 +53,7 @@
     NSURL *folder = [self folder:identifier];
     NSURL *staging = [_directory URLByAppendingPathComponent:[@"." stringByAppendingString:identifier] isDirectory:YES];
     if (![files createDirectoryAtURL:staging withIntermediateDirectories:NO attributes:@{NSFilePosixPermissions:@0700} error:error]) return NO;
-    NSDictionary *entry = @{@"id":identifier, @"title":title ?: @"截图", @"date":NSDate.date, @"bytes":@(bytes)};
+    NSDictionary *entry = @{@"id":identifier, @"title":title ?: @"截图", @"date":NSDate.date, @"bytes":@(bytes), @"source":source ?: @""};
     NSData *metadata = [NSPropertyListSerialization dataWithPropertyList:entry format:NSPropertyListBinaryFormat_v1_0 options:0 error:error];
     BOOL saved = metadata && [image writeToURL:[staging URLByAppendingPathComponent:@"image.png"] options:NSDataWritingAtomic error:error] &&
         [thumbnail writeToURL:[staging URLByAppendingPathComponent:@"thumb.png"] options:NSDataWritingAtomic error:error] &&

@@ -5,12 +5,13 @@
 #import "RSKAOptions.h"
 #import "RSKAAnchoredMenuView.h"
 #import "../Geometry/RSOrientation.h"
-static NSDictionary *RSKAConfig(void) { return @{}; }
+#import "../Input/RSInputStore.h"
+static NSDictionary *RSKAConfig(void) { return RSInputConfig(); }
 static void RSKAOpenSearchEngine(NSDictionary *engine, NSString *text) {
     NSURL *url = RSKASearchURL(engine[@"engine"], text);
     if (url) [UIApplication.sharedApplication openURL:url options:@{} completionHandler:nil];
 }
-static void RSKAOpenSearch(NSString *text) { RSKAOpenSearchEngine(RSKASearchEngines(@{}).firstObject, text); }
+static void RSKAOpenSearch(NSString *text) { RSKAOpenSearchEngine(RSKASearchEngines(RSKAConfig()).firstObject, text); }
 void RSKASelectionFeedback(void) {
     static UISelectionFeedbackGenerator *feedback;
     static dispatch_once_t once;
@@ -294,7 +295,7 @@ static UIWindowLevel RSKAPanelWindowLevel(NSDictionary *options, NSString *key) 
         RSKAAnchoredMenuView *menu = [RSKAAnchoredMenuView new];
         menu.menuWidth = 180; menu.centersTitles = YES; menu.presentsBelowSource = YES; menu.animatesDismissal = YES;
         NSString *text = [self actionText]; __weak RSKAPanel *weakSelf = self;
-        for (NSDictionary *engine in RSKASearchEngines(@{}))
+        for (NSDictionary *engine in RSKASearchEngines(RSKAConfig()))
             [menu addItemWithTitle:engine[@"name"] image:[UIImage systemImageNamed:@"magnifyingglass"] destructive:NO handler:^{ [weakSelf close]; RSKAOpenSearchEngine(engine, text); }];
         self.searchMenu = menu;
         [menu presentFromView:self.replaceButton inView:self.overlayWindow.rootViewController.view];
@@ -331,6 +332,9 @@ void RSKAUpdateAnswer(NSString *text, BOOL finished, NSString *error) {
     [panel updateTokenActions];
 }
 void RSKAOpenTokens(NSString *text) {
+    NSMutableDictionary *request = [@{@"text":text ?: @""} mutableCopy];
+    [NSNotificationCenter.defaultCenter postNotificationName:@"com.moxuan.regionshot.input.tokens" object:request];
+    if ([request[@"handled"] boolValue]) return;
     RSKAPanel *panel = RSKASharedPanel(); [panel close]; if (!text.length || ![panel show]) return;
     panel.result = text; panel.completedResult = YES; panel.generating = NO;
     [panel displayText:text]; [panel enterTokens];

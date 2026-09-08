@@ -1,9 +1,19 @@
 #import "RSFloatingWindow.h"
+#import "RSFloatingImageView.h"
 #import "../Geometry/RSOrientation.h"
 
 @interface RSFloatingController : UIViewController
+@property (nonatomic) BOOL centerImages;
 @end
 @implementation RSFloatingController
+- (void)viewDidLayoutSubviews {
+    [super viewDidLayoutSubviews];
+    if (!self.centerImages) return;
+    self.centerImages = NO;
+    CGPoint center = CGPointMake(CGRectGetMidX(self.view.bounds), CGRectGetMidY(self.view.bounds));
+    for (UIView *view in self.view.subviews)
+        if ([view isKindOfClass:RSFloatingImageView.class]) view.center = center;
+}
 - (BOOL)shouldAutorotate { return NO; }
 - (BOOL)autorotate { return NO; }
 - (UIInterfaceOrientationMask)supportedInterfaceOrientations { return UIInterfaceOrientationMaskAllButUpsideDown; }
@@ -21,8 +31,7 @@
     UIViewController *controller = [RSFloatingController new];
     controller.view.backgroundColor = UIColor.clearColor;
     self.rootViewController = controller;
-    [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(deviceRotated:) name:UIDeviceOrientationDidChangeNotification object:nil];
-    [UIDevice.currentDevice beginGeneratingDeviceOrientationNotifications];
+    [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(deviceRotated:) name:@"com.moxuan.regionshot.orientation" object:nil];
     [self updateOrientation];
 }
 
@@ -41,14 +50,15 @@
     return self;
 }
 
-- (void)dealloc { [UIDevice.currentDevice endGeneratingDeviceOrientationNotifications]; }
 - (void)deviceRotated:(NSNotification *)note {
-    UIInterfaceOrientation orientation = (UIInterfaceOrientation)RSInterfaceOrientationFromDevice((int)UIDevice.currentDevice.orientation);
-    if (self.hidden || orientation == UIInterfaceOrientationUnknown) return;
-    // Use this event's target, not SpringBoard's still-previous orientation.
+    if (self.hidden) return;
+    // SpringBoard supplies its interface target; never infer it from accelerometer names.
+    NSNumber *target = note.userInfo[@"orientation"];
+    UIInterfaceOrientation orientation = target ? target.integerValue : RSActiveOrientation(self.windowScene);
+    RSFloatingController *controller = (RSFloatingController *)self.rootViewController;
+    controller.centerImages = YES;
     RSApplyWindowOrientation(self, orientation);
-    [self.rootViewController.view setNeedsLayout];
-    [self.rootViewController.view layoutIfNeeded];
+    [controller.view setNeedsLayout]; [controller.view layoutIfNeeded];
 }
 - (void)updateOrientation {
     if (self.hidden) return;

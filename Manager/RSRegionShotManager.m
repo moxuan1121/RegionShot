@@ -272,8 +272,6 @@
 
 - (void)saveImage:(UIImage *)image { [self saveImage:image completion:nil]; }
 - (void)saveImage:(UIImage *)image completion:(dispatch_block_t)completion {
-    if ([RSOption(@"CopyOnSave") boolValue] || [RSOption(@"CopyOnly") boolValue]) UIPasteboard.generalPasteboard.image = image;
-    if ([RSOption(@"CopyOnly") boolValue]) { [self notice:@"已复制图片"]; if (completion) completion(); return; }
     PHAuthorizationStatus status = [PHPhotoLibrary authorizationStatusForAccessLevel:PHAccessLevelAddOnly];
     if (status == PHAuthorizationStatusNotDetermined) {
         __weak typeof(self) weakSelf = self;

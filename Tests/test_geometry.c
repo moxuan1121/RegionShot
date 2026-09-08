@@ -1,6 +1,7 @@
 #include "../Geometry/RSGeometry.h"
 #include <assert.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 int main(void) {
     RSRectD nearEdge = RSSnapSelection((RSRectD){5, 5, 420, 916}, 428, 926, 0);
@@ -48,6 +49,10 @@ int main(void) {
         RSRectD r = RSRectAroundAnchor(200, 300, x, y, 428, 926);
         assert(r.width == 100 && r.height == 100);
         assert(r.x == fmin(200, x) && r.y == fmin(300, y));
+    }
+    for (int delta = -2; delta <= 2; delta++) {
+        RSRectD small = RSRectAroundAnchor(200, 300, 200 + delta, 301, 428, 926);
+        assert(small.width == abs(delta) && small.height == 1);
     }
     RSRectD edge = RSRectAroundAnchor(200, 300, 250, -20, 428, 926);
     assert(edge.y == 0 && edge.height == 300);

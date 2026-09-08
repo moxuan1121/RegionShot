@@ -1,3 +1,4 @@
+#import "../Input/RSInputStore.h"
 #import "RSAISettingsController.h"
 #import "../Preferences/RSOptions.h"
 
@@ -56,6 +57,11 @@ NSString *RSAIPersonaPrompt(BOOL imageQuestion) {
     return @"";
 }
 
+static BOOL RSPublishInputSettings(void) {
+    NSUserDefaults *prefs = RSAIPreferences(); NSMutableArray *actions = [NSMutableArray array];
+    for (NSDictionary *persona in RSAIPersonas()) [actions addObject:@{@"title":persona[@"name"] ?: @"AI", @"prompt":persona[@"prompt"] ?: @""}];
+    return RSInputSaveConfig(@{@"endpoint":[prefs stringForKey:@"AIEndpoint"] ?: @"", @"model":[prefs stringForKey:@"AIModel"] ?: @"", @"actions":actions, @"fastResponse":RSOption(@"AIFastResponse")}, RSAIReadKey() ?: @"");
+}
 @interface RSAIPersonaEditor : UIViewController <UITextViewDelegate>
 @property (nonatomic, strong) UITextField *nameField;
 @property (nonatomic, strong) UITextView *promptView;
@@ -133,7 +139,7 @@ NSString *RSAIPersonaPrompt(BOOL imageQuestion) {
     }]; [self.navigationController pushViewController:editor animated:YES];
 }
 - (void)reset { self.personas = [RSAIDefaultPersonas() mutableCopy]; [self persist]; [self.tableView reloadData]; }
-- (void)persist { [RSAIPreferences() setObject:self.personas.copy forKey:@"AIPersonas"]; [RSAIPreferences() synchronize]; }
+- (void)persist { [RSAIPreferences() setObject:self.personas.copy forKey:@"AIPersonas"]; [RSAIPreferences() synchronize]; RSPublishInputSettings(); }
 @end
 
 @interface RSAIBallSettingsController : UITableViewController
@@ -207,8 +213,10 @@ NSString *RSAIPersonaPrompt(BOOL imageQuestion) {
     } return self;
 }
 - (void)viewDidLoad {
-    [super viewDidLoad]; self.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithTitle:@"返回" style:UIBarButtonItemStylePlain target:self action:@selector(cancel)];
-    self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithTitle:@"确认" style:UIBarButtonItemStyleDone target:self action:@selector(save)];
+    [super viewDidLoad];
+    UIScreenEdgePanGestureRecognizer *back = [[UIScreenEdgePanGestureRecognizer alloc] initWithTarget:self action:@selector(backSwipe:)];
+    back.edges = UIRectEdgeLeft; [self.view addGestureRecognizer:back];
+    self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithTitle:@"返回" style:UIBarButtonItemStylePlain target:self action:@selector(save)];
 }
 - (void)viewWillAppear:(BOOL)animated { [super viewWillAppear:animated]; [self.tableView reloadData]; }
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView { return tableView == self.modelTable ? 1 : 4; }
@@ -308,7 +316,11 @@ NSString *RSAIPersonaPrompt(BOOL imageQuestion) {
     NSURL *url = [NSURL URLWithString:self.endpoint]; if (![url.scheme.lowercaseString isEqual:@"https"] || !url.host.length || url.user || url.password || !self.model.length) { [self show:@"请填写有效的 HTTPS 服务地址和模型名称。"]; return; }
     OSStatus status = RSAIWriteKey(self.key ?: @""); if (status != errSecSuccess) { [self show:[NSString stringWithFormat:@"钥匙串保存失败（%d）。", (int)status]]; return; }
     NSUserDefaults *prefs = RSAIPreferences(); [prefs setObject:self.endpoint forKey:@"AIEndpoint"]; [prefs setObject:self.model forKey:@"AIModel"]; [prefs setObject:self.models forKey:@"AIModels"]; [prefs synchronize];
-    if (self.navigationController.viewControllers.firstObject != self) [self.navigationController popViewControllerAnimated:YES]; else [self dismissViewControllerAnimated:YES completion:self.saved];
+    if (!RSPublishInputSettings()) { [self show:@"AI 配置已保存，但微信、LINE 共享配置写入失败，请检查权限后重试。"]; return; }
+    if (self.navigationController.viewControllers.firstObject != self) [self.navigationController popViewControllerAnimated:YES]; else if (self.navigationController.parentViewController) { if (self.saved) self.saved(); } else [self dismissViewControllerAnimated:YES completion:self.saved];
 }
-- (void)cancel { if (self.navigationController.viewControllers.firstObject != self) [self.navigationController popViewControllerAnimated:YES]; else [self dismissViewControllerAnimated:YES completion:self.saved]; }
+- (void)backSwipe:(UIScreenEdgePanGestureRecognizer *)gesture {
+    if (gesture.state == UIGestureRecognizerStateEnded && [gesture translationInView:self.view].x > 45) [self save];
+}
+- (void)cancel { [self save]; }
 @end

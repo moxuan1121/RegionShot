@@ -28,7 +28,7 @@ bundle = 'Library/PreferenceBundles/' + loader['bundle'] + '.bundle/'
 info = plistlib.loads(files[bundle + 'Info.plist'])
 assert loader['detail'] == info['NSPrincipalClass'] == 'RSPreferences'
 assert info['CFBundleVersion'] == control['Version'].removesuffix('-roothide')
-for path in ['Library/MobileSubstrate/DynamicLibraries/RegionShot.dylib', bundle + info['CFBundleExecutable']]:
+for path in ['Library/MobileSubstrate/DynamicLibraries/' + name + '.dylib' for name in ['RegionShot', 'RegionShotInput', 'RegionShotScroll']] + [bundle + info['CFBundleExecutable']]:
     binary = files[path]
     assert struct.unpack_from('<III', binary) == (0xfeedfacf, 0x100000c, 0x80000002), path
     offset, signed = 32, False

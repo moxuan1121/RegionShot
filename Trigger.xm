@@ -90,6 +90,10 @@ static char RSStatusBarGestureKey;
 // Broadcast the actual SpringBoard orientation change to live overlays.
 %group RSOrientationUpdates
 %hook SpringBoard
+- (void)noteInterfaceOrientationChanged:(long long)orientation duration:(double)duration updateMirroredDisplays:(BOOL)update force:(BOOL)force logMessage:(id)message {
+    %orig;
+    [NSNotificationCenter.defaultCenter postNotificationName:@"com.moxuan.regionshot.orientation" object:nil userInfo:@{@"orientation":@(orientation)}];
+}
 - (void)_postActiveInterfaceOrientationChangedNotificationAnimated:(BOOL)animated {
     %orig;
     dispatch_async(dispatch_get_main_queue(), ^{
@@ -148,8 +152,11 @@ static BOOL RSCompatible(Class cls, NSString *name, const char *argumentTypes) {
 }
 static void RSPreferenceEvent(CFNotificationCenterRef center, void *observer, CFStringRef name,
                               const void *object, CFDictionaryRef info) {
-    if (CFEqual(name, CFSTR("com.moxuan.regionshot/History"))) {
+    if ((CFEqual(name, CFSTR("com.moxuan.regionshot/History")) || CFEqual(name, CFSTR("com.jontelang.snapper3.history")))) {
         dispatch_async(dispatch_get_main_queue(), ^{ [RSRegionShotManager.sharedManager showHistory]; }); return;
+    }
+    if (CFEqual(name, CFSTR("com.moxuan.regionshot/AIWindow"))) {
+        dispatch_async(dispatch_get_main_queue(), ^{ [RSChatController showImage:nil scene:nil]; }); return;
     }
     if (CFEqual(name, CFSTR("com.moxuan.regionshot/AISettings"))) {
         dispatch_async(dispatch_get_main_queue(), ^{ [RSChatController showServiceSettings]; });
@@ -192,7 +199,7 @@ static void RSPreferenceEvent(CFNotificationCenterRef center, void *observer, CF
             NSLog(@"[RegionShot] frozen system touch gate installed");
         } else NSLog(@"[RegionShot] frozen system touch gate unavailable");
         Class app = NSClassFromString(@"SpringBoard");
-        if (RSCompatible(app, @"_postActiveInterfaceOrientationChangedNotificationAnimated:", "Bc")) { %init(RSOrientationUpdates); }
+        if (RSCompatible(app, @"_postActiveInterfaceOrientationChangedNotificationAnimated:", "Bc") && [app instancesRespondToSelector:NSSelectorFromString(@"noteInterfaceOrientationChanged:duration:updateMirroredDisplays:force:logMessage:")]) { %init(RSOrientationUpdates); }
         Class hardware = NSClassFromString(@"SBCombinationHardwareButtonActions");
         BOOL direct = RSCompatible(app, @"takeScreenshot", NULL);
         BOOL edit = RSCompatible(app, @"takeScreenshotAndEdit:", "Bc");
@@ -207,6 +214,13 @@ static void RSPreferenceEvent(CFNotificationCenterRef center, void *observer, CF
         if (notify_register_check(RS_CAPTURE_CHECK, &RSCheckToken) != NOTIFY_STATUS_OK) RSCheckToken = -1;
         if (notify_register_check(RS_CAPTURE_STATUS, &RSStatusToken) != NOTIFY_STATUS_OK) RSStatusToken = -1;
         CFNotificationCenterRef center = CFNotificationCenterGetDarwinNotifyCenter();
+        CFNotificationCenterAddObserver(center, NULL, RSPreferenceEvent, CFSTR("com.moxuan.regionshot/AIWindow"), NULL, CFNotificationSuspensionBehaviorDeliverImmediately);
+        CFNotificationCenterAddObserver(center, NULL, RSPreferenceEvent, CFSTR("com.jontelang.snapper3.history"), NULL, CFNotificationSuspensionBehaviorDeliverImmediately);
+        Class distributed = NSClassFromString(@"NSDistributedNotificationCenter");
+        if ([distributed respondsToSelector:@selector(defaultCenter)]) {
+            id notifications = [distributed performSelector:@selector(defaultCenter)];
+            [notifications addObserverForName:@"com.jontelang.snapper3.history" object:nil queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification *note) { [RSRegionShotManager.sharedManager showHistory]; }];
+        }
         CFNotificationCenterAddObserver(center, NULL, RSPreferenceEvent, CFSTR("com.moxuan.regionshot/History"), NULL, CFNotificationSuspensionBehaviorDeliverImmediately);
         CFNotificationCenterAddObserver(center, NULL, RSPreferenceEvent, CFSTR("com.moxuan.regionshot/AISettings"), NULL, CFNotificationSuspensionBehaviorDeliverImmediately);
         CFNotificationCenterAddObserver(center, NULL, RSPreferenceEvent, CFSTR(RS_CAPTURE_CHECK), NULL, CFNotificationSuspensionBehaviorDeliverImmediately);

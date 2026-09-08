@@ -1,3 +1,6 @@
+#import <UIKit/UIKit.h>
+extern UIViewController *RSInputCreateOptions(BOOL search);
+extern UIViewController *RSCreateSileoSettings(void);
 #import "../AI/RSAISettingsController.h"
 #import <Preferences/PSListController.h>
 #import <Preferences/PSSpecifier.h>
@@ -7,12 +10,13 @@
 @interface RSPreferences : PSListController
 @property (nonatomic, strong) PSSpecifier *diagnosticGroup;
 @property (nonatomic) BOOL diagnosticPending;
+@property (nonatomic, strong) UINavigationController *pageNavigation;
 @end
 @implementation RSPreferences
 - (NSArray *)specifiers {
     if (_specifiers) return _specifiers;
     NSMutableArray *items = [NSMutableArray array];
-    PSSpecifier *group = [PSSpecifier groupSpecifierWithName:@"RegionShot 0.5.2"];
+    PSSpecifier *group = [PSSpecifier groupSpecifierWithName:@"RegionShot 0.6.0"];
     [group setProperty:@"侧边键 + 音量加进入区域截图。安装后需重新启动 SpringBoard。关闭开关恢复系统截图。" forKey:@"footerText"];
     [items addObject:group];
     PSSpecifier *enabled = [PSSpecifier preferenceSpecifierNamed:@"启用区域截图" target:self set:@selector(setPreferenceValue:specifier:) get:@selector(readPreferenceValue:) detail:nil cell:PSSwitchCell edit:nil];
@@ -28,8 +32,11 @@
     [items addObject:[PSSpecifier groupSpecifierWithName:@"功能参数"]];
     PSSpecifier *options = [PSSpecifier preferenceSpecifierNamed:@"截图、浮图、历史、长图与 AI" target:self set:nil get:nil detail:nil cell:PSButtonCell edit:nil];
     options.buttonAction = @selector(openOptions); [items addObject:options];
-    PSSpecifier *ai = [PSSpecifier preferenceSpecifierNamed:@"配置 AI 服务、模型与密钥" target:self set:nil get:nil detail:nil cell:PSButtonCell edit:nil];
+    PSSpecifier *ai = [PSSpecifier preferenceSpecifierNamed:@"AI 对话与服务配置" target:self set:nil get:nil detail:nil cell:PSButtonCell edit:nil];
     ai.buttonAction = @selector(openAI); [items addObject:ai];
+    PSSpecifier *sileo = [PSSpecifier preferenceSpecifierNamed:@"Sileo 介绍页翻译" target:self set:nil get:nil detail:nil cell:PSButtonCell edit:nil]; sileo.buttonAction = @selector(openSileo); [items addObject:sileo];
+    PSSpecifier *tokens = [PSSpecifier preferenceSpecifierNamed:@"分词按钮与窗口" target:self set:nil get:nil detail:nil cell:PSButtonCell edit:nil]; tokens.buttonAction = @selector(openTokens); [items addObject:tokens];
+    PSSpecifier *search = [PSSpecifier preferenceSpecifierNamed:@"搜索引擎" target:self set:nil get:nil detail:nil cell:PSButtonCell edit:nil]; search.buttonAction = @selector(openSearch); [items addObject:search];
     [items addObject:[PSSpecifier groupSpecifierWithName:@"截图记录"]];
     PSSpecifier *history = [PSSpecifier preferenceSpecifierNamed:@"截图历史" target:self set:nil get:nil detail:nil cell:PSButtonCell edit:nil];
     history.buttonAction = @selector(openHistory); [items addObject:history];
@@ -55,11 +62,31 @@
     [prefs setObject:value forKey:[specifier propertyForKey:@"key"]]; [prefs synchronize];
     CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(), CFSTR("com.moxuan.regionshot/ReloadPrefs"), NULL, NULL, YES);
 }
-- (void)openMenu { [self.navigationController pushViewController:[RSMenuSettings new] animated:YES]; }
-- (void)openFrozenMenu { RSMenuSettings *settings = [RSMenuSettings new]; settings.frozenMenu = YES; [self.navigationController pushViewController:settings animated:YES]; }
-- (void)openFloatingMenu { RSMenuSettings *settings = [RSMenuSettings new]; settings.floatingMenu = YES; [self.navigationController pushViewController:settings animated:YES]; }
-- (void)openOptions { [self.navigationController pushViewController:[RSBehaviorSettings new] animated:YES]; }
-- (void)openAI { [self.navigationController pushViewController:[[RSAISettingsController alloc] initWithSaved:^{}] animated:YES]; }
+- (void)openPage:(UIViewController *)page {
+    if (self.pageNavigation) return;
+    UINavigationController *navigation = [[UINavigationController alloc] initWithRootViewController:page];
+    self.pageNavigation = navigation;
+    [self addChildViewController:navigation]; navigation.view.frame = self.view.bounds;
+    navigation.view.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+    [self.view addSubview:navigation.view]; [navigation didMoveToParentViewController:self];
+    page.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithTitle:@"RegionShot" style:UIBarButtonItemStylePlain target:self action:@selector(closePage)];
+    [self.navigationController setNavigationBarHidden:YES animated:NO];
+}
+- (void)closePage {
+    [self.pageNavigation willMoveToParentViewController:nil]; [self.pageNavigation.view removeFromSuperview];
+    [self.pageNavigation removeFromParentViewController]; self.pageNavigation = nil;
+    [self.navigationController setNavigationBarHidden:NO animated:NO];
+}
+- (void)viewWillAppear:(BOOL)animated { [super viewWillAppear:animated]; if (self.pageNavigation) [self.navigationController setNavigationBarHidden:YES animated:NO]; }
+- (void)viewWillDisappear:(BOOL)animated { [super viewWillDisappear:animated]; [self.navigationController setNavigationBarHidden:NO animated:NO]; }
+- (void)openMenu { [self openPage:[RSMenuSettings new]]; }
+- (void)openFrozenMenu { RSMenuSettings *settings = [RSMenuSettings new]; settings.frozenMenu = YES; [self openPage:settings]; }
+- (void)openFloatingMenu { RSMenuSettings *settings = [RSMenuSettings new]; settings.floatingMenu = YES; [self openPage:settings]; }
+- (void)openOptions { [self openPage:[RSBehaviorSettings new]]; }
+- (void)openAI { notify_post("com.moxuan.regionshot/AIWindow"); }
+- (void)openSileo { [self openPage:RSCreateSileoSettings()]; }
+- (void)openTokens { [self openPage:RSInputCreateOptions(NO)]; }
+- (void)openSearch { [self openPage:RSInputCreateOptions(YES)]; }
 - (void)openHistory { notify_post("com.moxuan.regionshot/History"); }
 - (void)testCapture { [self diagnoseCapture:YES]; }
 - (void)checkCapture { [self diagnoseCapture:NO]; }
@@ -99,7 +126,7 @@
         uint32_t status = (uint32_t)response;
         NSString *message;
         if (!received) {
-            message = @"SpringBoard 在 3 秒内未响应。请确认安装的是 0.5.2、已重新启动 SpringBoard，并检查 RootHide 注入管理器是否允许 RegionShot 注入 SpringBoard。此状态尚不能确认插件已加载。";
+            message = @"SpringBoard 在 3 秒内未响应。请确认安装的是 0.6.0、已重新启动 SpringBoard，并检查 RootHide 注入管理器是否允许 RegionShot 注入 SpringBoard。此状态尚不能确认插件已加载。";
         } else {
             NSString *result = !launch ? @"状态检查完成。" : (status & RSStatusStarted) ? @"截图请求已接受并建立选区窗口；请确认屏幕上实际可见。" : @"区域截图启动失败。";
             message = [NSString stringWithFormat:@"SpringBoard 已响应。\n插件开关：%@\n截图接口：%@\n入口：按键 %@ / 应用 %@ / 编辑 %@ / 捕获器 %@\n%@",
@@ -118,4 +145,13 @@
         }
     });
 }
+@end
+
+@interface RSLaunchAI : PSListController @end
+@implementation RSLaunchAI
+- (void)viewDidAppear:(BOOL)animated { [super viewDidAppear:animated]; self.title = @"AI 对话"; notify_post("com.moxuan.regionshot/AIWindow"); }
+@end
+@interface RSLaunchHistory : PSListController @end
+@implementation RSLaunchHistory
+- (void)viewDidAppear:(BOOL)animated { [super viewDidAppear:animated]; self.title = @"截图历史"; notify_post("com.moxuan.regionshot/History"); }
 @end

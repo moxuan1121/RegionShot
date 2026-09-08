@@ -29,6 +29,8 @@ jobs:
           /tmp/regionshot-symbol-legacy
       - name: Check integrated KeyboardAI segmentation
         run: clang -fobjc-arc -Wall -Wextra -Werror -framework Foundation Tests/test_keyboardai.m -o /tmp/regionshot-keyboardai && /tmp/regionshot-keyboardai
+      - name: Check imported input configuration
+        run: clang -fobjc-arc -Wall -Wextra -Werror -DRSInput_STORE_TESTING -framework Foundation Tests/test_input.m Input/RSInputStore.m -o /tmp/regionshot-input && /tmp/regionshot-input
       - name: Check crop geometry
         run: cc -std=c11 -Wall -Wextra -Werror Tests/test_geometry.c -lm -o /tmp/regionshot-geometry && /tmp/regionshot-geometry
       - name: Check streaming packet boundaries
