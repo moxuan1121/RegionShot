@@ -165,7 +165,7 @@ NSString *RSAIPersonaPrompt(BOOL imageQuestion) {
     cell.textLabel.text = self.choices[path.row]; cell.accessoryType = path.row == self.selected ? UITableViewCellAccessoryCheckmark : UITableViewCellAccessoryNone; return cell;
 }
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)path {
-    if (self.choose) self.choose(path.row); [self.navigationController popViewControllerAnimated:YES];
+    if (self.choose) self.choose(path.row); if (self.navigationController.topViewController == self) [self.navigationController popViewControllerAnimated:YES];
 }
 @end
 @interface RSAIValueController : UIViewController
@@ -269,7 +269,7 @@ NSString *RSAIPersonaPrompt(BOOL imageQuestion) {
 - (void)chooseEngine:(NSIndexPath *)path {
     RSAIChoiceController *page = [RSAIChoiceController new]; page.title = @"AI 引擎"; page.choices = @[@"通义千问", @"自定义兼容服务"]; page.selected = [self.endpoint containsString:@"dashscope"] ? 0 : 1;
     __weak typeof(self) weakSelf = self;
-    page.choose = ^(NSInteger value) { if (value == 0) weakSelf.endpoint = @"https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions"; };
+    page.choose = ^(NSInteger value) { if (value == 0) weakSelf.endpoint = @"https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions"; else [weakSelf editValue:1]; };
     [self.navigationController pushViewController:page animated:YES];
 }
 - (void)editValue:(NSInteger)row {
