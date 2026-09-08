@@ -238,6 +238,29 @@ static UIWindowLevel RSKAPanelWindowLevel(NSDictionary *options, NSString *key) 
     self.tokenView = nil; self.generating = NO;
     if (callback) callback();
 }
+- (NSString *)actionText {
+    return self.tokenView ? self.tokenView.selectedText : self.result;
+}
+- (void)updateTokenActions {
+    BOOL hasText = self.tokenView ? self.tokenView.hasSelection : self.result.length > 0;
+    self.clipboardButton.enabled = hasText;
+    self.replaceButton.enabled = hasText && self.completedResult;
+}
+- (void)leaveTokens {
+    [self.tokenView removeFromSuperview];
+    self.tokenView = nil;
+    self.overlayWindow.windowLevel = RSKAPanelWindowLevel(self.windowOptions, @"aiWindowPriority");
+    self.textView.hidden = NO;
+    self.header.hidden = NO;
+    self.backButton.hidden = YES;
+    self.statusLabel.text = @"已完成";
+    [self updateTokenActions];
+    [self resizePanel];
+}
+- (void)tokenize:(UILongPressGestureRecognizer *)gesture {
+    if (gesture.state != UIGestureRecognizerStateBegan || self.generating || !self.completedResult || self.tokenView) return;
+    [self enterTokens];
+}
 - (void)enterTokens {
     if (self.generating || !self.completedResult || self.tokenView) return;
     NSArray *pieces = RSKATextPieces(self.result);
