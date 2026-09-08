@@ -129,11 +129,14 @@ static UIWindowLevel RSKAPanelWindowLevel(NSDictionary *options, NSString *key) 
     self.windowOptions = RSKAPromptOptions(RSKAConfig());
     UIWindow *window = RSKAWindow();
     if (!window) return NO;
+    UIInterfaceOrientation openingOrientation = RSActiveOrientation(window.windowScene);
     self.previousWindow = window;
     self.overlayWindow = window.windowScene ? [[RSKAPanelWindow alloc] initWithWindowScene:window.windowScene] : [[RSKAPanelWindow alloc] initWithFrame:UIScreen.mainScreen.bounds];
     self.overlayWindow.frame = UIScreen.mainScreen.fixedCoordinateSpace.bounds;
     RSKAPanelController *controller = [RSKAPanelController new];
+    controller.orientation = openingOrientation;
     self.overlayWindow.rootViewController = controller;
+    RSApplyWindowOrientation(self.overlayWindow, UIInterfaceOrientationPortrait);
     __weak typeof(self) weakSelf = self;
     controller.onLayout = ^{ [weakSelf resizePanel]; };
     self.overlayWindow.backgroundColor = UIColor.clearColor; self.overlayWindow.opaque = NO;
@@ -198,7 +201,6 @@ static UIWindowLevel RSKAPanelWindowLevel(NSDictionary *options, NSString *key) 
     stack.spacing = 8;
     stack.translatesAutoresizingMaskIntoConstraints = NO;
     [panel addSubview:stack];
-    controller.orientation = RSActiveOrientation(window.windowScene);
     RSApplyWindowOrientation(window, UIInterfaceOrientationPortrait);
     [controller.view setNeedsLayout]; [controller.view layoutIfNeeded];
     UIView *host = controller.canvas;

@@ -186,11 +186,14 @@ static NSString *RSInputFullText(id<UITextInput> target) {
     self.windowOptions = RSInputPromptOptions(RSInputConfig());
     UIWindow *window = RSInputWindow();
     if (!window) return NO;
+    UIInterfaceOrientation openingOrientation = RSActiveOrientation(window.windowScene);
     self.previousWindow = window;
     self.overlayWindow = window.windowScene ? [[RSInputPanelWindow alloc] initWithWindowScene:window.windowScene] : [[RSInputPanelWindow alloc] initWithFrame:UIScreen.mainScreen.bounds];
     self.overlayWindow.frame = UIScreen.mainScreen.fixedCoordinateSpace.bounds;
     RSInputPanelController *controller = [RSInputPanelController new];
+    controller.orientation = openingOrientation;
     self.overlayWindow.rootViewController = controller;
+    RSApplyWindowOrientation(self.overlayWindow, UIInterfaceOrientationPortrait);
     controller.view.backgroundColor = UIColor.clearColor;
     __weak typeof(self) weakSelf = self;
     controller.onLayout = ^{ [weakSelf resizePanel]; };
@@ -255,7 +258,6 @@ static NSString *RSInputFullText(id<UITextInput> target) {
     stack.spacing = 8;
     stack.translatesAutoresizingMaskIntoConstraints = NO;
     [panel addSubview:stack];
-    controller.orientation = RSActiveOrientation(window.windowScene);
     RSApplyWindowOrientation(window, UIInterfaceOrientationPortrait);
     [controller.view setNeedsLayout]; [controller.view layoutIfNeeded];
     UIView *host = controller.canvas;
