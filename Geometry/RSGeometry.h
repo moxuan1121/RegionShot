@@ -8,9 +8,9 @@ typedef struct {
     double height;
 } RSRectD;
 
-// Offset a stroked corner so its inner edge leaves one physical pixel outside the crop.
+// Keep a visible one-point gap on Retina screens, while preserving one physical pixel at 1x.
 static inline double RSCornerOutset(double scale, double strokeWidth) {
-    return strokeWidth / 2 + 1 / scale;
+    return strokeWidth / 2 + fmax(1 / scale, 1);
 }
 
 // Anchor stays fixed even when a corner is dragged through all four quadrants.

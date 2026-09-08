@@ -156,7 +156,9 @@ static const CGFloat RSHandleHitRadius = 28.0;
         [handle moveToPoint:CGPointMake(corners[index].x, corners[index].y + dy * 11)];
         [handle addLineToPoint:corners[index]];
         [handle addLineToPoint:CGPointMake(corners[index].x + dx * 11, corners[index].y)];
-        [UIColor.whiteColor setStroke]; handle.lineWidth = 3; handle.lineJoinStyle = kCGLineJoinRound;
+        [UIColor.whiteColor setStroke]; handle.lineWidth = 3;
+        handle.lineJoinStyle = kCGLineJoinRound;
+        handle.lineCapStyle = kCGLineCapRound;
         [handle stroke];
     }
 }

@@ -33,7 +33,7 @@ int main(void) {
     assert(edge.y == 0 && edge.height == 300);
     for (int scale = 1; scale <= 3; scale++) {
         double innerEdge = RSCornerOutset(scale, 3) - 1.5;
-        assert(fabs(innerEdge * scale - 1) < 1e-9);
+        assert(fabs(innerEdge - 1) < 1e-9);
     }
     puts("RegionShot geometry checks passed");
 }
