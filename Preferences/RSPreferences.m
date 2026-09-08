@@ -10,6 +10,7 @@ extern UIViewController *RSInputCreateOptions(BOOL search);
 @property (nonatomic, strong) PSSpecifier *diagnosticGroup;
 @property (nonatomic) BOOL diagnosticPending;
 @property (nonatomic, strong) UINavigationController *pages;
+@property (nonatomic) BOOL outerBackEnabled;
 @end
 @implementation RSPreferences
 - (NSArray *)specifiers {
@@ -73,7 +74,10 @@ extern UIViewController *RSInputCreateOptions(BOOL search);
 }
 - (void)viewWillDisappear:(BOOL)animated {
     [super viewWillDisappear:animated];
-    if (self.isMovingFromParentViewController) [self.navigationController setNavigationBarHidden:NO animated:NO];
+    if (self.isMovingFromParentViewController) {
+        if (self.pages) self.navigationController.interactivePopGestureRecognizer.enabled = self.outerBackEnabled;
+        [self.navigationController setNavigationBarHidden:NO animated:NO];
+    }
 }
 - (void)viewDidLayoutSubviews {
     [super viewDidLayoutSubviews];
@@ -83,6 +87,7 @@ extern UIViewController *RSInputCreateOptions(BOOL search);
     [self.pages willMoveToParentViewController:nil];
     [self.pages.view removeFromSuperview]; [self.pages removeFromParentViewController];
     self.pages = nil;
+    self.navigationController.interactivePopGestureRecognizer.enabled = self.outerBackEnabled;
     [self.navigationController setNavigationBarHidden:NO animated:NO];
 }
 - (void)backGesture:(UIScreenEdgePanGestureRecognizer *)gesture {
@@ -93,6 +98,8 @@ extern UIViewController *RSInputCreateOptions(BOOL search);
     // Settings serializes its PSListController path. Keep UIKit children inside
     // this stable PS page instead of putting them on Settings' navigation stack.
     page.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithTitle:@"‹ RegionShot" style:UIBarButtonItemStylePlain target:self action:@selector(closePages)];
+    self.outerBackEnabled = self.navigationController.interactivePopGestureRecognizer.enabled;
+    self.navigationController.interactivePopGestureRecognizer.enabled = NO;
     self.pages = [[UINavigationController alloc] initWithRootViewController:page];
     [self addChildViewController:self.pages];
     self.pages.view.frame = self.view.bounds;
