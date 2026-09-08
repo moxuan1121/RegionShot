@@ -7,6 +7,7 @@
 #import "RSInputClipboard.h"
 #import "RSInputOptions.h"
 #import "RSInputAnchoredMenuView.h"
+#import "../Geometry/RSOrientation.h"
 
 void RSInputSelectionFeedback(void) {
     static UISelectionFeedbackGenerator *feedback;
@@ -28,7 +29,7 @@ static UIWindow *RSInputWindow(void) {
 
 static UIWindowLevel RSInputPanelWindowLevel(NSDictionary *options, NSString *key) {
     double priority = [options[key] doubleValue];
-    return priority >= 1000000000 ? CGFLOAT_MAX : (UIWindowLevel)priority;
+    return (UIWindowLevel)priority;
 }
 
 static __weak UIResponder *RSInputResponder;
@@ -79,6 +80,14 @@ static NSString *RSInputFullText(id<UITextInput> target) {
 }
 @end
 
+@interface RSInputPanelController : UIViewController
+@property(copy) void (^onLayout)(void);
+@end
+@implementation RSInputPanelController
+- (BOOL)shouldAutorotate { return NO; }
+- (UIInterfaceOrientationMask)supportedInterfaceOrientations { return UIInterfaceOrientationMaskAllButUpsideDown; }
+- (void)viewDidLayoutSubviews { [super viewDidLayoutSubviews]; if (self.onLayout) self.onLayout(); }
+@end
 @interface RSInputPanel : NSObject <NSURLSessionDataDelegate>
 @property(strong) UIView *panel;
 @property(strong) UIWindow *overlayWindow;
@@ -130,8 +139,18 @@ static NSString *RSInputFullText(id<UITextInput> target) {
         [center addObserver:self selector:@selector(invalidateInput:) name:UITextViewTextDidChangeNotification object:nil];
         [center addObserver:self selector:@selector(invalidateInput:) name:UITextFieldTextDidChangeNotification object:nil];
         [center addObserver:self selector:@selector(resizePanel) name:UIKeyboardDidChangeFrameNotification object:nil];
+        [center addObserver:self selector:@selector(rotated:) name:@"com.moxuan.regionshot.orientation.target" object:nil];
+        [center addObserver:self selector:@selector(rotated:) name:UIDeviceOrientationDidChangeNotification object:nil];
     }
     return self;
+}
+- (void)rotated:(NSNotification *)note {
+    if (!self.overlayWindow) return;
+    [self.searchMenu dismiss];
+    NSNumber *target = note.userInfo[@"orientation"];
+    RSApplyWindowOrientation(self.overlayWindow, target ? target.integerValue : RSActiveOrientation(self.overlayWindow.windowScene));
+    [self.overlayWindow.rootViewController.view setNeedsLayout];
+    [self resizePanel];
 }
 - (void)invalidateInput:(NSNotification *)note {
     if ([note.name isEqualToString:UIKeyboardWillHideNotification] || note.object == self.target)
@@ -176,7 +195,11 @@ static NSString *RSInputFullText(id<UITextInput> target) {
     self.previousWindow = window;
     self.overlayWindow = window.windowScene ? [[RSInputPanelWindow alloc] initWithWindowScene:window.windowScene] : [[RSInputPanelWindow alloc] initWithFrame:UIScreen.mainScreen.bounds];
     self.overlayWindow.frame = UIScreen.mainScreen.bounds;
-    self.overlayWindow.rootViewController = [UIViewController new];
+    RSInputPanelController *controller = [RSInputPanelController new];
+    self.overlayWindow.rootViewController = controller;
+    controller.view.backgroundColor = UIColor.clearColor;
+    __weak typeof(self) weakSelf = self;
+    controller.onLayout = ^{ [weakSelf resizePanel]; };
     self.overlayWindow.windowLevel = RSInputPanelWindowLevel(self.windowOptions, @"aiWindowPriority");
     if (self.searchAction) [self.overlayWindow makeKeyAndVisible];
     else self.overlayWindow.hidden = NO; // Keep the text input first responder for safe replacement.
@@ -238,15 +261,17 @@ static NSString *RSInputFullText(id<UITextInput> target) {
     stack.spacing = 8;
     stack.translatesAutoresizingMaskIntoConstraints = NO;
     [panel addSubview:stack];
-    [window addSubview:panel];
+    RSApplyWindowOrientation(window, RSActiveOrientation(window.windowScene));
+    UIView *host = window.rootViewController.view;
+    [host addSubview:panel];
     self.heightConstraint = [panel.heightAnchor constraintEqualToConstant:160];
     self.heightConstraint.priority = UILayoutPriorityDefaultHigh;
     [NSLayoutConstraint activateConstraints:@[
-        [panel.leadingAnchor constraintEqualToAnchor:window.safeAreaLayoutGuide.leadingAnchor constant:12],
-        [panel.trailingAnchor constraintEqualToAnchor:window.safeAreaLayoutGuide.trailingAnchor constant:-12],
-        [panel.topAnchor constraintEqualToAnchor:window.safeAreaLayoutGuide.topAnchor constant:8],
+        [panel.leadingAnchor constraintEqualToAnchor:host.safeAreaLayoutGuide.leadingAnchor constant:12],
+        [panel.trailingAnchor constraintEqualToAnchor:host.safeAreaLayoutGuide.trailingAnchor constant:-12],
+        [panel.topAnchor constraintEqualToAnchor:host.safeAreaLayoutGuide.topAnchor constant:8],
         self.heightConstraint,
-        [panel.bottomAnchor constraintLessThanOrEqualToAnchor:window.keyboardLayoutGuide.topAnchor constant:-12],
+        [panel.bottomAnchor constraintLessThanOrEqualToAnchor:host.keyboardLayoutGuide.topAnchor constant:-12],
         [stack.leadingAnchor constraintEqualToAnchor:panel.leadingAnchor constant:12],
         [stack.trailingAnchor constraintEqualToAnchor:panel.trailingAnchor constant:-12],
         [stack.topAnchor constraintEqualToAnchor:panel.topAnchor constant:12],
@@ -273,7 +298,8 @@ static NSString *RSInputFullText(id<UITextInput> target) {
         chrome += [view systemLayoutSizeFittingSize:CGSizeMake(width, UILayoutFittingCompressedSize.height)
             withHorizontalFittingPriority:UILayoutPriorityRequired verticalFittingPriority:UILayoutPriorityFittingSizeLevel].height;
     }
-    CGFloat available = MAX(0, window.bounds.size.height - window.safeAreaInsets.top - window.safeAreaInsets.bottom - 20);
+    UIView *host = window.rootViewController.view;
+    CGFloat available = MAX(0, host.bounds.size.height - host.safeAreaInsets.top - host.safeAreaInsets.bottom - 20);
     CGFloat percent = [self.windowOptions[self.tokenView ? @"tokenMaxHeight" : @"aiMaxHeight"] doubleValue];
     self.heightConstraint.constant = RSInputFittedPanelHeight(contentHeight, chrome, available, percent);
     [window layoutIfNeeded];
@@ -560,7 +586,7 @@ static NSString *RSInputFullText(id<UITextInput> target) {
         self.searchMenu = menu;
         // The panel itself is attached directly to the overlay window. Attach
         // the menu there afterwards so it stays above every panel priority.
-        [menu presentFromView:self.replaceButton inView:self.overlayWindow];
+        [menu presentFromView:self.replaceButton inView:self.overlayWindow.rootViewController.view];
         RSInputSelectionFeedback();
     }
     [self.searchMenu trackGestureRecognizer:gesture];

@@ -9,13 +9,12 @@ extern UIViewController *RSInputCreateOptions(BOOL search);
 @interface RSPreferences : PSListController
 @property (nonatomic, strong) PSSpecifier *diagnosticGroup;
 @property (nonatomic) BOOL diagnosticPending;
-@property (nonatomic, strong) UINavigationController *pages;
 @end
 @implementation RSPreferences
 - (NSArray *)specifiers {
     if (_specifiers) return _specifiers;
     NSMutableArray *items = [NSMutableArray array];
-    PSSpecifier *group = [PSSpecifier groupSpecifierWithName:@"RegionShot 0.6.5"];
+    PSSpecifier *group = [PSSpecifier groupSpecifierWithName:@"RegionShot 0.6.6"];
     [group setProperty:@"侧边键 + 音量加进入区域截图。安装后需重新启动 SpringBoard。关闭开关恢复系统截图。" forKey:@"footerText"];
     [items addObject:group];
     PSSpecifier *enabled = [PSSpecifier preferenceSpecifierNamed:@"启用区域截图" target:self set:@selector(setPreferenceValue:specifier:) get:@selector(readPreferenceValue:) detail:nil cell:PSSwitchCell edit:nil];
@@ -61,26 +60,8 @@ extern UIViewController *RSInputCreateOptions(BOOL search);
     CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(), CFSTR("com.moxuan.regionshot/ReloadPrefs"), NULL, NULL, YES);
 }
 - (void)viewDidLoad { [super viewDidLoad]; self.title = @"RegionShot"; }
-- (void)closePages {
-    UINavigationController *pages = self.pages;
-    [pages dismissViewControllerAnimated:YES completion:^{ if (self.pages == pages) self.pages = nil; }];
-}
-- (void)backGesture:(UIScreenEdgePanGestureRecognizer *)gesture {
-    if (gesture.state == UIGestureRecognizerStateEnded && self.pages.viewControllers.count == 1 &&
-        ([gesture translationInView:self.view].x > 60 || [gesture velocityInView:self.view].x > 400)) [self closePages];
-}
 - (void)openPage:(UIViewController *)page {
-    if (!page || self.presentedViewController) return;
-    // Present through UIKit: attaching a child navigation view to the outer
-    // Settings controller bypassed its presentation and touch hierarchy.
-    page.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithTitle:@"‹ RegionShot" style:UIBarButtonItemStylePlain target:self action:@selector(closePages)];
-    self.pages = [[UINavigationController alloc] initWithRootViewController:page];
-    self.pages.modalPresentationStyle = UIModalPresentationFullScreen;
-    UIScreenEdgePanGestureRecognizer *back = [[UIScreenEdgePanGestureRecognizer alloc] initWithTarget:self action:@selector(backGesture:)];
-    back.edges = UIRectEdgeLeft;
-    [back requireGestureRecognizerToFail:self.pages.interactivePopGestureRecognizer];
-    [self.pages.view addGestureRecognizer:back];
-    [self presentViewController:self.pages animated:YES completion:nil];
+    [self.navigationController pushViewController:page animated:YES];
 }
 - (void)openMenu { [self openPage:[RSMenuSettings new]]; }
 - (void)openFrozenMenu { RSMenuSettings *settings = [RSMenuSettings new]; settings.frozenMenu = YES; [self openPage:settings]; }
@@ -128,7 +109,7 @@ extern UIViewController *RSInputCreateOptions(BOOL search);
         uint32_t status = (uint32_t)response;
         NSString *message;
         if (!received) {
-            message = @"SpringBoard 在 3 秒内未响应。请确认安装的是 0.6.5、已重新启动 SpringBoard，并检查 RootHide 注入管理器是否允许 RegionShot 注入 SpringBoard。此状态尚不能确认插件已加载。";
+            message = @"SpringBoard 在 3 秒内未响应。请确认安装的是 0.6.6、已重新启动 SpringBoard，并检查 RootHide 注入管理器是否允许 RegionShot 注入 SpringBoard。此状态尚不能确认插件已加载。";
         } else {
             NSString *result = !launch ? @"状态检查完成。" : (status & RSStatusStarted) ? @"截图请求已接受并建立选区窗口；请确认屏幕上实际可见。" : @"区域截图启动失败。";
             message = [NSString stringWithFormat:@"SpringBoard 已响应。\n插件开关：%@\n截图接口：%@\n入口：按键 %@ / 应用 %@ / 编辑 %@ / 捕获器 %@\n%@",

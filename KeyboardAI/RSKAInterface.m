@@ -80,14 +80,14 @@ static UIWindowLevel RSKAPanelWindowLevel(NSDictionary *options, NSString *key) 
 @implementation RSKAPanel
 - (instancetype)init {
     if ((self = [super init])) {
-        [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(updateOrientation) name:@"com.moxuan.regionshot.orientation" object:nil];
+        [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(updateOrientation:) name:@"com.moxuan.regionshot.orientation.target" object:nil];
         [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(close) name:UIApplicationProtectedDataWillBecomeUnavailable object:nil];
     }
     return self;
 }
-- (void)updateOrientation {
+- (void)updateOrientation:(NSNotification *)note {
     if (!self.overlayWindow) return;
-    RSApplyWindowOrientation(self.overlayWindow, RSActiveOrientation(self.overlayWindow.windowScene));
+    RSApplyWindowOrientation(self.overlayWindow, note.userInfo[@"orientation"] ? [note.userInfo[@"orientation"] integerValue] : RSActiveOrientation(self.overlayWindow.windowScene));
     [self resizePanel];
     [self.searchMenu setNeedsLayout];
 }
