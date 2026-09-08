@@ -80,7 +80,7 @@ static BOOL RSRestorePagesPending;
 }
 - (void)restorePages:(NSNotification *)note {
     dispatch_async(dispatch_get_main_queue(), ^{
-        if (!RSRestorePagesPending || !RSSuspendedPages.count || !self.view.window || UIApplication.sharedApplication.applicationState != UIApplicationStateActive) return;
+        if (!RSRestorePagesPending || !RSSuspendedPages.count || !self.navigationController.view.window || UIApplication.sharedApplication.applicationState != UIApplicationStateActive) return;
         UINavigationController *navigation = self.navigationController;
         if (navigation.topViewController == RSSuspendedPages.lastObject) {
             RSSuspendedPages = nil; RSRestorePagesPending = NO; return;

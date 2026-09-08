@@ -2,6 +2,7 @@
 #import <objc/runtime.h>
 #include <string.h>
 #include <dlfcn.h>
+#include <atomic>
 #import "Manager/RSRegionShotManager.h"
 #import "Capture/RSScreenCapture.h"
 #import "Capture/RSCaptureStatus.h"
@@ -24,7 +25,7 @@
 static BOOL RSEnabled = YES;
 static BOOL RSTargetOrientationInstalled;
 static __thread NSUInteger RSOriginalDepth;
-static BOOL RSNativeScreenshotPending;
+static std::atomic<bool> RSNativeScreenshotPending(false);
 static int RSCheckToken = -1, RSStatusToken = -1;
 static uint32_t RSHookStatus;
 static void RSReload(void) {
@@ -52,13 +53,14 @@ static BOOL RSTryCapture(NSString *source) {
         return NO;
     }
 }
-BOOL RSRequestNativeScreenshot(void) {
+extern "C" BOOL RSRequestNativeScreenshot(void) {
     NSCAssert(NSThread.isMainThread, @"Native screenshot requires main thread");
     SpringBoard *app = (id)UIApplication.sharedApplication;
     if (![app respondsToSelector:@selector(takeScreenshot)]) return NO;
     RSNativeScreenshotPending = YES;
     RSOriginalDepth++;
     @try { [app takeScreenshot]; }
+    @catch (NSException *exception) { RSNativeScreenshotPending = false; return NO; }
     @finally { RSOriginalDepth--; }
     // The capturer consumes this bypass. Expire it if that private path is absent.
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 2 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{ RSNativeScreenshotPending = NO; });
