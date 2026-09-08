@@ -26,6 +26,9 @@ static BOOL RSIsDepiction(UIView *view) {
 - (void)pressed:(UILongPressGestureRecognizer *)gesture {
     if (gesture.state != UIGestureRecognizerStateBegan) return;
     UIView *view = gesture.view;
+    // Sileo's native Markdown renderer publishes the exact attributed text through
+    // accessibilityLabel (CSTextRenderView.swift); no Swift ivar offsets or OCR.
+    if ([NSStringFromClass(view.class) hasSuffix:@"CSTextRenderView"]) { [self translate:view.accessibilityLabel]; return; }
     if ([view isKindOfClass:UILabel.class]) { [self translate:((UILabel *)view).text]; return; }
     if ([view isKindOfClass:UITextView.class]) {
         UITextView *text = (id)view; NSString *selected = [text textInRange:text.selectedTextRange];
@@ -43,7 +46,7 @@ static BOOL RSIsDepiction(UIView *view) {
 - (void)didMoveToWindow {
     %orig;
     if (!self.window || objc_getAssociatedObject(self, &RSSileoGestureKey) || !RSIsDepiction(self)) return;
-    if (![self isKindOfClass:UILabel.class] && ![self isKindOfClass:UITextView.class] && ![self isKindOfClass:WKWebView.class]) return;
+    if (![self isKindOfClass:UILabel.class] && ![self isKindOfClass:UITextView.class] && ![self isKindOfClass:WKWebView.class] && ![NSStringFromClass(self.class) hasSuffix:@"CSTextRenderView"]) return;
     static RSSileoTranslate *target; static dispatch_once_t once; dispatch_once(&once, ^{ target = [RSSileoTranslate new]; });
     UILongPressGestureRecognizer *press = [[UILongPressGestureRecognizer alloc] initWithTarget:target action:@selector(pressed:)];
     press.minimumPressDuration = 0.55; press.cancelsTouchesInView = NO; press.delegate = target;

@@ -304,7 +304,7 @@ static UIWindowLevel RSKAPanelWindowLevel(NSDictionary *options, NSString *key) 
 }
 - (void)copyResult {
     if ([self actionText].length) {
-        [UIPasteboard.generalPasteboard setItems:@[@{UIPasteboardTypeAutomatic: [self actionText], @"com.moxuan1121.keyboardai.internal": [NSData data]}]
+        [UIPasteboard.generalPasteboard setItems:@[@{UIPasteboardTypeAutomatic: [self actionText], @"com.moxuan.regionshot.input.internal": [NSData data]}]
                                         options:@{UIPasteboardOptionLocalOnly: @YES}];
         [self close];
         UIAccessibilityPostNotification(UIAccessibilityAnnouncementNotification, @"已复制");
@@ -316,6 +316,7 @@ static RSKAPanel *RSKASharedPanel(void) {
     dispatch_once(&once, ^{ panel = [RSKAPanel new]; }); return panel;
 }
 BOOL RSKABeginAnswer(NSString *name, dispatch_block_t closed) {
+    [NSNotificationCenter.defaultCenter postNotificationName:@"com.moxuan.regionshot.input.close" object:nil];
     RSKAPanel *panel = RSKASharedPanel(); [panel close];
     if (![panel show]) return NO;
     panel.onClose = closed; panel.generating = YES; panel.completedResult = NO;
@@ -332,6 +333,7 @@ void RSKAUpdateAnswer(NSString *text, BOOL finished, NSString *error) {
     [panel updateTokenActions];
 }
 void RSKAOpenTokens(NSString *text) {
+    [RSKASharedPanel() close];
     NSMutableDictionary *request = [@{@"text":text ?: @""} mutableCopy];
     [NSNotificationCenter.defaultCenter postNotificationName:@"com.moxuan.regionshot.input.tokens" object:request];
     if ([request[@"handled"] boolValue]) return;
@@ -340,4 +342,4 @@ void RSKAOpenTokens(NSString *text) {
     [panel displayText:text]; [panel enterTokens];
 }
 
-void RSKAClosePanel(void) { [RSKASharedPanel() close]; }
+void RSKAClosePanel(void) { [RSKASharedPanel() close]; [NSNotificationCenter.defaultCenter postNotificationName:@"com.moxuan.regionshot.input.close" object:nil]; }

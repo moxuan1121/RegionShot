@@ -13,3 +13,5 @@ and Kayoko runtime hooks are not included. Search and prompt preferences are
 stored in Keyboard AI's shared plist. No Kayoko installation is required.
 
 Input modules adapted from KeyboardAI-RootHide commit 23c761ee8ea2d4597ae1b22fee48cc7837b1708b. Symbols namespaced RSInput.
+
+Sileo integration observes public UIView properties. Native Markdown text lookup verified against https://github.com/Sileo/Sileo/blob/main/Sileo/Contrib/CSTextRenderView.swift (accessibilityLabel); no Sileo source is copied.

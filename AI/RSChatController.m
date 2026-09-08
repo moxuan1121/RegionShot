@@ -350,7 +350,7 @@ static NSUserDefaults *RSChatPreferences(void) {
 }
 - (void)copyReply:(UIButton *)button {
     if (button.tag < (NSInteger)self.history.count)
-        UIPasteboard.generalPasteboard.string = self.history[button.tag][@"content"];
+        [UIPasteboard.generalPasteboard setItems:@[@{UIPasteboardTypeAutomatic:self.history[button.tag][@"content"], @"com.moxuan.regionshot.input.internal":[NSData data]}] options:@{UIPasteboardOptionLocalOnly:@YES}];
 }
 - (void)tokenize:(UIButton *)button {
     if (button.tag >= (NSInteger)self.history.count) return;

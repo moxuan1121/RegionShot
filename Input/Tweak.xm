@@ -147,6 +147,7 @@ static NSDictionary *RSInputActionAt(id view, NSUInteger index) {
         if ([bundle isEqual:@"com.apple.springboard"]) {
             dispatch_async(dispatch_get_main_queue(), ^{
                 RSInputStartClipboardPrompt();
+                [NSNotificationCenter.defaultCenter addObserverForName:@"com.moxuan.regionshot.input.close" object:nil queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification *note) { RSInputClosePanel(); }];
                 [NSNotificationCenter.defaultCenter addObserverForName:@"com.moxuan.regionshot.input.tokens" object:nil queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification *note) {
                     NSMutableDictionary *request = note.object;
                     if (![request isKindOfClass:NSMutableDictionary.class] || ![request[@"text"] isKindOfClass:NSString.class] || [request[@"text"] length] > 24000) return;

@@ -7,6 +7,7 @@
 #import "Preferences/RSOptions.h"
 #import "AI/RSChatController.h"
 #import "Geometry/RSGeometry.h"
+#import "Geometry/RSOrientation.h"
 @interface _UIStatusBar : UIView
 @end
 @interface SpringBoard : UIApplication
@@ -20,6 +21,7 @@
 - (void)takeScreenshotWithPresentationOptions:(id)options;
 @end
 static BOOL RSEnabled = YES;
+static BOOL RSTargetOrientationInstalled;
 static __thread NSUInteger RSOriginalDepth;
 static int RSCheckToken = -1, RSStatusToken = -1;
 static uint32_t RSHookStatus;
@@ -88,16 +90,21 @@ static char RSStatusBarGestureKey;
 %end
 
 // Broadcast the actual SpringBoard orientation change to live overlays.
-%group RSOrientationUpdates
+%group RSTargetOrientation
 %hook SpringBoard
 - (void)noteInterfaceOrientationChanged:(long long)orientation duration:(double)duration updateMirroredDisplays:(BOOL)update force:(BOOL)force logMessage:(id)message {
     %orig;
     dispatch_async(dispatch_get_main_queue(), ^{ [NSNotificationCenter.defaultCenter postNotificationName:@"com.moxuan.regionshot.orientation.target" object:nil userInfo:@{@"orientation":@(orientation)}]; });
 }
+%end
+%end
+%group RSOrientationUpdates
+%hook SpringBoard
 - (void)_postActiveInterfaceOrientationChangedNotificationAnimated:(BOOL)animated {
     %orig;
     dispatch_async(dispatch_get_main_queue(), ^{
         [NSNotificationCenter.defaultCenter postNotificationName:@"com.moxuan.regionshot.orientation" object:nil];
+        if (!RSTargetOrientationInstalled) [NSNotificationCenter.defaultCenter postNotificationName:@"com.moxuan.regionshot.orientation.target" object:nil userInfo:@{@"orientation":@(RSActiveOrientation(nil))}];
     });
 }
 %end
@@ -199,7 +206,14 @@ static void RSPreferenceEvent(CFNotificationCenterRef center, void *observer, CF
             NSLog(@"[RegionShot] frozen system touch gate installed");
         } else NSLog(@"[RegionShot] frozen system touch gate unavailable");
         Class app = NSClassFromString(@"SpringBoard");
-        if (RSCompatible(app, @"_postActiveInterfaceOrientationChangedNotificationAnimated:", "Bc") && [app instancesRespondToSelector:NSSelectorFromString(@"noteInterfaceOrientationChanged:duration:updateMirroredDisplays:force:logMessage:")]) { %init(RSOrientationUpdates); }
+        if (RSCompatible(app, @"_postActiveInterfaceOrientationChangedNotificationAnimated:", "Bc")) { %init(RSOrientationUpdates); }
+        Method rotate = class_getInstanceMethod(app, NSSelectorFromString(@"noteInterfaceOrientationChanged:duration:updateMirroredDisplays:force:logMessage:"));
+        if (rotate && method_getNumberOfArguments(rotate) == 7) {
+            char type[32] = {0}; method_getReturnType(rotate, type, sizeof(type)); BOOL compatible = type[0] == 'v';
+            const char *types[] = {"q", "d", "Bc", "Bc", "@"};
+            for (unsigned int index = 2; index < 7; index++) { method_getArgumentType(rotate, index, type, sizeof(type)); compatible = compatible && type[0] && strchr(types[index - 2], type[0]); }
+            if (compatible) { %init(RSTargetOrientation); RSTargetOrientationInstalled = YES; }
+        }
         Class hardware = NSClassFromString(@"SBCombinationHardwareButtonActions");
         BOOL direct = RSCompatible(app, @"takeScreenshot", NULL);
         BOOL edit = RSCompatible(app, @"takeScreenshotAndEdit:", "Bc");
