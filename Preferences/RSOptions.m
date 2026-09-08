@@ -10,11 +10,10 @@ NSArray<NSDictionary *> *RSOptionGroups(void) {
     static NSArray *groups; static dispatch_once_t once;
     dispatch_once(&once, ^{ groups = @[
         @{@"title":@"截图与保存", @"items":@[
-            @{@"key":@"DoubleTapSelection", @"title":@"双击选区生成浮图", @"default":@YES},
             @{@"key":@"StatusBarSwipe", @"title":@"状态栏右半侧右滑截图", @"default":@YES},
             @{@"key":@"CaptureHaptic", @"title":@"截图完成震动", @"default":@NO},
-            @{@"key":@"CopyOnSave", @"title":@"保存时同时复制", @"default":@NO},
-            @{@"key":@"CopyOnly", @"title":@"保存时仅复制到剪贴板", @"default":@NO},
+            @{@"key":@"CopyOnSave", @"title":@"复制 + 保存到相册", @"default":@NO},
+            @{@"key":@"CopyOnly", @"title":@"仅复制，不保存到相册", @"default":@NO},
             @{@"key":@"SelectionShade", @"title":@"选区外遮罩浓度", @"default":@0.38, @"min":@0.05, @"max":@0.8} ]},
         @{@"title":@"悬浮图片", @"items":@[
             @{@"key":@"FloatShadow", @"title":@"显示阴影", @"default":@YES},
@@ -63,7 +62,9 @@ id RSOption(NSString *key) {
 void RSSetOption(NSString *key, id value) {
     for (NSDictionary *group in RSOptionGroups()) for (NSDictionary *option in group[@"items"])
         if ([option[@"key"] isEqual:key]) {
-            [RSPrefs() setObject:RSValidateOption(option, value) forKey:key]; [RSPrefs() synchronize];
+            [RSPrefs() setObject:RSValidateOption(option, value) forKey:key];
+            if ([value isKindOfClass:NSNumber.class] && [value boolValue] && ([key isEqual:@"CopyOnly"] || [key isEqual:@"CopyOnSave"]))
+                [RSPrefs() setBool:NO forKey:[key isEqual:@"CopyOnly"] ? @"CopyOnSave" : @"CopyOnly"]; [RSPrefs() synchronize];
             CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(), CFSTR("com.moxuan.regionshot/ReloadPrefs"), NULL, NULL, YES);
             return;
         }

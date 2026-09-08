@@ -17,8 +17,10 @@
     PSSpecifier *enabled = [PSSpecifier preferenceSpecifierNamed:@"启用区域截图" target:self set:@selector(setPreferenceValue:specifier:) get:@selector(readPreferenceValue:) detail:nil cell:PSSwitchCell edit:nil];
     [enabled setProperty:@"Enabled" forKey:@"key"]; [enabled setProperty:@YES forKey:@"default"];
     [items addObject:enabled];
-    PSSpecifier *menu = [PSSpecifier preferenceSpecifierNamed:@"工具条与自定义图标" target:self set:nil get:nil detail:nil cell:PSButtonCell edit:nil];
+    PSSpecifier *menu = [PSSpecifier preferenceSpecifierNamed:@"选区菜单：排序、功能与图标" target:self set:nil get:nil detail:nil cell:PSButtonCell edit:nil];
     menu.buttonAction = @selector(openMenu); [items addObject:menu];
+    PSSpecifier *frozen = [PSSpecifier preferenceSpecifierNamed:@"冻结菜单：排序、功能与图标" target:self set:nil get:nil detail:nil cell:PSButtonCell edit:nil];
+    frozen.buttonAction = @selector(openFrozenMenu); [items addObject:frozen];
     PSSpecifier *floating = [PSSpecifier preferenceSpecifierNamed:@"浮图长按菜单与图标" target:self set:nil get:nil detail:nil cell:PSButtonCell edit:nil];
     floating.buttonAction = @selector(openFloatingMenu); [items addObject:floating];
     PSSpecifier *options = [PSSpecifier preferenceSpecifierNamed:@"截图、浮图、OCR、长图与 AI 设置" target:self set:nil get:nil detail:nil cell:PSButtonCell edit:nil];
@@ -51,6 +53,7 @@
     CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(), CFSTR("com.moxuan.regionshot/ReloadPrefs"), NULL, NULL, YES);
 }
 - (void)openMenu { [self.navigationController pushViewController:[RSMenuSettings new] animated:YES]; }
+- (void)openFrozenMenu { RSMenuSettings *settings = [RSMenuSettings new]; settings.frozenMenu = YES; [self.navigationController pushViewController:settings animated:YES]; }
 - (void)openFloatingMenu { RSMenuSettings *settings = [RSMenuSettings new]; settings.floatingMenu = YES; [self.navigationController pushViewController:settings animated:YES]; }
 - (void)openOptions { [self.navigationController pushViewController:[RSBehaviorSettings new] animated:YES]; }
 - (void)openAI { notify_post("com.moxuan.regionshot/AISettings"); }

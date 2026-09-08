@@ -21,7 +21,7 @@
     } else { cell.detailTextLabel.text = [value description]; cell.detailTextLabel.numberOfLines = 2; cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator; }
     return cell;
 }
-- (void)toggled:(UISwitch *)toggle { RSSetOption(toggle.accessibilityIdentifier, @(toggle.on)); }
+- (void)toggled:(UISwitch *)toggle { RSSetOption(toggle.accessibilityIdentifier, @(toggle.on)); [self.tableView reloadData]; }
 - (void)invalidValue:(NSString *)message {
     dispatch_async(dispatch_get_main_queue(), ^{
         UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"未保存" message:message preferredStyle:UIAlertControllerStyleAlert];

@@ -37,6 +37,16 @@ static NSArray *RSMenuItems(BOOL floating) {
 }
 NSArray<NSDictionary *> *RSSelectionMenuItems(void) { return RSMenuItems(NO); }
 NSArray<NSDictionary *> *RSFloatingMenuItems(void) { return RSMenuItems(YES); }
+NSArray<NSDictionary *> *RSFrozenMenuItems(void) {
+    [RSMenuPrefs() synchronize];
+    NSMutableArray *defaults = [NSMutableArray array];
+    for (NSDictionary *item in RSMenuDefaults(NO)) {
+        NSMutableDictionary *entry = item.mutableCopy;
+        if ([entry[@"id"] integerValue] > 4) entry[@"enabled"] = @NO;
+        [defaults addObject:entry];
+    }
+    return RSNormalizeMenu([RSMenuPrefs() objectForKey:@"FrozenMenu"], defaults, @4);
+}
 UIImage *RSSelectionMenuIcon(NSDictionary *item) {
     NSData *data = item[@"image"];
     UIImage *image = data ? [UIImage imageWithData:data] : nil;
@@ -45,8 +55,8 @@ UIImage *RSSelectionMenuIcon(NSDictionary *item) {
 CGFloat RSSelectionMenuSize(BOOL icon) {
     NSUserDefaults *prefs = RSMenuPrefs();
     NSString *key = icon ? @"SelectionIconSize" : @"SelectionTextSize";
-    CGFloat value = [prefs objectForKey:key] ? [prefs doubleForKey:key] : (icon ? 25 : 10);
-    return isfinite(value) ? MIN(MAX(value, icon ? 16 : 8), icon ? 80 : 16) : (icon ? 25 : 10);
+    CGFloat value = [prefs objectForKey:key] ? [prefs doubleForKey:key] : (icon ? 32 : 12);
+    return isfinite(value) ? MIN(MAX(value, icon ? 16 : 8), icon ? 80 : 16) : (icon ? 32 : 12);
 }
 BOOL RSSelectionMenuHideNames(void) { return [RSMenuPrefs() boolForKey:@"HideSelectionNames"]; }
 
@@ -93,16 +103,20 @@ BOOL RSSelectionMenuHideNames(void) { return [RSMenuPrefs() boolForKey:@"HideSel
 - (instancetype)init { return [super initWithStyle:UITableViewStyleInsetGrouped]; }
 - (void)viewDidLoad {
     [super viewDidLoad];
-    self.title = self.floatingMenu ? @"浮图长按菜单" : @"区域工具条";
+    self.title = self.floatingMenu ? @"浮图长按菜单" : self.frozenMenu ? @"冻结菜单（未框选）" : @"选区菜单（已框选）";
     [self reloadItems];
     self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithTitle:@"完成" style:UIBarButtonItemStyleDone target:self action:@selector(close)];
-    self.navigationItem.leftBarButtonItem = self.editButtonItem;
+    self.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithTitle:@"手动排序" style:UIBarButtonItemStylePlain target:self action:@selector(toggleSorting)];
+}
+- (void)toggleSorting {
+    [self setEditing:!self.editing animated:YES];
+    self.navigationItem.leftBarButtonItem.title = self.editing ? @"结束排序" : @"手动排序";
 }
 - (void)reloadItems {
     self.items = [NSMutableArray array];
-    for (NSDictionary *item in RSMenuItems(self.floatingMenu)) [self.items addObject:item.mutableCopy];
+    for (NSDictionary *item in (self.frozenMenu ? RSFrozenMenuItems() : RSMenuItems(self.floatingMenu))) [self.items addObject:item.mutableCopy];
 }
-- (void)save { [RSMenuPrefs() setObject:self.items forKey:self.floatingMenu ? @"FloatingMenu" : @"SelectionMenu"]; [RSMenuPrefs() synchronize]; }
+- (void)save { [RSMenuPrefs() setObject:self.items forKey:self.floatingMenu ? @"FloatingMenu" : self.frozenMenu ? @"FrozenMenu" : @"SelectionMenu"]; [RSMenuPrefs() synchronize]; }
 - (void)close {
     [RSMenuPrefs() synchronize];
     if (self.navigationController.viewControllers.count > 1) [self.navigationController popViewControllerAnimated:YES];
@@ -116,7 +130,7 @@ BOOL RSSelectionMenuHideNames(void) { return [RSMenuPrefs() boolForKey:@"HideSel
     return section == 1 && self.floatingMenu ? nil : @[@"图标、名称与排序", @"显示大小", @"恢复"][section];
 }
 - (NSString *)tableView:(UITableView *)tableView titleForFooterInSection:(NSInteger)section {
-    return section == 0 ? @"点行修改名称或图标；点编辑拖动排序。关闭/取消按钮保持可用。浮图菜单字号与大小使用系统样式。" : nil;
+    return section == 0 ? @"点行修改名称或图标；点手动排序后拖动右侧把手；开关增减功能。关闭/取消按钮保持可用。浮图菜单字号与大小使用系统样式。" : nil;
 }
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)path {
     UITableViewCell *cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:nil];
@@ -170,7 +184,7 @@ BOOL RSSelectionMenuHideNames(void) { return [RSMenuPrefs() boolForKey:@"HideSel
         UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"恢复默认" message:@"清除工具条排序、名称、图标和大小设置？" preferredStyle:UIAlertControllerStyleAlert];
         [alert addAction:[UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:nil]];
         [alert addAction:[UIAlertAction actionWithTitle:@"恢复" style:UIAlertActionStyleDestructive handler:^(UIAlertAction *action) {
-            for (NSString *key in (self.floatingMenu ? @[@"FloatingMenu"] : @[@"SelectionMenu", @"SelectionIconSize", @"SelectionTextSize", @"HideSelectionNames"])) [RSMenuPrefs() removeObjectForKey:key];
+            for (NSString *key in (self.floatingMenu ? @[@"FloatingMenu"] : self.frozenMenu ? @[@"FrozenMenu"] : @[@"SelectionMenu", @"SelectionIconSize", @"SelectionTextSize", @"HideSelectionNames"])) [RSMenuPrefs() removeObjectForKey:key];
             [self reloadItems]; [self.tableView reloadData];
         }]];
         [self presentViewController:alert animated:YES completion:nil]; return;

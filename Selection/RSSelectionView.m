@@ -1,5 +1,6 @@
 #import "RSSelectionView.h"
 #import <math.h>
+#import "../Geometry/RSGeometry.h"
 #import "../Preferences/RSOptions.h"
 
 typedef NS_ENUM(NSInteger, RSSelectionDragMode) {
@@ -18,6 +19,8 @@ static const CGFloat RSHandleHitRadius = 28.0;
 @property (nonatomic) CGRect selectionRect;
 @property (nonatomic) CGPoint startPoint;
 @property (nonatomic) CGPoint lastPoint;
+@property (nonatomic) CGPoint anchorPoint;
+@property (nonatomic) BOOL dragging;
 @property (nonatomic) RSSelectionDragMode dragMode;
 @end
 
@@ -45,26 +48,8 @@ static const CGFloat RSHandleHitRadius = 28.0;
 }
 
 - (CGRect)newRectFromPoint:(CGPoint)start toPoint:(CGPoint)end {
-    CGFloat dx = end.x - start.x;
-    CGFloat dy = end.y - start.y;
-    CGFloat x2 = start.x + (dx < 0 ? -MAX(fabs(dx), RSMinimumSelectionSize)
-                                   : MAX(dx, RSMinimumSelectionSize));
-    CGFloat y2 = start.y + (dy < 0 ? -MAX(fabs(dy), RSMinimumSelectionSize)
-                                   : MAX(dy, RSMinimumSelectionSize));
-    x2 = MIN(MAX(x2, 0), CGRectGetWidth(self.bounds));
-    y2 = MIN(MAX(y2, 0), CGRectGetHeight(self.bounds));
-    CGRect rect = CGRectStandardize(CGRectMake(start.x, start.y, x2 - start.x, y2 - start.y));
-    if (CGRectGetWidth(rect) < RSMinimumSelectionSize) {
-        rect.origin.x = MIN(MAX(start.x - RSMinimumSelectionSize / 2.0, 0),
-                            CGRectGetWidth(self.bounds) - RSMinimumSelectionSize);
-        rect.size.width = RSMinimumSelectionSize;
-    }
-    if (CGRectGetHeight(rect) < RSMinimumSelectionSize) {
-        rect.origin.y = MIN(MAX(start.y - RSMinimumSelectionSize / 2.0, 0),
-                            CGRectGetHeight(self.bounds) - RSMinimumSelectionSize);
-        rect.size.height = RSMinimumSelectionSize;
-    }
-    return rect;
+    RSRectD rect = RSRectAroundAnchor(start.x, start.y, end.x, end.y, self.bounds.size.width, self.bounds.size.height);
+    return CGRectMake(rect.x, rect.y, rect.width, rect.height);
 }
 
 - (RSSelectionDragMode)modeForPoint:(CGPoint)point {
@@ -84,35 +69,7 @@ static const CGFloat RSHandleHitRadius = 28.0;
         if (hypot(point.x - corners[index].x, point.y - corners[index].y) <= RSHandleHitRadius)
             return modes[index];
     }
-    return CGRectContainsPoint(rect, point) ? RSSelectionDragMove : RSSelectionDragNew;
-}
-
-- (CGRect)resizedRectForPoint:(CGPoint)point {
-    CGRect rect = self.selectionRect;
-    point = [self clampedPoint:point];
-    CGFloat left = CGRectGetMinX(rect), right = CGRectGetMaxX(rect);
-    CGFloat top = CGRectGetMinY(rect), bottom = CGRectGetMaxY(rect);
-    switch (self.dragMode) {
-        case RSSelectionDragTopLeft:
-            left = MIN(point.x, right - RSMinimumSelectionSize);
-            top = MIN(point.y, bottom - RSMinimumSelectionSize);
-            break;
-        case RSSelectionDragTopRight:
-            right = MAX(point.x, left + RSMinimumSelectionSize);
-            top = MIN(point.y, bottom - RSMinimumSelectionSize);
-            break;
-        case RSSelectionDragBottomLeft:
-            left = MIN(point.x, right - RSMinimumSelectionSize);
-            bottom = MAX(point.y, top + RSMinimumSelectionSize);
-            break;
-        case RSSelectionDragBottomRight:
-            right = MAX(point.x, left + RSMinimumSelectionSize);
-            bottom = MAX(point.y, top + RSMinimumSelectionSize);
-            break;
-        default:
-            break;
-    }
-    return CGRectMake(left, top, right - left, bottom - top);
+    return RSSelectionDragMove;
 }
 
 - (void)touchesBegan:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
@@ -120,17 +77,23 @@ static const CGFloat RSHandleHitRadius = 28.0;
     self.startPoint = point;
     self.lastPoint = point;
     self.dragMode = [self modeForPoint:point];
-    if (self.dragMode == RSSelectionDragNew) {
-        self.selectionRect = CGRectZero;
-        NSLog(@"[RegionShot] selection started");
+    self.dragging = NO;
+    CGRect rect = self.selectionRect;
+    switch (self.dragMode) {
+        case RSSelectionDragTopLeft: self.anchorPoint = CGPointMake(CGRectGetMaxX(rect), CGRectGetMaxY(rect)); break;
+        case RSSelectionDragTopRight: self.anchorPoint = CGPointMake(CGRectGetMinX(rect), CGRectGetMaxY(rect)); break;
+        case RSSelectionDragBottomLeft: self.anchorPoint = CGPointMake(CGRectGetMaxX(rect), CGRectGetMinY(rect)); break;
+        case RSSelectionDragBottomRight: self.anchorPoint = rect.origin; break;
+        default: self.anchorPoint = point; break;
     }
-    if (self.selectionChanged) self.selectionChanged(YES);
 }
 
 - (void)touchesMoved:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
     UITouch *touch = touches.anyObject;
     if (!touch) return;
     CGPoint point = [self clampedPoint:[touch locationInView:self]];
+    if (!self.dragging && hypot(point.x - self.startPoint.x, point.y - self.startPoint.y) < 6) return;
+    self.dragging = YES;
     if (self.dragMode == RSSelectionDragNew) {
         self.selectionRect = [self newRectFromPoint:self.startPoint toPoint:point];
     } else if (self.dragMode == RSSelectionDragMove) {
@@ -141,7 +104,7 @@ static const CGFloat RSHandleHitRadius = 28.0;
         rect.origin.y = MIN(MAX(rect.origin.y, 0), CGRectGetHeight(self.bounds) - rect.size.height);
         self.selectionRect = rect;
     } else {
-        self.selectionRect = [self resizedRectForPoint:point];
+        self.selectionRect = [self newRectFromPoint:self.anchorPoint toPoint:point];
     }
     self.lastPoint = point;
     [self setNeedsDisplay];
@@ -150,14 +113,18 @@ static const CGFloat RSHandleHitRadius = 28.0;
 
 - (void)touchesEnded:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
     UITouch *touch = touches.anyObject;
-    if (touch.tapCount == 2 && self.hasValidSelection && CGRectContainsPoint(self.selectionRect, [touch locationInView:self]) &&
-        [RSOption(@"DoubleTapSelection") boolValue] && self.doubleTapHandler) { self.doubleTapHandler(); return; }
-    if (CGRectIsEmpty(self.selectionRect))
-        self.selectionRect = [self newRectFromPoint:self.startPoint toPoint:self.startPoint];
+    if (!self.dragging && touch.tapCount == 2) {
+        if (self.hasValidSelection && CGRectContainsPoint(self.selectionRect, [touch locationInView:self])) {
+            if (self.doubleTapHandler) self.doubleTapHandler();
+        } else if (self.cancelHandler) self.cancelHandler();
+        return;
+    }
+    self.dragging = NO;
     [self setNeedsDisplay];
     if (self.selectionChanged) self.selectionChanged(NO);
 }
 - (void)touchesCancelled:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
+    self.dragging = NO;
     [self setNeedsDisplay]; if (self.selectionChanged) self.selectionChanged(NO);
 }
 

@@ -22,5 +22,14 @@ int main(void) {
     assert(toolbar.y == 682 && toolbar.x == 112);
     toolbar = RSToolbarFrame((RSRectD){0, 0, 428, 926}, safe, 600, 60);
     assert(toolbar.x == 16 && toolbar.width == 396 && toolbar.y >= safe.y && toolbar.y + toolbar.height <= 880);
+    // Repeated circles must cross the anchor without locking to the original corner.
+    for (int pass = 0; pass < 3; pass++) for (int quadrant = 0; quadrant < 4; quadrant++) {
+        double x = quadrant & 1 ? 300 : 100, y = quadrant & 2 ? 400 : 200;
+        RSRectD r = RSRectAroundAnchor(200, 300, x, y, 428, 926);
+        assert(r.width == 100 && r.height == 100);
+        assert(r.x == fmin(200, x) && r.y == fmin(300, y));
+    }
+    RSRectD edge = RSRectAroundAnchor(200, 300, 250, -20, 428, 926);
+    assert(edge.y == 0 && edge.height == 300);
     puts("RegionShot geometry checks passed");
 }

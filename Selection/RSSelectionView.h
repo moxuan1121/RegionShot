@@ -5,6 +5,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, readonly) CGRect selectionRect;
 @property (nonatomic, readonly) BOOL hasValidSelection;
 @property (nonatomic, copy, nullable) dispatch_block_t doubleTapHandler;
+@property (nonatomic, copy, nullable) dispatch_block_t cancelHandler;
 @property (nonatomic, copy, nullable) void (^selectionChanged)(BOOL dragging);
 - (void)selectAll;
 @end

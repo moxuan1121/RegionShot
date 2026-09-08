@@ -8,6 +8,17 @@ typedef struct {
     double height;
 } RSRectD;
 
+// Anchor stays fixed even when a corner is dragged through all four quadrants.
+static inline RSRectD RSRectAroundAnchor(double ax, double ay, double x, double y, double width, double height) {
+    double minimum = 44;
+    double x2 = fmax(0, fmin(width, ax + (x < ax ? -1 : 1) * fmax(fabs(x - ax), minimum)));
+    double y2 = fmax(0, fmin(height, ay + (y < ay ? -1 : 1) * fmax(fabs(y - ay), minimum)));
+    RSRectD rect = {fmin(ax, x2), fmin(ay, y2), fabs(x2 - ax), fabs(y2 - ay)};
+    if (rect.width < minimum) { rect.x = fmin(fmax(ax - minimum / 2, 0), width - minimum); rect.width = minimum; }
+    if (rect.height < minimum) { rect.y = fmin(fmax(ay - minimum / 2, 0), height - minimum); rect.height = minimum; }
+    return rect;
+}
+
 static inline int RSInStatusBarRightRegion(double x, double y, double width, double height) {
     return isfinite(x) && isfinite(y) && isfinite(width) && isfinite(height) &&
            width > 0 && height > 0 && x >= width * 0.5 && x < width && y >= 0 && y < height;

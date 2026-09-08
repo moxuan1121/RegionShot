@@ -54,7 +54,7 @@ static BOOL RSTryCapture(NSString *source) {
 - (BOOL)gestureRecognizer:(UIGestureRecognizer *)gesture shouldReceiveTouch:(UITouch *)touch {
     UIView *view = gesture.view;
     CGPoint point = [touch locationInView:view]; CGRect bounds = view.bounds;
-    return RSEnabled && [RSOption(@"StatusBarSwipe") boolValue] && view.window && !view.hidden && view.alpha > 0.01 &&
+    return RSEnabled && !RSRegionShotManager.sharedManager.isCapturing && [RSOption(@"StatusBarSwipe") boolValue] && view.window && !view.hidden && view.alpha > 0.01 &&
         RSInStatusBarRightRegion(point.x - bounds.origin.x, point.y - bounds.origin.y, bounds.size.width, bounds.size.height);
 }
 - (void)swiped:(UISwipeGestureRecognizer *)gesture {

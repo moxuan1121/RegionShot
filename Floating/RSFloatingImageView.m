@@ -4,19 +4,28 @@
 
 @interface RSFloatingImageView () <UIGestureRecognizerDelegate, UIContextMenuInteractionDelegate>
 @property (nonatomic) CGFloat currentScale;
+@property (nonatomic, strong) UIImageView *roundedImage;
 @end
 
 @implementation RSFloatingImageView
 
 - (instancetype)initWithCroppedImage:(UIImage *)image {
-    self = [super initWithImage:image];
+    self = [super initWithFrame:CGRectZero];
     if (self) {
         _currentScale = 1;
         self.userInteractionEnabled = YES;
         self.contentMode = UIViewContentModeScaleAspectFit;
         self.backgroundColor = UIColor.blackColor;
-        self.layer.cornerRadius = 8;
+        self.layer.cornerRadius = 12;
+        self.layer.cornerCurve = kCACornerCurveContinuous;
         self.layer.masksToBounds = NO;
+        _roundedImage = [[UIImageView alloc] initWithImage:image];
+        _roundedImage.contentMode = UIViewContentModeScaleAspectFit;
+        _roundedImage.layer.cornerRadius = 12;
+        _roundedImage.layer.cornerCurve = kCACornerCurveContinuous;
+        _roundedImage.clipsToBounds = YES;
+        [self addSubview:_roundedImage];
+
         self.layer.shadowColor = UIColor.blackColor.CGColor;
         self.layer.shadowOpacity = [RSOption(@"FloatShadow") boolValue] ? 0.35 : 0;
         self.alpha = [RSOption(@"FloatOpacity") doubleValue];
@@ -40,7 +49,13 @@
     return self;
 }
 
-- (UIImage *)croppedImage { return self.image; }
+- (void)layoutSubviews {
+    [super layoutSubviews]; self.roundedImage.frame = self.bounds;
+    self.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.bounds cornerRadius:12].CGPath;
+}
+- (UIImage *)image { return self.roundedImage.image; }
+- (void)setImage:(UIImage *)image { self.roundedImage.image = image; }
+- (UIImage *)croppedImage { return self.roundedImage.image; }
 
 - (void)tapped:(UITapGestureRecognizer *)gesture {
     if (gesture.state == UIGestureRecognizerStateRecognized)

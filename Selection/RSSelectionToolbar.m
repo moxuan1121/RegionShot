@@ -32,13 +32,14 @@
 
 - (void)reloadButtons {
         for (UIView *view in self.subviews.copy) [view removeFromSuperview];
-        for (NSDictionary *item in RSSelectionMenuItems()) {
+        for (NSDictionary *item in (self.selectionActive ? RSSelectionMenuItems() : RSFrozenMenuItems())) {
             if (![item[@"enabled"] boolValue]) continue;
-            if (!self.selectionActive && [item[@"id"] integerValue] > 4) continue;
             RSSelectionToolbarButton *button = [RSSelectionToolbarButton buttonWithType:UIButtonTypeSystem];
             [button setTitle:item[@"title"] forState:UIControlStateNormal];
             button.accessibilityLabel = item[@"title"];
             [button setImage:RSSelectionMenuIcon(item) forState:UIControlStateNormal];
+            button.imageView.contentMode = UIViewContentModeScaleAspectFit;
+            [button setPreferredSymbolConfiguration:[UIImageSymbolConfiguration configurationWithPointSize:RSSelectionMenuSize(YES)] forImageInState:UIControlStateNormal];
             button.tintColor = UIColor.whiteColor;
             [button setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
             button.tag = [item[@"id"] integerValue];

@@ -9,12 +9,19 @@
 #import "../Manager/RSRegionShotManager.h"
 #import "../Geometry/RSGeometry.h"
 
+@interface RSSelectionController : UIViewController
+@end
+@implementation RSSelectionController
+- (UIRectEdge)preferredScreenEdgesDeferringSystemGestures { return UIRectEdgeAll; }
+- (BOOL)prefersStatusBarHidden { return YES; }
+- (BOOL)prefersHomeIndicatorAutoHidden { return YES; }
+@end
+
 @interface RSSelectionWindow ()
 @property (nonatomic, strong) UIImageView *imageView;
 @property (nonatomic, strong) RSSelectionView *selectionView;
 @property (nonatomic, strong) RSSelectionToolbar *toolbar;
 @property (nonatomic, weak) UIWindow *previousKeyWindow;
-@property (nonatomic, strong) UIButton *settingsButton;
 @property (nonatomic, strong) UIScrollView *toolbarScroll;
 @end
 
@@ -38,7 +45,7 @@
         self.frame = scene ? scene.coordinateSpace.bounds : UIScreen.mainScreen.bounds;
         self.windowLevel = UIWindowLevelAlert + 200;
         self.backgroundColor = UIColor.blackColor;
-        UIViewController *controller = [UIViewController new];
+        UIViewController *controller = [RSSelectionController new];
         controller.view.backgroundColor = UIColor.blackColor;
         self.rootViewController = controller;
 
@@ -51,15 +58,6 @@
         _toolbarScroll = [UIScrollView new];
         [controller.view addSubview:_toolbarScroll];
         [_toolbarScroll addSubview:_toolbar];
-        _settingsButton = [UIButton buttonWithType:UIButtonTypeSystem];
-        [_settingsButton setImage:[UIImage systemImageNamed:@"gearshape"] forState:UIControlStateNormal];
-        _settingsButton.tintColor = UIColor.whiteColor;
-        _settingsButton.backgroundColor = [UIColor colorWithWhite:0.1 alpha:0.85];
-        _settingsButton.layer.cornerRadius = 22;
-        _settingsButton.accessibilityLabel = @"工具条设置";
-        [_settingsButton addTarget:self action:@selector(openSettings) forControlEvents:UIControlEventTouchUpInside];
-        [controller.view addSubview:_settingsButton];
-
         __weak typeof(self) weakSelf = self;
         _selectionView.selectionChanged = ^(BOOL dragging) {
             RSSelectionWindow *window = weakSelf;
@@ -72,17 +70,18 @@
         };
         _toolbar.captureHandler = ^{
             RSSelectionWindow *strongSelf = weakSelf;
-            if (!strongSelf.selectionView.hasValidSelection) return;
+            if (!strongSelf.selectionView.hasValidSelection) [strongSelf.selectionView selectAll];
             confirm(strongSelf.selectionRect, strongSelf.displaySize);
         };
         _toolbar.cancelHandler = cancel;
+        _selectionView.cancelHandler = cancel;
         _selectionView.doubleTapHandler = ^{ if (weakSelf.toolbar.captureHandler) weakSelf.toolbar.captureHandler(); };
         _toolbar.fullscreenHandler = ^{ [weakSelf.selectionView selectAll]; };
         _toolbar.historyHandler = ^{ [RSRegionShotManager.sharedManager showHistory]; };
         _toolbar.ocrHandler = ^{ [weakSelf showRecognition:NO]; };
         _toolbar.aiHandler = ^{
             RSSelectionWindow *window = weakSelf;
-            if (!window.selectionView.hasValidSelection) return;
+            if (!window.selectionView.hasValidSelection) [window.selectionView selectAll];
             UIImage *cropped = [RSScreenCapture cropImage:window.imageView.image toRect:window.selectionRect displaySize:window.displaySize];
             UIWindowScene *scene = window.windowScene;
             if (cropped) { if (window.toolbar.cancelHandler) window.toolbar.cancelHandler(); [RSChatController showImage:cropped scene:scene]; }
@@ -91,7 +90,8 @@
         _toolbar.editHandler = ^{ [weakSelf editSelection]; };
         _toolbar.longCaptureHandler = ^{
             RSSelectionWindow *window = weakSelf;
-            if (window.selectionView.hasValidSelection && window.longCaptureHandler)
+            if (!window.selectionView.hasValidSelection) [window.selectionView selectAll];
+            if (window.longCaptureHandler)
                 window.longCaptureHandler(window.selectionRect, window.displaySize);
         };
     }
@@ -123,25 +123,13 @@
     CGFloat contentWidth = MAX(width, self.toolbar.subviews.count * buttonWidth);
     self.toolbar.frame = CGRectMake(0, 0, contentWidth, height);
     self.toolbarScroll.contentSize = self.toolbar.bounds.size;
-    self.settingsButton.frame = CGRectMake(CGRectGetWidth(self.bounds) - 60, self.safeAreaInsets.top + 12, 44, 44);
-    self.settingsButton.hidden = self.selectionView.hasValidSelection;
     [self bringSubviewToFront:self.rootViewController.view];
     [self.rootViewController.view bringSubviewToFront:self.toolbarScroll];
-    [self.rootViewController.view bringSubviewToFront:self.settingsButton];
-}
-
-- (void)openSettings {
-    if (self.rootViewController.presentedViewController) return;
-    RSMenuSettings *settings = [RSMenuSettings new];
-    __weak typeof(self) weakSelf = self;
-    settings.onClose = ^{ [weakSelf.toolbar reloadButtons]; [weakSelf setNeedsLayout]; };
-    UINavigationController *navigation = [[UINavigationController alloc] initWithRootViewController:settings];
-    navigation.modalPresentationStyle = UIModalPresentationFullScreen;
-    [self.rootViewController presentViewController:navigation animated:YES completion:nil];
 }
 
 - (void)recognizeSelection {
-    if (!self.selectionView.hasValidSelection || self.rootViewController.presentedViewController) return;
+    if (self.rootViewController.presentedViewController) return;
+    if (!self.selectionView.hasValidSelection) [self.selectionView selectAll];
     UIImage *image = [RSScreenCapture cropImage:self.imageView.image toRect:self.selectionRect displaySize:self.displaySize];
     if (!image) return;
     UIAlertController *sheet = [UIAlertController alertControllerWithTitle:@"识别选区" message:nil preferredStyle:UIAlertControllerStyleActionSheet];
@@ -157,7 +145,7 @@
     [self.rootViewController presentViewController:sheet animated:YES completion:nil];
 }
 - (void)showRecognition:(BOOL)barcode {
-    if (!self.selectionView.hasValidSelection) return;
+    if (!self.selectionView.hasValidSelection) [self.selectionView selectAll];
     UIImage *image = [RSScreenCapture cropImage:self.imageView.image toRect:self.selectionRect displaySize:self.displaySize];
     if (!image) return;
     RSRecognitionController *result = [[RSRecognitionController alloc] initWithImage:image barcode:barcode];
@@ -169,7 +157,8 @@
 }
 
 - (void)editSelection {
-    if (!self.selectionView.hasValidSelection || self.rootViewController.presentedViewController) return;
+    if (self.rootViewController.presentedViewController) return;
+    if (!self.selectionView.hasValidSelection) [self.selectionView selectAll];
     UIImage *image = [RSScreenCapture cropImage:self.imageView.image toRect:self.selectionRect displaySize:self.displaySize];
     if (!image) return;
     __weak typeof(self) weakSelf = self;
@@ -200,6 +189,7 @@
     self.toolbar.aiHandler = nil; self.toolbar.ocrHandler = nil; self.toolbar.fullscreenHandler = nil;
     self.toolbar.historyHandler = nil;
     self.selectionView.doubleTapHandler = nil;
+    self.selectionView.cancelHandler = nil;
     self.selectionView.selectionChanged = nil;
     self.editedImageHandler = nil;
     self.longCaptureHandler = nil;
