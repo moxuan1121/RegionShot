@@ -8,6 +8,13 @@ typedef struct {
     double height;
 } RSRectD;
 
+// UIKit interface orientation values: landscape left=3, right=4.
+// Screen capture may still return portrait framebuffer pixels in landscape.
+static inline double RSCaptureRotation(double width, double height, int orientation) {
+    if (width <= 0 || height <= width || !isfinite(width) || !isfinite(height)) return 0;
+    return orientation == 3 ? -1.5707963267948966 : orientation == 4 ? 1.5707963267948966 : 0;
+}
+
 // Keep a visible one-point gap on Retina screens, while preserving one physical pixel at 1x.
 static inline double RSCornerOutset(double scale, double strokeWidth) {
     return strokeWidth / 2 + fmax(1 / scale, 1);

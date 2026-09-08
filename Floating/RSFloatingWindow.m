@@ -21,6 +21,7 @@
     UIViewController *controller = [RSFloatingController new];
     controller.view.backgroundColor = UIColor.clearColor;
     self.rootViewController = controller;
+    RSApplyWindowOrientation(self, RSActiveOrientation(self.windowScene));
 }
 
 - (instancetype)initWithWindowScene:(UIWindowScene *)windowScene {

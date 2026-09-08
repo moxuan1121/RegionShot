@@ -37,6 +37,7 @@
 @property (nonatomic, strong) NSMutableString *answer;
 @property (nonatomic, strong) UITextView *reply;
 @property (nonatomic, copy) NSString *failure;
+@property (nonatomic, copy) NSString *personaPrompt;
 @property (nonatomic) NSInteger responseStatus;
 @property (nonatomic) BOOL streaming;
 @property (nonatomic) BOOL done;
@@ -79,6 +80,14 @@ static NSUserDefaults *RSChatPreferences(void) {
     [window makeKeyAndVisible];
     [controller loadViewIfNeeded];
     if (image && [RSOption(@"AIAutoImage") boolValue]) [controller send];
+}
++ (void)showImage:(UIImage *)image scene:(UIWindowScene *)scene persona:(NSDictionary *)persona {
+    if (!image || !persona) return;
+    if (RSActiveChat) [RSActiveChat close];
+    [self showImage:nil scene:scene];
+    RSActiveChat.personaPrompt = persona[@"prompt"] ?: @"";
+    RSActiveChat.attachment = image; RSActiveChat.chip.image = image; RSActiveChat.chip.hidden = NO;
+    [RSActiveChat send];
 }
 + (void)showText:(NSString *)text scene:(UIWindowScene *)scene sendImmediately:(BOOL)send {
     [self showImage:nil scene:scene];
@@ -340,7 +349,7 @@ static NSUserDefaults *RSChatPreferences(void) {
     id lastContent = [self.history.lastObject objectForKey:@"content"];
     if ([lastContent isKindOfClass:NSArray.class]) for (id part in lastContent)
         if ([part isKindOfClass:NSDictionary.class] && [part[@"type"] isEqual:@"image_url"]) { imageQuestion = YES; break; }
-    NSString *persona = RSOption(@"AIPersona");
+    NSString *persona = self.personaPrompt ?: RSOption(@"AIPersona");
     if (!persona.length) persona = RSAIPersonaPrompt(imageQuestion);
     if (persona.length) [messages insertObject:@{@"role":@"system", @"content":persona} atIndex:0];
     NSError *error = nil;

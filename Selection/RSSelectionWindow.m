@@ -12,13 +12,14 @@
 #import "../Preferences/RSOptions.h"
 
 @interface RSSelectionController : UIViewController
+@property (nonatomic) UIInterfaceOrientation captureOrientation;
 @end
 @implementation RSSelectionController
 - (BOOL)shouldAutorotate { return NO; }
 - (BOOL)autorotate { return NO; }
 - (UIInterfaceOrientationMask)supportedInterfaceOrientations { return UIInterfaceOrientationMaskAllButUpsideDown; }
 - (UIInterfaceOrientation)preferredInterfaceOrientationForPresentation {
-    return RSActiveOrientation(self.view.window.windowScene);
+    return self.captureOrientation;
 }
 - (UIRectEdge)preferredScreenEdgesDeferringSystemGestures { return UIRectEdgeAll; }
 - (UIViewController *)childViewControllerForScreenEdgesDeferringSystemGestures { return nil; }
@@ -33,6 +34,8 @@
 @property (nonatomic, strong) UIVisualEffectView *toolbarBlur;
 @property (nonatomic, weak) UIWindow *previousKeyWindow;
 @property (nonatomic, strong) UIScrollView *toolbarScroll;
+@property (nonatomic, strong) id systemGestureAssertion;
+@property (nonatomic) UIInterfaceOrientation captureOrientation;
 @end
 
 @implementation RSSelectionWindow
@@ -57,7 +60,9 @@
         self.frame = scene ? scene.coordinateSpace.bounds : UIScreen.mainScreen.bounds;
         self.windowLevel = UIWindowLevelAlert + 200;
         self.backgroundColor = UIColor.blackColor;
-        UIViewController *controller = [RSSelectionController new];
+        self.captureOrientation = RSActiveOrientation(scene);
+        RSSelectionController *controller = [RSSelectionController new];
+        controller.captureOrientation = self.captureOrientation;
         controller.view.backgroundColor = UIColor.blackColor;
         self.rootViewController = controller;
 
@@ -122,6 +127,16 @@
             UIWindowScene *scene = window.windowScene;
             if (cropped) { if (window.toolbar.cancelHandler) window.toolbar.cancelHandler(); [RSChatController showImage:cropped scene:scene]; }
         };
+        _toolbar.personaHandler = ^(NSDictionary *persona) {
+            RSSelectionWindow *window = weakSelf;
+            if (!window.selectionView.hasValidSelection) return;
+            UIImage *cropped = [RSScreenCapture cropImage:window.imageView.image toRect:window.selectionRect displaySize:window.displaySize];
+            UIWindowScene *scene = window.windowScene;
+            if (cropped) {
+                if (window.toolbar.cancelHandler) window.toolbar.cancelHandler();
+                [RSChatController showImage:cropped scene:scene persona:persona];
+            }
+        };
         _toolbar.recognitionHandler = ^{ [weakSelf recognizeSelection]; };
         _toolbar.editHandler = ^{ [weakSelf editSelection]; };
         _toolbar.longCaptureHandler = ^{
@@ -139,19 +154,21 @@
 
 - (void)layoutSubviews {
     [super layoutSubviews];
-    self.imageView.frame = self.bounds;
-    self.selectionView.frame = self.bounds;
-    CGFloat safeBottom = self.safeAreaInsets.bottom;
+    CGRect bounds = self.rootViewController.view.bounds;
+    UIEdgeInsets insets = self.rootViewController.view.safeAreaInsets;
+    self.imageView.frame = bounds;
+    self.selectionView.frame = bounds;
+    CGFloat safeBottom = insets.bottom;
     CGFloat buttonWidth = MAX(44, RSSelectionMenuSize(YES) + 16);
-    CGFloat width = MIN(CGRectGetWidth(self.bounds) - 32, MIN(396, self.toolbar.subviews.count * buttonWidth));
+    CGFloat width = MIN(CGRectGetWidth(bounds) - 32, MIN(396, self.toolbar.subviews.count * buttonWidth));
     CGFloat height = MAX(40, RSSelectionMenuSize(YES) + (RSSelectionMenuHideNames() ? 6 : 24));
-    self.toolbarScroll.frame = CGRectMake((CGRectGetWidth(self.bounds) - width) / 2.0,
-                                    CGRectGetHeight(self.bounds) - safeBottom - height - 12, width, height);
+    self.toolbarScroll.frame = CGRectMake((CGRectGetWidth(bounds) - width) / 2.0,
+                                    CGRectGetHeight(bounds) - safeBottom - height - 12, width, height);
     if (self.selectionView.hasValidSelection) {
         CGRect rect = self.selectionRect;
-        RSRectD safe = {16 + self.safeAreaInsets.left, self.safeAreaInsets.top + 8,
-            self.bounds.size.width - self.safeAreaInsets.left - self.safeAreaInsets.right - 32,
-            self.bounds.size.height - self.safeAreaInsets.top - self.safeAreaInsets.bottom - 20};
+        RSRectD safe = {16 + insets.left, insets.top + 8,
+            bounds.size.width - insets.left - insets.right - 32,
+            bounds.size.height - insets.top - insets.bottom - 20};
         RSRectD frame = RSToolbarFrame((RSRectD){rect.origin.x, rect.origin.y, rect.size.width, rect.size.height}, safe, width, height);
         self.toolbarScroll.frame = CGRectMake(frame.x, frame.y, frame.width, frame.height);
     }
@@ -194,15 +211,38 @@
 
 - (void)show {
     self.previousKeyWindow = [RSSelectionWindow currentKeyWindow];
+    Class managerClass = NSClassFromString(@"SBSystemGestureManager");
+    SEL mainDisplay = NSSelectorFromString(@"mainDisplayManager");
+    SEL acquire = NSSelectorFromString(@"acquireSystemGestureDisableAssertionForReason:exceptSystemGestureTypes:");
+    id manager = [managerClass respondsToSelector:mainDisplay] ? ((id (*)(id, SEL))objc_msgSend)(managerClass, mainDisplay) : nil;
+    if ([manager respondsToSelector:acquire])
+        self.systemGestureAssertion = ((id (*)(id, SEL, id, id))objc_msgSend)(manager, acquire, @"RegionShot frozen selection", [NSSet set]);
+    RSApplyWindowOrientation(self, self.captureOrientation);
     self.hidden = NO;
     [self makeKeyAndVisible];
+    RSApplyWindowOrientation(self, self.captureOrientation);
+    [self setNeedsLayout];
+    [self layoutIfNeeded];
+    NSLog(@"[RegionShot] freeze orientation=%ld window=%@ canvas=%@ systemGestureAssertion=%@", (long)self.captureOrientation, NSStringFromCGRect(self.bounds), NSStringFromCGRect(self.selectionView.bounds), self.systemGestureAssertion ? @"active" : @"unavailable");
     [self.rootViewController setNeedsUpdateOfScreenEdgesDeferringSystemGestures];
 }
 
 - (BOOL)_shouldCreateScreenEdgesDeferringGestureRecognizer { return YES; }
+- (BOOL)_containedGestureRecognizersShouldRespectGestureServerInstructions { return NO; }
+- (BOOL)_shouldDelayTouchForSystemGestures:(UITouch *)touch { return NO; }
+
+- (void)releaseSystemGestures {
+    SEL invalidate = NSSelectorFromString(@"invalidate");
+    if ([self.systemGestureAssertion respondsToSelector:invalidate])
+        ((void (*)(id, SEL))objc_msgSend)(self.systemGestureAssertion, invalidate);
+    self.systemGestureAssertion = nil;
+}
+
+- (void)dealloc { [self releaseSystemGestures]; }
 
 - (void)dismiss {
     self.hidden = YES;
+    [self releaseSystemGestures];
     [self resignKeyWindow];
     [self.previousKeyWindow makeKeyWindow];
     self.toolbar.captureHandler = nil;
@@ -210,6 +250,7 @@
     self.toolbar.longCaptureHandler = nil;
     self.toolbar.recognitionHandler = nil;
     self.toolbar.editHandler = nil;
+    self.toolbar.personaHandler = nil;
     self.toolbar.aiHandler = nil; self.toolbar.copyHandler = nil; self.toolbar.saveHandler = nil; self.toolbar.fullscreenHandler = nil;
     self.toolbar.historyHandler = nil;
     self.selectionView.doubleTapHandler = nil;

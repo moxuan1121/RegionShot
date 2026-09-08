@@ -22,13 +22,6 @@ static const CGFloat RSHandleHitRadius = 28.0;
 - (BOOL)canBePreventedByGestureRecognizer:(UIGestureRecognizer *)preventing { return NO; }
 @end
 
-@interface RSSelectionEdgePanGestureRecognizer : UIScreenEdgePanGestureRecognizer
-@end
-@implementation RSSelectionEdgePanGestureRecognizer
-- (BOOL)canPreventGestureRecognizer:(UIGestureRecognizer *)prevented { return YES; }
-- (BOOL)canBePreventedByGestureRecognizer:(UIGestureRecognizer *)preventing { return NO; }
-@end
-
 @interface RSSelectionView () <UIGestureRecognizerDelegate>
 @property (nonatomic) CGRect selectionRect;
 @property (nonatomic) CGPoint startPoint;
@@ -49,11 +42,6 @@ static const CGFloat RSHandleHitRadius = 28.0;
         pan.maximumNumberOfTouches = 1;
         pan.delegate = self;
         [self addGestureRecognizer:pan];
-        for (NSNumber *edgeValue in @[@(UIRectEdgeTop), @(UIRectEdgeLeft), @(UIRectEdgeRight), @(UIRectEdgeBottom)]) {
-            UIScreenEdgePanGestureRecognizer *edge = [[RSSelectionEdgePanGestureRecognizer alloc] initWithTarget:self action:@selector(handlePan:)];
-            edge.edges = edgeValue.unsignedIntegerValue; edge.maximumNumberOfTouches = 1; edge.delegate = self;
-            [self addGestureRecognizer:edge]; [pan requireGestureRecognizerToFail:edge];
-        }
         UITapGestureRecognizer *doubleTap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(handleDoubleTap:)];
         doubleTap.numberOfTapsRequired = 2;
         doubleTap.delegate = self;

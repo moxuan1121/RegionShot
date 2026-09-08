@@ -10,3 +10,5 @@ NSString *RSAIPersonaPrompt(BOOL imageQuestion);
 - (instancetype)initWithSaved:(dispatch_block_t)saved;
 @end
 NS_ASSUME_NONNULL_END
+
+NSArray<NSDictionary *> *RSAIPersonas(void);

@@ -8,6 +8,7 @@
 #import <Photos/Photos.h>
 #import "../Preferences/RSOptions.h"
 #import "../History/RSHistoryController.h"
+#import "../Geometry/RSOrientation.h"
 
 @interface RSRegionShotManager () <RSFloatingImageViewDelegate>
 @property (nonatomic, getter=isCapturing) BOOL capturing;
@@ -96,7 +97,7 @@
         [self createFloatingSnap:cropped windowScene:scene];
         RSFloatingImageView *snap = self.mutableSnaps.lastObject;
         // Match the reference: the cropped region becomes a floating image in place.
-        if (snap && CGSizeEqualToSize(displaySize, self.floatingWindow.bounds.size)) {
+        if (snap && CGSizeEqualToSize(displaySize, self.floatingWindow.rootViewController.view.bounds.size)) {
             snap.bounds = (CGRect){CGPointZero, rect.size}; snap.center = CGPointMake(CGRectGetMidX(rect), CGRectGetMidY(rect));
 
         }
@@ -156,7 +157,8 @@
                                     : [[RSFloatingWindow alloc] initWithFrame:UIScreen.mainScreen.bounds];
         self.floatingWindow.hidden = NO;
     }
-    CGSize screen = self.floatingWindow.bounds.size;
+    RSApplyWindowOrientation(self.floatingWindow, RSActiveOrientation(scene));
+    CGSize screen = self.floatingWindow.rootViewController.view.bounds.size;
     CGFloat factor = MIN(MIN([RSOption(@"FloatWidth") doubleValue] / image.size.width, 320.0 / image.size.height), 1.0);
     CGSize size = CGSizeMake(MAX(80, image.size.width * factor), MAX(80, image.size.height * factor));
     RSFloatingImageView *snap = [[RSFloatingImageView alloc] initWithCroppedImage:image];

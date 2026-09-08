@@ -36,9 +36,18 @@ static NSArray<NSDictionary *> *RSAIDefaultPersonas(void) {
           @"prompt":@"你是简洁、准确的 AI 问答助手。直接回答用户问题；无法确认的信息应明确说明。"}
     ];
 }
-static NSArray<NSDictionary *> *RSAIPersonas(void) {
+NSArray<NSDictionary *> *RSAIPersonas(void) {
     id saved = [RSAIPreferences() objectForKey:@"AIPersonas"];
-    return [saved isKindOfClass:NSArray.class] && [saved count] ? saved : RSAIDefaultPersonas();
+    NSArray *source = [saved isKindOfClass:NSArray.class] && [saved count] ? saved : RSAIDefaultPersonas();
+    NSMutableArray *result = [NSMutableArray array]; NSInteger next = 100;
+    for (NSDictionary *p in source) next = MAX(next, [p[@"menuID"] integerValue] + 1);
+    for (NSDictionary *p in source) {
+        NSMutableDictionary *entry = p.mutableCopy;
+        if (!entry[@"menuID"]) entry[@"menuID"] = @(next++);
+        [result addObject:entry];
+    }
+    [RSAIPreferences() setObject:result forKey:@"AIPersonas"];
+    return result;
 }
 NSString *RSAIPersonaPrompt(BOOL imageQuestion) {
     NSString *scope = imageQuestion ? @"图片问答默认" : @"文字问答默认";

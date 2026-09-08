@@ -1,5 +1,6 @@
 #import "RSScreenCapture.h"
 #import "../Geometry/RSGeometry.h"
+#import "../Geometry/RSOrientation.h"
 #import "RSCaptureSymbol.h"
 #include <stdint.h>
 #import "RSCopyPixels.h"
@@ -26,7 +27,20 @@ typedef UIImage *(*RSScreenImageFunction)(void);
         NSLog(@"[RegionShot] screen capture returned no CGImage");
         return nil;
     }
-    return image;
+    image = [self normalizedImage:image];
+    double angle = RSCaptureRotation(image.size.width, image.size.height, (int)RSActiveOrientation(nil));
+    if (angle == 0) return image;
+    CGSize size = CGSizeMake(image.size.height, image.size.width);
+    UIGraphicsBeginImageContextWithOptions(size, NO, image.scale);
+    CGContextRef context = UIGraphicsGetCurrentContext();
+    if (context) {
+        CGContextTranslateCTM(context, size.width / 2, size.height / 2);
+        CGContextRotateCTM(context, angle);
+        [image drawInRect:CGRectMake(-image.size.width / 2, -image.size.height / 2, image.size.width, image.size.height)];
+    }
+    UIImage *rotated = UIGraphicsGetImageFromCurrentImageContext();
+    UIGraphicsEndImageContext();
+    return rotated ?: image;
 }
 
 + (UIImage *)normalizedImage:(UIImage *)image {

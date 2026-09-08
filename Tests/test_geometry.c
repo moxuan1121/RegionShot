@@ -3,6 +3,13 @@
 #include <stdio.h>
 
 int main(void) {
+    assert(RSCaptureRotation(1284, 2778, 3) < 0);
+    assert(RSCaptureRotation(1284, 2778, 4) > 0);
+    assert(RSCaptureRotation(2778, 1284, 3) == 0); // Already rotated: do not rotate twice.
+    assert(RSCaptureRotation(1284, 2778, 1) == 0);
+    assert(RSCaptureRotation(NAN, 2778, 3) == 0);
+    RSRectD landscape = RSRectToPixels((RSRectD){800, 0, 126, 428}, 926, 428, 2778, 1284);
+    assert(landscape.x == 2400 && landscape.y == 0 && landscape.width == 378 && landscape.height == 1284);
     assert(RSInStatusBarRightRegion(300, 20, 428, 44));
     assert(!RSInStatusBarRightRegion(100, 20, 428, 44));
     assert(!RSInStatusBarRightRegion(428, 20, 428, 44));

@@ -58,7 +58,9 @@
 }
 
 - (void)buttonPressed:(UIButton *)button {
-    if (button.tag == 0) {
+    if (button.tag >= 100) {
+        for (NSDictionary *item in RSSelectionMenuItems()) if ([item[@"id"] integerValue] == button.tag && self.personaHandler) { self.personaHandler(item[@"persona"]); break; }
+    } else if (button.tag == 0) {
         if (self.captureHandler) self.captureHandler();
     } else if (button.tag == 1) {
         if (self.editHandler) self.editHandler();

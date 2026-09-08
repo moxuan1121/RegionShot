@@ -1,5 +1,6 @@
 #import "RSMenuSettings.h"
 #import "RSMenuConfiguration.h"
+#import "../AI/RSAISettingsController.h"
 #import <PhotosUI/PhotosUI.h>
 #import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
 #import <math.h>
@@ -32,7 +33,10 @@ static NSArray *RSMenuDefaults(BOOL floating) {
 }
 static NSArray *RSMenuItems(BOOL floating) {
     [RSMenuPrefs() synchronize];
-    return RSNormalizeMenu([RSMenuPrefs() objectForKey:floating ? @"FloatingMenu" : @"SelectionMenu"], RSMenuDefaults(floating), floating ? @6 : nil);
+    NSMutableArray *defaults = [RSMenuDefaults(floating) mutableCopy];
+    if (!floating) for (NSDictionary *persona in RSAIPersonas())
+        [defaults addObject:@{@"id":persona[@"menuID"], @"title":persona[@"name"] ?: @"AI 人设", @"symbol":@"brain", @"enabled":@YES, @"persona":persona}];
+    return RSNormalizeMenu([RSMenuPrefs() objectForKey:floating ? @"FloatingMenu" : @"SelectionMenu"], defaults, floating ? @6 : nil);
 }
 NSArray<NSDictionary *> *RSSelectionMenuItems(void) { return RSMenuItems(NO); }
 NSArray<NSDictionary *> *RSFloatingMenuItems(void) { return RSMenuItems(YES); }
