@@ -122,6 +122,8 @@ static UIWindowLevel RSKAPanelWindowLevel(NSDictionary *options, NSString *key) 
     self.overlayWindow = window.windowScene ? [[RSKAPanelWindow alloc] initWithWindowScene:window.windowScene] : [[RSKAPanelWindow alloc] initWithFrame:UIScreen.mainScreen.bounds];
     self.overlayWindow.frame = UIScreen.mainScreen.bounds;
     self.overlayWindow.rootViewController = [UIViewController new];
+    self.overlayWindow.backgroundColor = UIColor.clearColor; self.overlayWindow.opaque = NO;
+    self.overlayWindow.rootViewController.view.backgroundColor = UIColor.clearColor;
     self.overlayWindow.windowLevel = RSKAPanelWindowLevel(self.windowOptions, @"aiWindowPriority");
     [self.overlayWindow makeKeyAndVisible];
     window = self.overlayWindow;
@@ -264,7 +266,7 @@ static UIWindowLevel RSKAPanelWindowLevel(NSDictionary *options, NSString *key) 
 - (void)enterTokens {
     if (self.generating || !self.completedResult || self.tokenView) return;
     NSArray *pieces = RSKATextPieces(self.result);
-    if (!pieces.count) { self.statusLabel.text = @"文字超过 24,000 字，暂不支持分词；可复制全文。"; return; }
+    if (!pieces.count) { self.statusLabel.text = @"文字超过 24,000 字，暂不支持分词；可复制全文。"; [self updateTokenActions]; return; }
     self.tokenView = [[RSKATokenView alloc] initWithPieces:pieces];
     self.overlayWindow.windowLevel = RSKAPanelWindowLevel(self.windowOptions, @"tokenWindowPriority");
     __weak RSKAPanel *weakSelf = self;
