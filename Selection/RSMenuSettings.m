@@ -32,7 +32,7 @@ static NSArray *RSMenuDefaults(BOOL floating) {
 }
 static NSArray *RSMenuItems(BOOL floating) {
     [RSMenuPrefs() synchronize];
-    return RSNormalizeMenu([RSMenuPrefs() objectForKey:floating ? @"FloatingMenu" : @"SelectionMenu"], RSMenuDefaults(floating), floating ? @6 : @4);
+    return RSNormalizeMenu([RSMenuPrefs() objectForKey:floating ? @"FloatingMenu" : @"SelectionMenu"], RSMenuDefaults(floating), floating ? @6 : nil);
 }
 NSArray<NSDictionary *> *RSSelectionMenuItems(void) { return RSMenuItems(NO); }
 NSArray<NSDictionary *> *RSFloatingMenuItems(void) { return RSMenuItems(YES); }
@@ -44,7 +44,7 @@ NSArray<NSDictionary *> *RSFrozenMenuItems(void) {
         if ([entry[@"id"] integerValue] > 4 && [entry[@"id"] integerValue] != 9) entry[@"enabled"] = @NO;
         [defaults addObject:entry];
     }
-    return RSNormalizeMenu([RSMenuPrefs() objectForKey:@"FrozenMenu"], defaults, @4);
+    return RSNormalizeMenu([RSMenuPrefs() objectForKey:@"FrozenMenu"], defaults, nil);
 }
 UIImage *RSSelectionMenuIcon(NSDictionary *item) {
     NSData *data = item[@"image"];
@@ -128,7 +128,7 @@ BOOL RSSelectionMenuHideNames(void) { return [RSMenuPrefs() boolForKey:@"HideSel
     return section == 1 && self.floatingMenu ? nil : @[@"图标、名称与排序", @"显示大小", @"恢复"][section];
 }
 - (NSString *)tableView:(UITableView *)tableView titleForFooterInSection:(NSInteger)section {
-    return section == 0 ? @"点行修改名称或图标；点手动排序后拖动右侧把手；开关增减功能。关闭/取消按钮保持可用。浮图菜单字号与大小使用系统样式。" : nil;
+    return section == 0 ? @"点行修改名称或图标；点手动排序后拖动右侧把手；开关增减功能。浮图的“关闭当前”保持可用，冻结和选区菜单的“取消”可以关闭。" : nil;
 }
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)path {
     UITableViewCell *cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:nil];
@@ -136,7 +136,7 @@ BOOL RSSelectionMenuHideNames(void) { return [RSMenuPrefs() boolForKey:@"HideSel
         NSDictionary *item = self.items[path.row]; cell.textLabel.text = item[@"title"];
         cell.imageView.image = RSSelectionMenuIcon(item); cell.detailTextLabel.text = item[@"image"] ? @"自定义图片" : item[@"symbol"];
         UISwitch *toggle = [UISwitch new]; toggle.on = [item[@"enabled"] boolValue]; toggle.tag = [item[@"id"] integerValue];
-        toggle.enabled = toggle.tag != (self.floatingMenu ? 6 : 4); toggle.accessibilityLabel = [@"显示 " stringByAppendingString:item[@"title"]];
+        toggle.enabled = !self.floatingMenu || toggle.tag != 6; toggle.accessibilityLabel = [@"显示 " stringByAppendingString:item[@"title"]];
         [toggle addTarget:self action:@selector(toggleItem:) forControlEvents:UIControlEventValueChanged]; cell.accessoryView = toggle;
     } else if (path.section == 1 && path.row == 0) {
         cell.textLabel.text = @"隐藏按钮名称";

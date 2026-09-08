@@ -23,6 +23,8 @@ int main(void) { @autoreleasepool {
     NSArray *defaults = @[@{@"id":@0, @"title":@"截图", @"enabled":@YES}, @{@"id":@1, @"title":@"关闭", @"enabled":@YES}];
     NSArray *menu = RSNormalizeMenu(@[@{@"id":@1, @"enabled":@NO}, @{@"id":@1}, @{@"id":@(-1)}, @{@"id":@0.5}, @{@"id":@88}], defaults, @1);
     assert(menu.count == 2 && [menu[0][@"id"] isEqual:@1] && [menu[0][@"enabled"] boolValue]);
+    NSArray *dismissible = RSNormalizeMenu(@[@{@"id":@1, @"enabled":@NO}], defaults, nil);
+    assert(dismissible.count == 2 && ![dismissible[0][@"enabled"] boolValue]);
     assert([menu[1] isEqual:defaults[0]]);
     assert([RSNormalizeMenu(@{}, defaults, @1) isEqual:defaults]);
     NSArray *remaining = @[@{@"id":@0, @"title":@"复制"}, @{@"id":@4, @"title":@"关闭", @"enabled":@YES}, @{@"id":@9, @"title":@"新增复制"}, @{@"id":@10, @"title":@"新增保存"}];

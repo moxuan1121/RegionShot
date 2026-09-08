@@ -104,14 +104,12 @@
 - (UITargetedPreview *)contextMenuInteraction:(UIContextMenuInteraction *)interaction previewForDismissingMenuWithConfiguration:(UIContextMenuConfiguration *)configuration { return [self menuPreview]; }
 - (void)contextMenuInteraction:(UIContextMenuInteraction *)interaction willDisplayMenuForConfiguration:(UIContextMenuConfiguration *)configuration animator:(id<UIContextMenuInteractionAnimating>)animator {
     self.contextMenuActive = YES;
-    [self setShadowVisible:NO];
     for (UIGestureRecognizer *gesture in self.gestureRecognizers)
         if ([gesture isKindOfClass:UITapGestureRecognizer.class]) gesture.enabled = NO;
 }
 - (void)contextMenuInteraction:(UIContextMenuInteraction *)interaction willEndForConfiguration:(UIContextMenuConfiguration *)configuration animator:(id<UIContextMenuInteractionAnimating>)animator {
     void (^finish)(void) = ^{
         self.contextMenuActive = NO;
-        [self setShadowVisible:YES];
         for (UIGestureRecognizer *gesture in self.gestureRecognizers)
             if ([gesture isKindOfClass:UITapGestureRecognizer.class]) gesture.enabled = YES;
     };

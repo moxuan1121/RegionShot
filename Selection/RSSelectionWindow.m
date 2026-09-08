@@ -13,7 +13,18 @@
 @interface RSSelectionController : UIViewController
 @end
 @implementation RSSelectionController
+- (BOOL)shouldAutorotate { return YES; }
+- (UIInterfaceOrientationMask)supportedInterfaceOrientations { return UIInterfaceOrientationMaskAllButUpsideDown; }
+- (UIInterfaceOrientation)preferredInterfaceOrientationForPresentation {
+    UIInterfaceOrientation orientation = self.view.window.windowScene.interfaceOrientation;
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+    if (orientation == UIInterfaceOrientationUnknown) orientation = UIApplication.sharedApplication.statusBarOrientation;
+#pragma clang diagnostic pop
+    return orientation == UIInterfaceOrientationUnknown || orientation == UIInterfaceOrientationPortraitUpsideDown ? UIInterfaceOrientationPortrait : orientation;
+}
 - (UIRectEdge)preferredScreenEdgesDeferringSystemGestures { return UIRectEdgeAll; }
+- (UIViewController *)childViewControllerForScreenEdgesDeferringSystemGestures { return nil; }
 - (BOOL)prefersStatusBarHidden { return YES; }
 - (BOOL)prefersHomeIndicatorAutoHidden { return YES; }
 @end
@@ -129,7 +140,6 @@
 
 - (void)layoutSubviews {
     [super layoutSubviews];
-    self.rootViewController.view.frame = self.bounds;
     self.imageView.frame = self.bounds;
     self.selectionView.frame = self.bounds;
     CGFloat safeBottom = self.safeAreaInsets.bottom;

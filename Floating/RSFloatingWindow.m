@@ -1,12 +1,27 @@
 #import "RSFloatingWindow.h"
 
+@interface RSFloatingController : UIViewController
+@end
+@implementation RSFloatingController
+- (BOOL)shouldAutorotate { return YES; }
+- (UIInterfaceOrientationMask)supportedInterfaceOrientations { return UIInterfaceOrientationMaskAllButUpsideDown; }
+- (UIInterfaceOrientation)preferredInterfaceOrientationForPresentation {
+    UIInterfaceOrientation orientation = self.view.window.windowScene.interfaceOrientation;
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+    if (orientation == UIInterfaceOrientationUnknown) orientation = UIApplication.sharedApplication.statusBarOrientation;
+#pragma clang diagnostic pop
+    return orientation == UIInterfaceOrientationUnknown || orientation == UIInterfaceOrientationPortraitUpsideDown ? UIInterfaceOrientationPortrait : orientation;
+}
+@end
+
 @implementation RSFloatingWindow
 
 - (void)configureWindow {
     self.windowLevel = UIWindowLevelAlert + 50;
     self.backgroundColor = UIColor.clearColor;
     self.opaque = NO;
-    UIViewController *controller = [UIViewController new];
+    UIViewController *controller = [RSFloatingController new];
     controller.view.backgroundColor = UIColor.clearColor;
     self.rootViewController = controller;
 }
