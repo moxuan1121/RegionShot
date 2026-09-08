@@ -16,7 +16,7 @@
 @end
 
 @interface RSChatController () <NSURLSessionDataDelegate, PHPickerViewControllerDelegate,
-    UIDocumentPickerDelegate, UIImagePickerControllerDelegate, UINavigationControllerDelegate, UITextViewDelegate>
+    UIDocumentPickerDelegate, UIImagePickerControllerDelegate, UINavigationControllerDelegate>
 @property (nonatomic, strong) RSChatWindow *host;
 @property (nonatomic, weak) UIWindow *previousKey;
 @property (nonatomic, strong) UIView *card;
@@ -24,8 +24,6 @@
 @property (nonatomic, strong) UIScrollView *scroll;
 @property (nonatomic, strong) UITextView *input;
 @property (nonatomic, strong) UIImageView *chip;
-@property (nonatomic, strong) UIView *chipContainer;
-@property (nonatomic, strong) UILabel *placeholder;
 @property (nonatomic, strong) UIButton *sendButton;
 @property (nonatomic, strong) UIButton *modelButton;
 @property (nonatomic, strong) UIButton *ball;
@@ -85,7 +83,6 @@ static OSStatus RSWriteKey(NSString *key) {
         RSActiveChat.attachment = image;
         RSActiveChat.chip.image = image;
         RSActiveChat.chip.hidden = image == nil;
-        RSActiveChat.chipContainer.hidden = image == nil;
         if (image && [RSOption(@"AIAutoImage") boolValue] && !RSActiveChat.task) [RSActiveChat send];
         return;
     }
@@ -109,7 +106,6 @@ static OSStatus RSWriteKey(NSString *key) {
 + (void)showText:(NSString *)text scene:(UIWindowScene *)scene sendImmediately:(BOOL)send {
     [self showImage:nil scene:scene];
     RSActiveChat.input.text = text;
-    [RSActiveChat updatePlaceholder];
     if (send && !RSActiveChat.task) [RSActiveChat send];
 }
 + (void)showServiceSettings {
@@ -130,65 +126,35 @@ static OSStatus RSWriteKey(NSString *key) {
 }
 - (void)viewDidLoad {
     [super viewDidLoad];
-    self.view.backgroundColor = [UIColor colorWithWhite:0 alpha:0.36];
+    self.view.backgroundColor = [UIColor colorWithWhite:0 alpha:0.28];
     self.card = [UIView new];
-    self.card.backgroundColor = UIColor.systemBackgroundColor;
-    self.card.layer.cornerRadius = 30;
-    self.card.layer.cornerCurve = kCACornerCurveContinuous;
+    self.card.backgroundColor = UIColor.secondarySystemBackgroundColor;
+    self.card.layer.cornerRadius = 28;
     self.card.clipsToBounds = YES;
     self.card.translatesAutoresizingMaskIntoConstraints = NO;
     [self.view addSubview:self.card];
     UIStackView *content = [UIStackView new];
     content.axis = UILayoutConstraintAxisVertical;
-    content.spacing = 12;
+    content.spacing = 8;
     content.translatesAutoresizingMaskIntoConstraints = NO;
     [self.card addSubview:content];
-    UILabel *title = [UILabel new];
-    title.text = @"图片问答";
-    title.font = [UIFont systemFontOfSize:22 weight:UIFontWeightBold];
     self.modelButton = [UIButton buttonWithType:UIButtonTypeSystem];
-    self.modelButton.titleLabel.font = [UIFont monospacedSystemFontOfSize:12 weight:UIFontWeightMedium];
-    self.modelButton.titleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
-    [self.modelButton setImage:[UIImage systemImageNamed:@"chevron.down"] forState:UIControlStateNormal];
-    self.modelButton.semanticContentAttribute = UISemanticContentAttributeForceRightToLeft;
     [self.modelButton addTarget:self action:@selector(settings) forControlEvents:UIControlEventTouchUpInside];
     [self updateModelTitle];
-    UIButton *keyboard = [self button:@"keyboard" title:@"收起键盘" action:@selector(hideKeyboard)];
-    UIButton *minimize = [self button:@"minus" title:@"最小化" action:@selector(minimize)];
-    UIButton *close = [self button:@"xmark" title:@"关闭对话" action:@selector(close)];
-    for (UIButton *button in @[keyboard, minimize, close]) {
-        button.backgroundColor = [UIColor.systemBlueColor colorWithAlphaComponent:0.10];
-        button.layer.cornerRadius = 22;
-        [button setPreferredSymbolConfiguration:[UIImageSymbolConfiguration configurationWithPointSize:20 weight:UIImageSymbolWeightMedium] forImageInState:UIControlStateNormal];
-    }
-    UIView *spacer = [UIView new];
-    UIStackView *top = [[UIStackView alloc] initWithArrangedSubviews:@[title, self.modelButton, spacer, keyboard, minimize, close]];
-    top.alignment = UIStackViewAlignmentCenter;
-    top.spacing = 6;
+    UIStackView *top = [[UIStackView alloc] initWithArrangedSubviews:@[self.modelButton,
+        [self button:@"keyboard.chevron.compact.down" title:@"收起键盘" action:@selector(hideKeyboard)],
+        [self button:@"minus" title:@"最小化" action:@selector(minimize)],
+        [self button:@"xmark" title:@"关闭对话" action:@selector(close)]]];
     [content addArrangedSubview:top];
     self.chip = [[UIImageView alloc] initWithImage:self.attachment];
     self.chip.hidden = self.attachment == nil;
-    self.chip.contentMode = UIViewContentModeScaleAspectFill;
-    self.chip.clipsToBounds = YES;
-    self.chip.layer.cornerRadius = 14;
-    self.chip.layer.cornerCurve = kCACornerCurveContinuous;
-    self.chip.layer.borderWidth = 7;
-    self.chip.layer.borderColor = [UIColor.systemBlueColor colorWithAlphaComponent:0.10].CGColor;
+    self.chip.contentMode = UIViewContentModeScaleAspectFit;
     self.chip.userInteractionEnabled = YES;
-    self.chip.accessibilityLabel = @"发送给 AI 的图片，轻按移除";
+    self.chip.accessibilityLabel = @"待发送图片，轻按移除";
     self.chip.accessibilityTraits = UIAccessibilityTraitButton;
     [self.chip addGestureRecognizer:[[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(clearAttachment)]];
-    self.chipContainer = [UIView new];
-    self.chipContainer.hidden = self.attachment == nil;
-    [self.chipContainer addSubview:self.chip];
-    self.chip.translatesAutoresizingMaskIntoConstraints = NO;
-    [NSLayoutConstraint activateConstraints:@[
-        [self.chipContainer.heightAnchor constraintEqualToConstant:82],
-        [self.chip.trailingAnchor constraintEqualToAnchor:self.chipContainer.trailingAnchor],
-        [self.chip.topAnchor constraintEqualToAnchor:self.chipContainer.topAnchor],
-        [self.chip.widthAnchor constraintEqualToConstant:76],
-        [self.chip.heightAnchor constraintEqualToConstant:76]]];
-    [content addArrangedSubview:self.chipContainer];
+    [self.chip.heightAnchor constraintEqualToConstant:72].active = YES;
+    [content addArrangedSubview:self.chip];
     self.scroll = [UIScrollView new];
     self.scroll.keyboardDismissMode = UIScrollViewKeyboardDismissModeInteractive;
     [content addArrangedSubview:self.scroll];
@@ -199,52 +165,26 @@ static OSStatus RSWriteKey(NSString *key) {
     [self.scroll addSubview:self.chat];
     self.input = [UITextView new];
     self.input.font = [UIFont preferredFontForTextStyle:UIFontTextStyleBody];
-    self.input.delegate = self;
-    self.input.textContainerInset = UIEdgeInsetsMake(13, 14, 8, 14);
-    self.input.backgroundColor = [UIColor.secondarySystemBackgroundColor colorWithAlphaComponent:0.70];
-    self.input.layer.cornerRadius = 24;
-    self.input.layer.cornerCurve = kCACornerCurveContinuous;
+    self.input.backgroundColor = UIColor.tertiarySystemBackgroundColor;
+    self.input.layer.cornerRadius = 16;
     self.input.accessibilityLabel = @"输入问题";
-    [self.input.heightAnchor constraintEqualToConstant:48].active = YES;
-    self.placeholder = [UILabel new];
-    self.placeholder.text = @"问点什么…";
-    self.placeholder.textColor = UIColor.placeholderTextColor;
-    self.placeholder.font = self.input.font;
-    self.placeholder.translatesAutoresizingMaskIntoConstraints = NO;
-    [self.input addSubview:self.placeholder];
-    [NSLayoutConstraint activateConstraints:@[
-        [self.placeholder.leadingAnchor constraintEqualToAnchor:self.input.leadingAnchor constant:18],
-        [self.placeholder.centerYAnchor constraintEqualToAnchor:self.input.centerYAnchor]]];
-    UIButton *add = [self button:@"plus" title:@"添加图片" action:@selector(attachments)];
-    add.backgroundColor = UIColor.systemBlueColor; add.tintColor = UIColor.whiteColor; add.layer.cornerRadius = 24;
-    self.sendButton = [UIButton buttonWithType:UIButtonTypeSystem];
-    [self.sendButton setTitle:@"发送" forState:UIControlStateNormal];
-    [self.sendButton setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
-    self.sendButton.titleLabel.font = [UIFont systemFontOfSize:17 weight:UIFontWeightSemibold];
-    self.sendButton.backgroundColor = UIColor.systemBlueColor;
-    self.sendButton.layer.cornerRadius = 24;
-    [self.sendButton addTarget:self action:@selector(send) forControlEvents:UIControlEventTouchUpInside];
-    [self.sendButton.widthAnchor constraintEqualToConstant:88].active = YES;
-    [self.sendButton.heightAnchor constraintEqualToConstant:48].active = YES;
-    UIStackView *bottom = [[UIStackView alloc] initWithArrangedSubviews:@[self.input, add, self.sendButton]];
+    [self.input.heightAnchor constraintEqualToConstant:70].active = YES;
+    self.sendButton = [self button:@"arrow.up.circle.fill" title:@"发送" action:@selector(send)];
+    UIStackView *bottom = [[UIStackView alloc] initWithArrangedSubviews:@[
+        [self button:@"plus" title:@"添加图片" action:@selector(attachments)], self.input, self.sendButton]];
     bottom.alignment = UIStackViewAlignmentCenter;
-    bottom.spacing = 8;
+    bottom.spacing = 6;
     [content addArrangedSubview:bottom];
     UILayoutGuide *safe = self.view.safeAreaLayoutGuide;
-    NSLayoutConstraint *height = [self.card.heightAnchor constraintEqualToAnchor:safe.heightAnchor multiplier:0.56];
-    height.priority = UILayoutPriorityDefaultHigh;
-    NSLayoutConstraint *center = [self.card.centerYAnchor constraintEqualToAnchor:safe.centerYAnchor];
-    center.priority = UILayoutPriorityDefaultHigh - 1;
     [NSLayoutConstraint activateConstraints:@[
-        [self.card.leadingAnchor constraintEqualToAnchor:safe.leadingAnchor constant:20],
-        [self.card.trailingAnchor constraintEqualToAnchor:safe.trailingAnchor constant:-20],
-        [self.card.topAnchor constraintGreaterThanOrEqualToAnchor:safe.topAnchor constant:12],
-        [self.card.bottomAnchor constraintLessThanOrEqualToAnchor:self.view.keyboardLayoutGuide.topAnchor constant:-12],
-        height, center,
-        [content.leadingAnchor constraintEqualToAnchor:self.card.leadingAnchor constant:16],
-        [content.trailingAnchor constraintEqualToAnchor:self.card.trailingAnchor constant:-16],
-        [content.topAnchor constraintEqualToAnchor:self.card.topAnchor constant:14],
-        [content.bottomAnchor constraintEqualToAnchor:self.card.bottomAnchor constant:-14],
+        [self.card.leadingAnchor constraintEqualToAnchor:safe.leadingAnchor constant:16],
+        [self.card.trailingAnchor constraintEqualToAnchor:safe.trailingAnchor constant:-16],
+        [self.card.topAnchor constraintEqualToAnchor:safe.topAnchor constant:16],
+        [self.card.bottomAnchor constraintEqualToAnchor:self.view.keyboardLayoutGuide.topAnchor constant:-16],
+        [content.leadingAnchor constraintEqualToAnchor:self.card.leadingAnchor constant:12],
+        [content.trailingAnchor constraintEqualToAnchor:self.card.trailingAnchor constant:-12],
+        [content.topAnchor constraintEqualToAnchor:self.card.topAnchor constant:8],
+        [content.bottomAnchor constraintEqualToAnchor:self.card.bottomAnchor constant:-12],
         [self.chat.leadingAnchor constraintEqualToAnchor:self.scroll.contentLayoutGuide.leadingAnchor],
         [self.chat.trailingAnchor constraintEqualToAnchor:self.scroll.contentLayoutGuide.trailingAnchor],
         [self.chat.topAnchor constraintEqualToAnchor:self.scroll.contentLayoutGuide.topAnchor],
@@ -269,7 +209,7 @@ static OSStatus RSWriteKey(NSString *key) {
 }
 - (void)updateModelTitle {
     NSString *model = [RSChatPreferences() stringForKey:@"AIModel"];
-    [self.modelButton setTitle:model.length ? model : @"配置模型" forState:UIControlStateNormal];
+    [self.modelButton setTitle:model.length ? model : @"图片问答 · 配置" forState:UIControlStateNormal];
 }
 - (void)hideKeyboard { [self.view endEditing:YES]; }
 - (void)minimize {
@@ -286,7 +226,7 @@ static OSStatus RSWriteKey(NSString *key) {
     self.host.activeSurface = nil;
     self.card.hidden = NO;
     self.ball.hidden = YES;
-    self.view.backgroundColor = [UIColor colorWithWhite:0 alpha:0.36];
+    self.view.backgroundColor = [UIColor colorWithWhite:0 alpha:0.28];
     [self.host makeKeyAndVisible];
 }
 - (void)panBall:(UIPanGestureRecognizer *)pan {
@@ -350,7 +290,6 @@ static OSStatus RSWriteKey(NSString *key) {
 }
 - (UITextView *)addRow:(NSString *)text image:(UIImage *)image assistant:(BOOL)assistant index:(NSUInteger)index {
     UIStackView *row = [UIStackView new]; row.axis = UILayoutConstraintAxisVertical; row.spacing = 2;
-    row.alignment = assistant ? UIStackViewAlignmentLeading : UIStackViewAlignmentTrailing;
     if (image) {
         UIImageView *preview = [[UIImageView alloc] initWithImage:image];
         preview.contentMode = UIViewContentModeScaleAspectFit;
@@ -361,24 +300,16 @@ static OSStatus RSWriteKey(NSString *key) {
     view.text = text; view.editable = NO; view.scrollEnabled = NO;
     view.font = [UIFont preferredFontForTextStyle:UIFontTextStyleBody];
     view.adjustsFontForContentSizeCategory = YES;
-    view.backgroundColor = assistant ? [UIColor.secondarySystemBackgroundColor colorWithAlphaComponent:0.88] : [UIColor.systemBlueColor colorWithAlphaComponent:0.10];
-    view.layer.cornerRadius = 20;
-    view.layer.cornerCurve = kCACornerCurveContinuous;
-    view.textContainerInset = assistant ? UIEdgeInsetsMake(14, 14, 48, 14) : UIEdgeInsetsMake(12, 14, 12, 14);
-    [view.widthAnchor constraintEqualToAnchor:self.chat.widthAnchor multiplier:0.82].active = YES;
+    view.backgroundColor = assistant ? UIColor.tertiarySystemBackgroundColor : UIColor.systemBackgroundColor;
+    view.layer.cornerRadius = 14;
     [row addArrangedSubview:view];
     if (assistant) {
         UIButton *regen = [self button:@"arrow.clockwise" title:@"重新回答" action:@selector(regenerate:)];
         UIButton *tokenize = [self button:@"character.textbox" title:@"分词" action:@selector(tokenize:)];
         UIButton *copy = [self button:@"doc.on.doc" title:@"复制回答" action:@selector(copyReply:)];
         for (UIButton *button in @[regen, tokenize, copy]) button.tag = index;
-        UIStackView *actions = [[UIStackView alloc] initWithArrangedSubviews:@[regen, tokenize, copy]];
-        actions.spacing = 0;
-        actions.translatesAutoresizingMaskIntoConstraints = NO;
-        [view addSubview:actions];
-        [NSLayoutConstraint activateConstraints:@[
-            [actions.trailingAnchor constraintEqualToAnchor:view.trailingAnchor constant:-8],
-            [actions.bottomAnchor constraintEqualToAnchor:view.bottomAnchor constant:-2]]];
+        UIStackView *actions = [[UIStackView alloc] initWithArrangedSubviews:@[regen, tokenize, copy, [UIView new]]];
+        [row addArrangedSubview:actions];
     }
     [self.chat addArrangedSubview:row]; [self.rows addObject:row];
     return view;
@@ -419,7 +350,6 @@ static OSStatus RSWriteKey(NSString *key) {
     NSString *text = [self.input.text stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
     if (!text.length && !self.attachment) return;
     if (text.length > 24000) { [self message:@"单次问题最多 24,000 字符。"]; return; }
-    BOOL implicitImagePrompt = !text.length && self.attachment;
     if (!text.length) text = [RSOption(@"AIImagePrompt") length] ? RSOption(@"AIImagePrompt") : @"请描述图片内容。";
     NSMutableArray *content = [NSMutableArray arrayWithObject:@{@"type":@"text", @"text":text}];
     if (self.attachment) {
@@ -428,15 +358,9 @@ static OSStatus RSWriteKey(NSString *key) {
         NSString *url = [@"data:image/jpeg;base64," stringByAppendingString:[jpeg base64EncodedStringWithOptions:0]];
         [content addObject:@{@"type":@"image_url", @"image_url":@{@"url":url}}];
     }
-    UIImage *sentImage = self.attachment;
-    [self addRow:text image:nil assistant:NO index:self.history.count];
-    if (implicitImagePrompt) self.rows.lastObject.hidden = YES;
+    [self addRow:text image:self.attachment assistant:NO index:self.history.count];
     [self.history addObject:[@{@"role":@"user", @"content":content} mutableCopy]];
-    self.input.text = @""; self.attachment = nil;
-    self.chip.image = sentImage ?: self.chip.image;
-    self.chip.hidden = self.chip.image == nil;
-    self.chipContainer.hidden = self.chip.hidden;
-    [self updatePlaceholder]; [self hideKeyboard];
+    self.input.text = @""; [self clearAttachment]; [self hideKeyboard];
     [self startRequest];
 }
 - (void)startRequest {
@@ -472,7 +396,7 @@ static OSStatus RSWriteKey(NSString *key) {
     config.timeoutIntervalForResource = 300;
     self.session = [NSURLSession sessionWithConfiguration:config delegate:self delegateQueue:NSOperationQueue.mainQueue];
     self.task = [self.session dataTaskWithRequest:request];
-    [self.sendButton setTitle:@"停止" forState:UIControlStateNormal];
+    [self.sendButton setImage:[UIImage systemImageNamed:@"stop.circle.fill"] forState:UIControlStateNormal];
     self.sendButton.accessibilityLabel = @"停止生成";
     [self.task resume];
 }
@@ -558,14 +482,10 @@ static OSStatus RSWriteKey(NSString *key) {
     if (!status && !self.answer.length) status = @"服务返回了空回答，请重新生成。";
     if (status) self.reply.text = self.answer.length ? [self.answer stringByAppendingFormat:@"\n\n〔%@〕", status] : status;
     [session finishTasksAndInvalidate]; self.session = nil; self.task = nil; self.decoder = nil; self.body = nil;
-    [self.sendButton setTitle:@"发送" forState:UIControlStateNormal];
+    [self.sendButton setImage:[UIImage systemImageNamed:@"arrow.up.circle.fill"] forState:UIControlStateNormal];
     self.sendButton.accessibilityLabel = @"发送";
 }
-- (void)updatePlaceholder { self.placeholder.hidden = self.input.text.length > 0; }
-- (void)textViewDidChange:(UITextView *)textView { [self updatePlaceholder]; }
-- (void)clearAttachment {
-    self.attachment = nil; self.chip.image = nil; self.chip.hidden = YES; self.chipContainer.hidden = YES;
-}
+- (void)clearAttachment { self.attachment = nil; self.chip.image = nil; self.chip.hidden = YES; }
 - (void)attachments {
     UIAlertController *sheet = [UIAlertController alertControllerWithTitle:@"添加图片" message:nil preferredStyle:UIAlertControllerStyleActionSheet];
     [sheet addAction:[UIAlertAction actionWithTitle:@"相册" style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
@@ -592,7 +512,7 @@ static OSStatus RSWriteKey(NSString *key) {
 }
 - (void)acceptImage:(UIImage *)image {
     if (!image.CGImage) { [self message:@"无法读取这张图片。"]; return; }
-    self.attachment = image; self.chip.image = image; self.chip.hidden = NO; self.chipContainer.hidden = NO;
+    self.attachment = image; self.chip.image = image; self.chip.hidden = NO;
 }
 - (void)picker:(PHPickerViewController *)picker didFinishPicking:(NSArray<PHPickerResult *> *)results {
     [picker dismissViewControllerAnimated:YES completion:nil];
