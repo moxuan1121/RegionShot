@@ -1,6 +1,7 @@
 #import "RSHistoryController.h"
 #import "RSHistoryStore.h"
 #import <objc/message.h>
+#import "../Geometry/RSOrientation.h"
 #import "../Preferences/RSOptions.h"
 #import "../AI/RSChatController.h"
 
@@ -52,8 +53,16 @@ static RSHistoryStore *RSStore(void) {
 @property (nonatomic, strong) UINavigationController *navigation;
 @end
 @implementation RSHistoryPanel
+- (BOOL)shouldAutorotate { return NO; }
+- (UIInterfaceOrientationMask)supportedInterfaceOrientations { return UIInterfaceOrientationMaskAllButUpsideDown; }
+- (UIInterfaceOrientation)preferredInterfaceOrientationForPresentation { return RSActiveOrientation(self.view.window.windowScene); }
+- (void)screenRotated:(NSNotification *)note {
+    RSApplyWindowOrientation(self.view.window, [note.userInfo[@"orientation"] integerValue]);
+    [self.view setNeedsLayout]; [self.view layoutIfNeeded];
+}
 - (void)viewDidLoad {
     [super viewDidLoad]; self.view.backgroundColor = [UIColor colorWithWhite:0 alpha:0.35];
+    [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(screenRotated:) name:@"com.moxuan.regionshot.orientation.target" object:nil];
     [self addChildViewController:self.navigation];
     UIView *panel = self.navigation.view; panel.translatesAutoresizingMaskIntoConstraints = NO;
     panel.layer.cornerRadius = 20; panel.clipsToBounds = YES;
@@ -120,7 +129,7 @@ static RSHistoryController *RSActiveHistory;
     panel.navigation = [[UINavigationController alloc] initWithRootViewController:controller];
     controller.host.backgroundColor = UIColor.clearColor;
     controller.host.rootViewController = panel;
-    RSActiveHistory = controller; [controller.host makeKeyAndVisible];
+    RSActiveHistory = controller; RSApplyWindowOrientation(controller.host, RSActiveOrientation(scene)); [controller.host makeKeyAndVisible]; RSApplyWindowOrientation(controller.host, RSActiveOrientation(scene));
 }
 - (void)viewDidLoad {
     [super viewDidLoad]; self.title = @"截图历史";

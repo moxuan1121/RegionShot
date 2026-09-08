@@ -66,13 +66,14 @@
 }
 - (void)layoutSubviews {
     [super layoutSubviews];
-    _panel.frame = CGRectMake(MAX(8, self.rootViewController.view.bounds.size.width - 250), self.safeAreaInsets.top + 8, 242, 144);
+    _panel.frame = CGRectMake(MAX(8, self.rootViewController.view.bounds.size.width - 250), self.rootViewController.view.safeAreaInsets.top + 8, 242, 144);
     _preview.frame = CGRectMake(8, 8, 62, 84);
     _status.frame = CGRectMake(78, 8, 156, 84);
     for (NSUInteger i = 0; i < 4; i++) [_panel viewWithTag:500 + i].frame = CGRectMake(i * 60, 96, 60, 44);
 }
 - (UIView *)hitTest:(CGPoint)point withEvent:(UIEvent *)event {
-    return CGRectContainsPoint(_panel.frame, point) ? [super hitTest:point withEvent:event] : nil;
+    CGPoint contentPoint = [self.rootViewController.view convertPoint:point fromView:self];
+    return CGRectContainsPoint(_panel.frame, contentPoint) ? [super hitTest:point withEvent:event] : nil;
 }
 - (void)start {
     NSError *error = nil;

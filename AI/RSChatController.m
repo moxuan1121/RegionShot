@@ -1,5 +1,6 @@
 #import "RSChatController.h"
 #import "RSSSEDecoder.h"
+#import "../Geometry/RSOrientation.h"
 #import "RSAISettingsController.h"
 #import "../KeyboardAI/RSKAInterface.h"
 #import "../KeyboardAI/RSKACore.h"
@@ -59,6 +60,14 @@ static NSUserDefaults *RSChatPreferences(void) {
     return prefs;
 }
 @implementation RSChatController
+- (BOOL)shouldAutorotate { return NO; }
+- (UIInterfaceOrientationMask)supportedInterfaceOrientations { return UIInterfaceOrientationMaskAllButUpsideDown; }
+- (UIInterfaceOrientation)preferredInterfaceOrientationForPresentation { return RSActiveOrientation(self.host.windowScene); }
+- (void)screenRotated:(NSNotification *)note {
+    if (!self.host || self.host.hidden) return;
+    RSApplyWindowOrientation(self.host, [note.userInfo[@"orientation"] integerValue]);
+    [self.view setNeedsLayout]; [self.view layoutIfNeeded];
+}
 + (void)showImage:(UIImage *)image scene:(UIWindowScene *)scene {
     NSAssert(NSThread.isMainThread, @"Chat UI requires main thread");
     RSKAClosePanel();
@@ -85,7 +94,9 @@ static NSUserDefaults *RSChatPreferences(void) {
     controller.host = window;
     window.rootViewController = controller;
     RSActiveChat = controller;
+    RSApplyWindowOrientation(window, RSActiveOrientation(scene));
     [window makeKeyAndVisible];
+    RSApplyWindowOrientation(window, RSActiveOrientation(scene));
     [controller loadViewIfNeeded];
     if (image && [RSOption(@"AIAutoImage") boolValue]) [controller send];
 }
@@ -131,6 +142,7 @@ static NSUserDefaults *RSChatPreferences(void) {
 }
 - (void)viewDidLoad {
     [super viewDidLoad];
+    [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(screenRotated:) name:@"com.moxuan.regionshot.orientation.target" object:nil];
     self.view.backgroundColor = [UIColor colorWithWhite:0 alpha:0.28];
     self.card = [UIView new];
     self.card.backgroundColor = UIColor.secondarySystemBackgroundColor;
