@@ -61,13 +61,7 @@ extern UIViewController *RSInputCreateOptions(BOOL search);
     [prefs setObject:value forKey:[specifier propertyForKey:@"key"]]; [prefs synchronize];
     CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(), CFSTR("com.moxuan.regionshot/ReloadPrefs"), NULL, NULL, YES);
 }
-- (void)viewDidLoad {
-    [super viewDidLoad]; self.title = @"RegionShot";
-    UIView *list = self.view;
-    UIView *container = [[UIView alloc] initWithFrame:list.frame];
-    list.frame = container.bounds; list.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-    [container addSubview:list]; self.view = container;
-}
+- (void)viewDidLoad { [super viewDidLoad]; self.title = @"RegionShot"; }
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
     [self.navigationController setNavigationBarHidden:self.pages != nil animated:NO];
@@ -75,13 +69,13 @@ extern UIViewController *RSInputCreateOptions(BOOL search);
 - (void)viewWillDisappear:(BOOL)animated {
     [super viewWillDisappear:animated];
     if (self.isMovingFromParentViewController) {
-        if (self.pages) self.navigationController.interactivePopGestureRecognizer.enabled = self.outerBackEnabled;
+        if (self.pages) [self closePages];
         [self.navigationController setNavigationBarHidden:NO animated:NO];
     }
 }
 - (void)viewDidLayoutSubviews {
     [super viewDidLayoutSubviews];
-    self.pages.view.frame = self.view.bounds;
+    self.pages.view.frame = self.navigationController.view.bounds;
 }
 - (void)closePages {
     [self.pages willMoveToParentViewController:nil];
@@ -102,9 +96,9 @@ extern UIViewController *RSInputCreateOptions(BOOL search);
     self.navigationController.interactivePopGestureRecognizer.enabled = NO;
     self.pages = [[UINavigationController alloc] initWithRootViewController:page];
     [self addChildViewController:self.pages];
-    self.pages.view.frame = self.view.bounds;
+    self.pages.view.frame = self.navigationController.view.bounds;
     self.pages.view.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-    [self.view addSubview:self.pages.view]; [self.pages didMoveToParentViewController:self];
+    [self.navigationController.view addSubview:self.pages.view]; [self.pages didMoveToParentViewController:self];
     UIScreenEdgePanGestureRecognizer *back = [[UIScreenEdgePanGestureRecognizer alloc] initWithTarget:self action:@selector(backGesture:)];
     back.edges = UIRectEdgeLeft;
     [back requireGestureRecognizerToFail:self.pages.interactivePopGestureRecognizer];
