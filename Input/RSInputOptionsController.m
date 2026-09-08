@@ -120,14 +120,14 @@ extern UIViewController *RSInputCreatePersonaSelection(NSString *scope);
     UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"搜索引擎" message:@"网址示例：https://www.google.com/search?q=%@\nsnssdk1128://search/result?keyword=%@" preferredStyle:UIAlertControllerStyleAlert];
     [alert addTextFieldWithConfigurationHandler:^(UITextField *field) { field.placeholder = @"名称（最多 30 字符）"; field.text = entry[@"name"]; }];
     [alert addTextFieldWithConfigurationHandler:^(UITextField *field) {
-        field.placeholder = @"搜索网址，包含 %@"; field.text = entry[@"engine"];
+        field.placeholder = @"网址或应用 URL（%@ 可选）"; field.text = entry[@"engine"];
         field.keyboardType = UIKeyboardTypeURL; field.autocapitalizationType = UITextAutocapitalizationTypeNone; field.autocorrectionType = UITextAutocorrectionTypeNo;
     }];
     [alert addAction:[UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:nil]];
     __weak UIAlertController *weakAlert = alert;
     [alert addAction:[UIAlertAction actionWithTitle:@"保存" style:UIAlertActionStyleDefault handler:^(__unused UIAlertAction *action) {
         NSDictionary *item = @{@"name": weakAlert.textFields[0].text ?: @"", @"engine": weakAlert.textFields[1].text ?: @""};
-        if (!RSInputValidEngines(@[item])) { [self error:@"请检查名称和地址，地址需包含协议及 %@ 搜索占位符。 "]; return; }
+        if (!RSInputValidEngines(@[item])) { [self error:@"请检查名称和地址，请输入可打开的网址或应用 URL。%@ 仅用于替换搜索文字。 "]; return; }
         if (index == NSNotFound) [self.engines addObject:item]; else self.engines[index] = item;
         [self save]; [self.tableView reloadData];
     }]];

@@ -1,5 +1,6 @@
 #import <UIKit/UIKit.h>
 #import <objc/runtime.h>
+#import <objc/message.h>
 #include <string.h>
 #import <notify.h>
 #import <WebKit/WebKit.h>
@@ -8,7 +9,14 @@ static BOOL RSHandleURL(id url) {
     NSString *notification = RSURLNotification(url);
     if (!notification) return NO;
     NSLog(@"[RegionShot] Settings URL route: %@", notification);
-    dispatch_async(dispatch_get_main_queue(), ^{ notify_post(notification.UTF8String); });
+    dispatch_async(dispatch_get_main_queue(), ^{
+        // In SpringBoard dispatch directly; do not depend on a second injected URL dylib.
+        Class chat = NSClassFromString(@"RSChatController");
+        SEL show = NSSelectorFromString(@"showImage:scene:");
+        if ([notification hasSuffix:@"/AIWindow"] && [chat respondsToSelector:show])
+            ((void (*)(id, SEL, id, id))objc_msgSend)(chat, show, nil, nil);
+        else notify_post(notification.UTF8String);
+    });
     return YES;
 }
 %group RSSettingsURL
@@ -76,6 +84,28 @@ static BOOL RSHandleURL(id url) {
 }
 %end
 %end
+%group RSSystemShortURL
+%hook SpringBoard
+- (void)applicationOpenURL:(id)url { if (!RSHandleURL(url)) %orig; }
+%end
+%end
+%group RSSystemCoreURL
+%hook SpringBoard
+- (void)_openURLCore:(id)url display:(id)display animating:(BOOL)animated activationSettings:(id)settings origin:(id)origin withResult:(void (^)(BOOL))result {
+    if (!RSHandleURL(url)) { %orig; return; }
+    if (result) result(YES);
+}
+%end
+%end
+%group RSApplicationURL
+%hook UIApplication
+- (BOOL)openURL:(NSURL *)url { if (RSHandleURL(url)) return YES; return %orig; }
+- (void)openURL:(NSURL *)url options:(NSDictionary *)options completionHandler:(void (^)(BOOL))completion {
+    if (!RSHandleURL(url)) { %orig; return; }
+    if (completion) completion(YES);
+}
+%end
+%end
 static BOOL RSURLMethod(Class cls, NSString *name, const char *result, NSArray<NSString *> *arguments) {
     Method method = class_getInstanceMethod(cls, NSSelectorFromString(name));
     if (!method || method_getNumberOfArguments(method) != arguments.count + 2) return NO;
@@ -87,10 +117,16 @@ static BOOL RSURLMethod(Class cls, NSString *name, const char *result, NSArray<N
     }
     return YES;
 }
-%ctor {
+static void RSInstallURLHooks(void) {
+    static BOOL installed = NO;
+    if (installed) return;
+    installed = YES;
+    %init(RSApplicationURL);
     NSString *bundle = NSBundle.mainBundle.bundleIdentifier;
     if ([bundle isEqual:@"com.apple.springboard"]) {
         Class app = NSClassFromString(@"SpringBoard"), service = NSClassFromString(@"FBSSystemService");
+        if (RSURLMethod(app, @"applicationOpenURL:", "v", @[@"@"])) { %init(RSSystemShortURL); }
+        if (RSURLMethod(app, @"_openURLCore:display:animating:activationSettings:origin:withResult:", "v", @[@"@", @"@", @"Bc", @"@", @"@", @"@"])) { %init(RSSystemCoreURL); }
         if (RSURLMethod(app, @"applicationOpenURL:withApplication:sender:publicURLsOnly:animating:needsConfirm:options:windowContext:", "v", @[@"@", @"@", @"@", @"Bc", @"Bc", @"Bc", @"@", @"@"])) { %init(RSSystemExternalURL); }
         if (RSURLMethod(service, @"openURL:application:options:clientPort:withResult:", "v", @[@"@", @"@", @"@", @"I", @"@"])) { %init(RSSystemURLPort); }
         if (RSURLMethod(service, @"openURL:application:options:clientProcess:withResult:", "v", @[@"@", @"@", @"@", @"@", @"@"])) { %init(RSSystemURLProcess); }
@@ -104,4 +140,12 @@ static BOOL RSURLMethod(Class cls, NSString *name, const char *result, NSArray<N
         if (class_getInstanceMethod(controller, @selector(processURL:animated:fromSearch:))) { %init(RSSettingsURLAnimated); }
         if (class_getInstanceMethod(controller, @selector(processURL:animated:fromSearch:withCompletion:))) { %init(RSSettingsURLCompletion); }
     }
+}
+
+%ctor {
+#ifndef RS_URLS_IN_MAIN
+    if ([NSBundle.mainBundle.bundleIdentifier isEqual:@"com.apple.springboard"]) return;
+#endif
+    // Safari's TabDocument is not guaranteed to exist during early dylib loading.
+    dispatch_async(dispatch_get_main_queue(), ^{ RSInstallURLHooks(); });
 }

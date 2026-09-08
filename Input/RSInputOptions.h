@@ -7,7 +7,7 @@ static inline double RSInputFittedPanelHeight(double content, double chrome, dou
 
 static inline NSURL *RSInputSearchURL(id engine, id text) {
     if (![engine isKindOfClass:NSString.class] || [engine length] > 2048 ||
-        ![engine containsString:@"%@"] || ![text isKindOfClass:NSString.class] || ![text length] || [text length] > 24000) return nil;
+        ![engine length] || ![text isKindOfClass:NSString.class] || ![text length] || [text length] > 24000) return nil;
     NSString *encoded = [text stringByAddingPercentEncodingWithAllowedCharacters:
         [NSCharacterSet characterSetWithCharactersInString:@"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~"]];
     NSURLComponents *url = [NSURLComponents componentsWithString:[engine stringByReplacingOccurrencesOfString:@"%@" withString:encoded]];

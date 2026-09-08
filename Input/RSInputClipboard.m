@@ -6,6 +6,7 @@
 #import "RSInputOptions.h"
 #import "RSInputAnchoredMenuView.h"
 #import <notify.h>
+#import "../Geometry/RSOrientation.h"
 #import <objc/message.h>
 
 static BOOL RSInputLocked(void) {
@@ -35,6 +36,11 @@ void RSInputOpenSearch(NSString *text) { RSInputOpenSearchEngine(RSInputSearchEn
     return self.interactiveView && (hit == self.interactiveView || [hit isDescendantOfView:self.interactiveView]) ? hit : nil;
 }
 @end
+@interface RSInputPromptController : UIViewController @end
+@implementation RSInputPromptController
+- (BOOL)shouldAutorotate { return NO; }
+- (UIInterfaceOrientationMask)supportedInterfaceOrientations { return UIInterfaceOrientationMaskAllButUpsideDown; }
+@end
 @interface RSInputPromptButton : UIButton
 @property(strong) CAGradientLayer *gradient;
 @property CGFloat speed;
@@ -63,6 +69,13 @@ void RSInputOpenSearch(NSString *text) { RSInputOpenSearchEngine(RSInputSearchEn
 - (void)hide;
 @end
 @implementation RSInputClipboardPrompt
+- (void)rotated:(NSNotification *)note {
+    if (!self.window) return;
+    [self.menu dismiss];
+    RSApplyWindowOrientation(self.window, [note.userInfo[@"orientation"] integerValue]);
+    [self.window.rootViewController.view setNeedsLayout];
+    [self.window.rootViewController.view layoutIfNeeded];
+}
 - (void)hide {
     [self.timer invalidate]; self.timer = nil;
     RSInputPromptWindow *window = self.window;
@@ -135,7 +148,7 @@ void RSInputOpenSearch(NSString *text) { RSInputOpenSearchEngine(RSInputSearchEn
         self.window.frame = UIScreen.mainScreen.bounds;
         self.window.backgroundColor = UIColor.clearColor;
         self.window.windowLevel = CGFLOAT_MAX;
-        self.window.rootViewController = [UIViewController new];
+        self.window.rootViewController = [RSInputPromptController new];
         UIView *host = self.window.rootViewController.view;
         host.backgroundColor = UIColor.clearColor;
         RSInputPromptButton *button = [RSInputPromptButton buttonWithType:UIButtonTypeCustom];
@@ -177,7 +190,9 @@ void RSInputOpenSearch(NSString *text) { RSInputOpenSearchEngine(RSInputSearchEn
             [button.widthAnchor constraintEqualToConstant:72 * scale], [button.heightAnchor constraintEqualToConstant:44 * scale],
             [button.trailingAnchor constraintEqualToAnchor:host.safeAreaLayoutGuide.trailingAnchor constant:-16], vertical]];
         self.window.interactiveView = button;
+        RSApplyWindowOrientation(self.window, RSActiveOrientation(scene));
         self.window.hidden = NO;
+        RSApplyWindowOrientation(self.window, RSActiveOrientation(scene));
         [self scheduleHide];
     });
 }
@@ -188,6 +203,7 @@ void RSInputStartClipboardPrompt(void) {
     dispatch_once(&once, ^{
         prompt = [RSInputClipboardPrompt new];
         prompt.changeCount = UIPasteboard.generalPasteboard.changeCount;
+        [NSNotificationCenter.defaultCenter addObserver:prompt selector:@selector(rotated:) name:@"com.moxuan.regionshot.orientation.target" object:nil];
         int token;
         notify_register_dispatch("com.apple.pasteboard.notify.changed", &token, dispatch_get_main_queue(), ^(__unused int value) { [prompt capture]; });
         notify_register_dispatch("com.apple.springboard.lockstate", &token, dispatch_get_main_queue(), ^(__unused int value) {

@@ -28,7 +28,7 @@ bundle = 'Library/PreferenceBundles/' + loader['bundle'] + '.bundle/'
 info = plistlib.loads(files[bundle + 'Info.plist'])
 assert loader['detail'] == info['NSPrincipalClass'] == 'RSPreferences'
 assert info['CFBundleVersion'] == control['Version'].removesuffix('-roothide')
-for path in ['Library/MobileSubstrate/DynamicLibraries/' + name + '.dylib' for name in ['RegionShot', 'RegionShotInput', 'RegionShotURLs']] + [bundle + info['CFBundleExecutable']]:
+for path in ['Library/MobileSubstrate/DynamicLibraries/' + name + '.dylib' for name in ['RegionShot', 'RegionShotInput', 'RegionShotURLs']] + [bundle + info['CFBundleExecutable'], 'Applications/RegionShotCamera.app/RegionShotCamera']:
     binary = files[path]
     assert struct.unpack_from('<III', binary) == (0xfeedfacf, 0x100000c, 0x80000002), path
     offset, signed = 32, False
@@ -41,7 +41,12 @@ for path in ['Library/MobileSubstrate/DynamicLibraries/' + name + '.dylib' for n
             signed = True
         offset += length
     assert signed, path
-print('Verified PreferenceLoader registration, Settings controller/version, both signed modern arm64e binaries')
+print('Verified PreferenceLoader registration, Settings controller/version, signed modern arm64e binaries')
 
 assert sum(p.startswith("Library/PreferenceLoader/Preferences/") for p in files) == 1
 assert not any("RegionShotScroll" in p or "RSLongCapture" in p for p in files)
+
+camera = plistlib.loads(files['Applications/RegionShotCamera.app/Info.plist'])
+assert camera['NSCameraUsageDescription']
+assert 'regionshot-camera' in camera['CFBundleURLTypes'][0]['CFBundleURLSchemes']
+assert 'uicache' in files['postinst'].decode()

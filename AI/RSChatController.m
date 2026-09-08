@@ -1,5 +1,7 @@
 #import "RSChatController.h"
 #import "RSSSEDecoder.h"
+#import "../Camera/RSCameraBridge.h"
+#import <notify.h>
 #import "../Geometry/RSOrientation.h"
 #import "RSAISettingsController.h"
 #import "../Input/RSInputStore.h"
@@ -47,7 +49,7 @@
 @end
 
 @interface RSChatController () <NSURLSessionDataDelegate, PHPickerViewControllerDelegate,
-    UIDocumentPickerDelegate, UIImagePickerControllerDelegate, UINavigationControllerDelegate, UITextViewDelegate>
+    UIDocumentPickerDelegate, UIImagePickerControllerDelegate, UINavigationControllerDelegate, UITextViewDelegate, UIGestureRecognizerDelegate>
 @property (nonatomic, strong) RSChatWindow *host;
 @property (nonatomic, weak) UIWindow *previousKey;
 @property (nonatomic, strong) UIView *card;
@@ -78,6 +80,8 @@
 @property (nonatomic) BOOL stopped;
 @property (nonatomic) NSUInteger received;
 @property (nonatomic) BOOL refreshScheduled;
+@property (nonatomic, copy) NSString *cameraRequest;
+@property (nonatomic) int cameraToken;
 @end
 
 static RSChatController *RSActiveChat;
@@ -172,8 +176,15 @@ static NSUserDefaults *RSChatPreferences(void) {
 }
 - (void)viewDidLoad {
     [super viewDidLoad];
+    self.cameraToken = -1;
     [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(screenRotated:) name:@"com.moxuan.regionshot.orientation.target" object:nil];
     self.view.backgroundColor = [UIColor colorWithWhite:0 alpha:0.28];
+    UITapGestureRecognizer *single = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(minimize)];
+    UITapGestureRecognizer *doubleTap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(close)];
+    doubleTap.numberOfTapsRequired = 2;
+    single.delegate = self; doubleTap.delegate = self;
+    [single requireGestureRecognizerToFail:doubleTap];
+    [self.view addGestureRecognizer:single]; [self.view addGestureRecognizer:doubleTap];
     self.card = [UIView new];
     self.card.backgroundColor = UIColor.secondarySystemBackgroundColor;
     self.card.layer.cornerRadius = 28;
@@ -274,6 +285,17 @@ static NSUserDefaults *RSChatPreferences(void) {
     [self.view addSubview:self.ball];
     [self applyAppearance];
 }
+- (BOOL)gestureRecognizer:(UIGestureRecognizer *)gesture shouldReceiveTouch:(UITouch *)touch {
+    return !self.card.hidden && !self.presentedViewController && touch.view == self.view;
+}
+- (void)viewDidAppear:(BOOL)animated {
+    [super viewDidAppear:animated];
+    [self focusInput];
+}
+- (void)focusInput {
+    if (!self.card.hidden && !self.host.hidden && !self.presentedViewController && !self.keyboardPresentation)
+        [self.input becomeFirstResponder];
+}
 - (void)applyAppearance {
     self.overrideUserInterfaceStyle = (UIUserInterfaceStyle)[RSOption(@"AITheme") integerValue];
     CGFloat size = [RSOption(@"AIBallSize") doubleValue];
@@ -330,6 +352,7 @@ static NSUserDefaults *RSChatPreferences(void) {
     self.ball.hidden = YES;
     self.view.backgroundColor = [UIColor colorWithWhite:0 alpha:0.28];
     [self.host makeKeyAndVisible];
+    [self focusInput];
 }
 - (void)panBall:(UIPanGestureRecognizer *)pan {
     CGPoint delta = [pan translationInView:self.view];
@@ -343,6 +366,12 @@ static NSUserDefaults *RSChatPreferences(void) {
     [pan setTranslation:CGPointZero inView:self.view];
 }
 - (void)close {
+    if (self.cameraToken >= 0) { notify_cancel(self.cameraToken); self.cameraToken = -1; }
+    if (self.cameraRequest) {
+        [NSFileManager.defaultManager removeItemAtPath:RSCameraRequestPath() error:nil];
+        [NSFileManager.defaultManager removeItemAtPath:RSCameraImagePath() error:nil];
+        self.cameraRequest = nil;
+    }
     [self.session invalidateAndCancel];
     self.task = nil;
     self.session = nil;
@@ -625,17 +654,48 @@ static NSUserDefaults *RSChatPreferences(void) {
         picker.delegate = self; [self presentViewController:picker animated:YES completion:nil];
     }]];
     [sheet addAction:[UIAlertAction actionWithTitle:@"拍照" style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
-        if (![NSBundle.mainBundle objectForInfoDictionaryKey:@"NSCameraUsageDescription"]) {
-            [self message:@"当前宿主不支持相机授权，请先用系统相机拍照，再从相册添加。"]; return;
-        }
-        if (![UIImagePickerController isSourceTypeAvailable:UIImagePickerControllerSourceTypeCamera]) { [self message:@"当前环境无法打开相机。"]; return; }
-        UIImagePickerController *picker = [UIImagePickerController new]; picker.sourceType = UIImagePickerControllerSourceTypeCamera;
-        picker.delegate = self; [self presentViewController:picker animated:YES completion:nil];
+        [self openCamera];
     }]];
     [sheet addAction:[UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:nil]];
     sheet.popoverPresentationController.sourceView = self.input;
     sheet.popoverPresentationController.sourceRect = self.input.bounds;
     [self presentViewController:sheet animated:YES completion:nil];
+}
+- (void)openCamera {
+    NSFileManager *files = NSFileManager.defaultManager;
+    if (![files createDirectoryAtPath:RSCameraDirectory() withIntermediateDirectories:YES attributes:@{NSFilePosixPermissions:@0700} error:nil]) {
+        [self message:@"无法创建拍照临时目录。"]; return;
+    }
+    [files removeItemAtPath:RSCameraImagePath() error:nil];
+    self.cameraRequest = NSUUID.UUID.UUIDString;
+    NSDictionary *request = @{@"id":self.cameraRequest, @"status":@"waiting"};
+    if (![request writeToFile:RSCameraRequestPath() atomically:YES]) { self.cameraRequest = nil; [self message:@"无法创建拍照请求。"]; return; }
+    __weak typeof(self) weakSelf = self;
+    if (self.cameraToken >= 0) notify_cancel(self.cameraToken);
+    int token = -1;
+    if (notify_register_dispatch(RS_CAMERA_FINISHED, &token, dispatch_get_main_queue(), ^(int value) { dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 300 * NSEC_PER_MSEC), dispatch_get_main_queue(), ^{ [weakSelf cameraFinished]; }); }) != NOTIFY_STATUS_OK) {
+        self.cameraRequest = nil; [self message:@"无法接收拍照结果。"]; return;
+    }
+    self.cameraToken = token;
+    [self hideKeyboard]; self.host.hidden = YES;
+    [UIApplication.sharedApplication openURL:[NSURL URLWithString:@"regionshot-camera://capture"] options:@{} completionHandler:^(BOOL success) {
+        if (!success) { [weakSelf restore]; [weakSelf message:@"无法启动拍照页面，请重新安装完整安装包并重启 SpringBoard。"]; }
+    }];
+}
+- (void)cameraFinished {
+    NSDictionary *result = [NSDictionary dictionaryWithContentsOfFile:RSCameraRequestPath()];
+    if (!self.cameraRequest || ![result[@"id"] isEqual:self.cameraRequest] || [result[@"status"] isEqual:@"waiting"]) return;
+    if (self.cameraToken >= 0) { notify_cancel(self.cameraToken); self.cameraToken = -1; }
+    self.cameraRequest = nil;
+    UIImage *image = nil;
+    if ([result[@"status"] isEqual:@"image"]) {
+        NSNumber *size = [NSFileManager.defaultManager attributesOfItemAtPath:RSCameraImagePath() error:nil][NSFileSize];
+        if (size.unsignedLongLongValue <= 12 * 1024 * 1024) image = [UIImage imageWithContentsOfFile:RSCameraImagePath()];
+    }
+    [NSFileManager.defaultManager removeItemAtPath:RSCameraImagePath() error:nil];
+    [NSFileManager.defaultManager removeItemAtPath:RSCameraRequestPath() error:nil];
+    [self restore];
+    if ([result[@"status"] isEqual:@"image"]) [self acceptImage:image];
 }
 - (void)acceptImage:(UIImage *)image {
     if (!image.CGImage) { [self message:@"无法读取这张图片。"]; return; }

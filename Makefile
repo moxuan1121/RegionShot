@@ -6,7 +6,7 @@ INSTALL_TARGET_PROCESSES = SpringBoard
 include $(THEOS)/makefiles/common.mk
 
 TWEAK_NAME = RegionShot RegionShotInput RegionShotURLs
-RegionShot_FILES = Trigger.xm \
+RegionShot_FILES = Trigger.xm Preferences/RSURLHooks.xm \
 	Preferences/RSOptions.m \
 	Preferences/RSBehaviorSettings.m \
 	History/RSHistoryStore.m \
@@ -27,8 +27,8 @@ RegionShot_FILES = Trigger.xm \
 	KeyboardAI/RSKAInterface.m \
 	KeyboardAI/RSKATokenView.m \
 	KeyboardAI/RSKAAnchoredMenuView.m
-RegionShot_CFLAGS = -fobjc-arc -Wall -Wextra -Wno-unused-parameter
-RegionShot_FRAMEWORKS = Foundation UIKit Photos QuartzCore Security PhotosUI UniformTypeIdentifiers Vision CoreImage PencilKit
+RegionShot_CFLAGS = -DRS_URLS_IN_MAIN -fobjc-arc -Wall -Wextra -Wno-unused-parameter
+RegionShot_FRAMEWORKS = Foundation UIKit Photos QuartzCore Security PhotosUI UniformTypeIdentifiers Vision CoreImage PencilKit WebKit
 
 RegionShotURLs_FILES = Preferences/RSURLHooks.xm
 RegionShotURLs_CFLAGS = -fobjc-arc -Wall -Wextra
@@ -40,5 +40,5 @@ RegionShotInput_LIBRARIES = roothide
 RegionShot_LIBRARIES = roothide
 RegionShot_FILES += Input/RSInputStore.m Input/RSInputOptionsController.m
 include $(THEOS_MAKE_PATH)/tweak.mk
-SUBPROJECTS += Preferences
+SUBPROJECTS += Preferences Camera
 include $(THEOS_MAKE_PATH)/aggregate.mk
