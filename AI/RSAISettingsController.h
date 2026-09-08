@@ -9,6 +9,5 @@ NSString *RSAIPersonaPrompt(BOOL imageQuestion);
 @interface RSAISettingsController : UITableViewController
 - (instancetype)initWithSaved:(dispatch_block_t)saved;
 @end
-NS_ASSUME_NONNULL_END
-
 NSArray<NSDictionary *> *RSAIPersonas(void);
+NS_ASSUME_NONNULL_END
