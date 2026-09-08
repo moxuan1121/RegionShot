@@ -39,7 +39,7 @@
     CGRect textRect = [text boundingRectWithSize:CGSizeMake(MAX(1, maximum - 30), CGFLOAT_MAX)
         options:NSStringDrawingUsesLineFragmentOrigin | NSStringDrawingUsesFontLeading
         attributes:@{NSFontAttributeName:self.textView.font ?: [UIFont preferredFontForTextStyle:UIFontTextStyleBody]} context:nil];
-    CGFloat minimum = self.assistant ? 132 : self.hasImage ? 100 : 44;
+    CGFloat minimum = self.assistant ? 144 : self.hasImage ? 100 : 44;
     CGFloat width = MIN(maximum, MAX(minimum, ceil(textRect.size.width) + 30));
     if (fabs(self.bubbleWidth.constant - width) > 0.5) self.bubbleWidth.constant = width;
 }
@@ -389,6 +389,7 @@ static NSUserDefaults *RSChatPreferences(void) {
             [button setPreferredSymbolConfiguration:[UIImageSymbolConfiguration configurationWithPointSize:12] forImageInState:UIControlStateNormal];
         }
         UIStackView *actions = [[UIStackView alloc] initWithArrangedSubviews:@[[UIView new], regen, tokenize, copy]];
+        actions.spacing = 8;
         [row addArrangedSubview:actions];
     }
     UIView *container = [UIView new]; row.translatesAutoresizingMaskIntoConstraints = NO; [container addSubview:row];

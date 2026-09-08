@@ -5,6 +5,7 @@
 static BOOL RSHandleURL(id url) {
     NSString *notification = RSURLNotification(url);
     if (!notification) return NO;
+    NSLog(@"[RegionShot] Settings URL route: %@", notification);
     dispatch_async(dispatch_get_main_queue(), ^{ notify_post(notification.UTF8String); });
     return YES;
 }

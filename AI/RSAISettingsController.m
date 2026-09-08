@@ -222,6 +222,8 @@ static BOOL RSPublishInputSettings(NSString *key) {
 - (void)viewDidLoad {
     [super viewDidLoad];
     self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithTitle:@"保存" style:UIBarButtonItemStyleDone target:self action:@selector(save)];
+    if (self.navigationController.viewControllers.firstObject == self)
+        self.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithTitle:@"返回对话" style:UIBarButtonItemStylePlain target:self action:@selector(cancel)];
 }
 - (void)viewWillAppear:(BOOL)animated { [super viewWillAppear:animated]; [self.tableView reloadData]; }
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView { return tableView == self.modelTable ? 1 : 4; }
@@ -324,7 +326,7 @@ static BOOL RSPublishInputSettings(NSString *key) {
     if (!RSPublishInputSettings(self.key)) { [self show:@"AI 配置已保存，但微信、LINE 共享配置写入失败，请检查权限后重试。"]; return; }
     if (self.navigationController.viewControllers.firstObject != self) [self.navigationController popViewControllerAnimated:YES]; else if (self.navigationController.parentViewController) { if (self.saved) self.saved(); } else [self dismissViewControllerAnimated:YES completion:self.saved];
 }
-- (void)cancel { [self save]; }
+- (void)cancel { [self dismissViewControllerAnimated:YES completion:nil]; }
 @end
 
 @implementation RSAIMenuController
