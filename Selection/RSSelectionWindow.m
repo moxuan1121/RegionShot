@@ -8,20 +8,17 @@
 #import "../AI/RSChatController.h"
 #import "../Manager/RSRegionShotManager.h"
 #import "../Geometry/RSGeometry.h"
+#import "../Geometry/RSOrientation.h"
 #import "../Preferences/RSOptions.h"
 
 @interface RSSelectionController : UIViewController
 @end
 @implementation RSSelectionController
-- (BOOL)shouldAutorotate { return YES; }
+- (BOOL)shouldAutorotate { return NO; }
+- (BOOL)autorotate { return NO; }
 - (UIInterfaceOrientationMask)supportedInterfaceOrientations { return UIInterfaceOrientationMaskAllButUpsideDown; }
 - (UIInterfaceOrientation)preferredInterfaceOrientationForPresentation {
-    UIInterfaceOrientation orientation = self.view.window.windowScene.interfaceOrientation;
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-    if (orientation == UIInterfaceOrientationUnknown) orientation = UIApplication.sharedApplication.statusBarOrientation;
-#pragma clang diagnostic pop
-    return orientation == UIInterfaceOrientationUnknown || orientation == UIInterfaceOrientationPortraitUpsideDown ? UIInterfaceOrientationPortrait : orientation;
+    return RSActiveOrientation(self.view.window.windowScene);
 }
 - (UIRectEdge)preferredScreenEdgesDeferringSystemGestures { return UIRectEdgeAll; }
 - (UIViewController *)childViewControllerForScreenEdgesDeferringSystemGestures { return nil; }
@@ -39,6 +36,8 @@
 @end
 
 @implementation RSSelectionWindow
+
+- (BOOL)autorotates { return NO; }
 
 + (UIWindow *)currentKeyWindow {
     for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {

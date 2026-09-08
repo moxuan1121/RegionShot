@@ -15,6 +15,20 @@ typedef NS_ENUM(NSInteger, RSSelectionDragMode) {
 static const CGFloat RSMinimumSelectionSize = 44.0;
 static const CGFloat RSHandleHitRadius = 28.0;
 
+@interface RSSelectionPanGestureRecognizer : UIPanGestureRecognizer
+@end
+@implementation RSSelectionPanGestureRecognizer
+- (BOOL)canPreventGestureRecognizer:(UIGestureRecognizer *)prevented { return YES; }
+- (BOOL)canBePreventedByGestureRecognizer:(UIGestureRecognizer *)preventing { return NO; }
+@end
+
+@interface RSSelectionEdgePanGestureRecognizer : UIScreenEdgePanGestureRecognizer
+@end
+@implementation RSSelectionEdgePanGestureRecognizer
+- (BOOL)canPreventGestureRecognizer:(UIGestureRecognizer *)prevented { return YES; }
+- (BOOL)canBePreventedByGestureRecognizer:(UIGestureRecognizer *)preventing { return NO; }
+@end
+
 @interface RSSelectionView () <UIGestureRecognizerDelegate>
 @property (nonatomic) CGRect selectionRect;
 @property (nonatomic) CGPoint startPoint;
@@ -31,10 +45,15 @@ static const CGFloat RSHandleHitRadius = 28.0;
         self.backgroundColor = UIColor.clearColor;
         self.opaque = NO;
         self.multipleTouchEnabled = NO;
-        UIPanGestureRecognizer *pan = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(handlePan:)];
+        UIPanGestureRecognizer *pan = [[RSSelectionPanGestureRecognizer alloc] initWithTarget:self action:@selector(handlePan:)];
         pan.maximumNumberOfTouches = 1;
         pan.delegate = self;
         [self addGestureRecognizer:pan];
+        for (NSNumber *edgeValue in @[@(UIRectEdgeTop), @(UIRectEdgeLeft), @(UIRectEdgeRight), @(UIRectEdgeBottom)]) {
+            UIScreenEdgePanGestureRecognizer *edge = [[RSSelectionEdgePanGestureRecognizer alloc] initWithTarget:self action:@selector(handlePan:)];
+            edge.edges = edgeValue.unsignedIntegerValue; edge.maximumNumberOfTouches = 1; edge.delegate = self;
+            [self addGestureRecognizer:edge]; [pan requireGestureRecognizerToFail:edge];
+        }
         UITapGestureRecognizer *doubleTap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(handleDoubleTap:)];
         doubleTap.numberOfTapsRequired = 2;
         doubleTap.delegate = self;
