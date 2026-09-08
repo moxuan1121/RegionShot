@@ -8,11 +8,31 @@ typedef struct {
     double height;
 } RSRectD;
 
+// Device landscape and interface landscape use opposite left/right names.
+static inline int RSInterfaceOrientationFromDevice(int device) {
+    return device == 3 ? 4 : device == 4 ? 3 : device == 1 ? 1 : 0;
+}
+
 // Touch centroids near the physical border should crop from the border, not leave a strip.
 static inline double RSEdgeStart(double point, double extent) {
-    if (point <= 8) return 0;
-    if (point >= extent - 8) return extent;
+    if (point <= 5) return 0;
+    if (point >= extent - 5) return extent;
     return point;
+}
+
+static inline RSRectD RSSnapSelection(RSRectD r, double width, double height, int moving) {
+    if (moving) {
+        if (r.x <= 5) r.x = 0;
+        else if (width - r.x - r.width <= 5) r.x = width - r.width;
+        if (r.y <= 5) r.y = 0;
+        else if (height - r.y - r.height <= 5) r.y = height - r.height;
+    } else {
+        double right = r.x + r.width, bottom = r.y + r.height;
+        r.x = RSEdgeStart(r.x, width); r.y = RSEdgeStart(r.y, height);
+        right = RSEdgeStart(right, width); bottom = RSEdgeStart(bottom, height);
+        r.width = right - r.x; r.height = bottom - r.y;
+    }
+    return r;
 }
 
 // UIKit interface orientation values: landscape left=3, right=4.

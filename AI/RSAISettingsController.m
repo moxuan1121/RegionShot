@@ -152,6 +152,42 @@ NSString *RSAIPersonaPrompt(BOOL imageQuestion) {
 - (void)changed:(UISlider *)slider { RSSetOption(slider.tag ? @"AIBallOpacity" : @"AIBallSize", @(slider.value)); }
 @end
 
+@interface RSAIChoiceController : UITableViewController
+@property (nonatomic, copy) NSArray<NSString *> *choices;
+@property (nonatomic) NSInteger selected;
+@property (nonatomic, copy) void (^choose)(NSInteger);
+@end
+@implementation RSAIChoiceController
+- (instancetype)init { return [super initWithStyle:UITableViewStyleInsetGrouped]; }
+- (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section { return self.choices.count; }
+- (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)path {
+    UITableViewCell *cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:nil];
+    cell.textLabel.text = self.choices[path.row]; cell.accessoryType = path.row == self.selected ? UITableViewCellAccessoryCheckmark : UITableViewCellAccessoryNone; return cell;
+}
+- (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)path {
+    if (self.choose) self.choose(path.row); [self.navigationController popViewControllerAnimated:YES];
+}
+@end
+@interface RSAIValueController : UIViewController
+@property (nonatomic, strong) UITextField *field;
+@property (nonatomic, copy) NSString *value;
+@property (nonatomic) BOOL secret;
+@property (nonatomic, copy) void (^commit)(NSString *);
+@end
+@implementation RSAIValueController
+- (void)viewDidLoad {
+    [super viewDidLoad]; self.view.backgroundColor = UIColor.systemGroupedBackgroundColor;
+    self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithTitle:@"保存" style:UIBarButtonItemStyleDone target:self action:@selector(saveValue)];
+    self.field = [UITextField new]; self.field.text = self.value; self.field.secureTextEntry = self.secret;
+    self.field.borderStyle = UITextBorderStyleRoundedRect; self.field.backgroundColor = UIColor.secondarySystemGroupedBackgroundColor;
+    self.field.autocapitalizationType = UITextAutocapitalizationTypeNone; self.field.autocorrectionType = UITextAutocorrectionTypeNo;
+    self.field.accessibilityLabel = self.title; self.field.translatesAutoresizingMaskIntoConstraints = NO;
+    [self.view addSubview:self.field];
+    [NSLayoutConstraint activateConstraints:@[[self.field.leadingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.leadingAnchor constant:20], [self.field.trailingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.trailingAnchor constant:-20], [self.field.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:24], [self.field.heightAnchor constraintEqualToConstant:52]]];
+}
+- (void)saveValue { if (self.commit) self.commit([self.field.text stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet]); [self.navigationController popViewControllerAnimated:YES]; }
+@end
+
 @interface RSAISettingsController ()
 @property (nonatomic, copy) dispatch_block_t saved;
 @property (nonatomic, copy) NSString *endpoint;
@@ -159,6 +195,7 @@ NSString *RSAIPersonaPrompt(BOOL imageQuestion) {
 @property (nonatomic, copy) NSString *key;
 @property (nonatomic, strong) NSArray<NSString *> *models;
 @property (nonatomic) BOOL fetching;
+@property (nonatomic, strong) UITableView *modelTable;
 @end
 @implementation RSAISettingsController
 - (instancetype)initWithSaved:(dispatch_block_t)saved {
@@ -174,12 +211,14 @@ NSString *RSAIPersonaPrompt(BOOL imageQuestion) {
     self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithTitle:@"确认" style:UIBarButtonItemStyleDone target:self action:@selector(save)];
 }
 - (void)viewWillAppear:(BOOL)animated { [super viewWillAppear:animated]; [self.tableView reloadData]; }
-- (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView { return 4; }
+- (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView { return tableView == self.modelTable ? 1 : 4; }
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
-    if (section == 0) return 1; if (section == 1) return 5 + self.models.count; if (section == 2) return 1; return 4;
+    if (tableView == self.modelTable) return MAX(1, self.models.count);
+    if (section == 0) return 1; if (section == 1) return 6; if (section == 2) return 1; return 4;
 }
-- (NSString *)tableView:(UITableView *)tableView titleForHeaderInSection:(NSInteger)section { return @[@"AI 引擎", @"通义千问", @"AI 人设", @"显示与输出"][section]; }
+- (NSString *)tableView:(UITableView *)tableView titleForHeaderInSection:(NSInteger)section { return tableView == self.modelTable ? nil : @[@"AI 引擎", @"服务配置", @"AI 人设", @"显示与输出"][section]; }
 - (NSString *)tableView:(UITableView *)tableView titleForFooterInSection:(NSInteger)section {
+    if (tableView == self.modelTable) return nil;
     if (section == 3) return @"快速响应对兼容的通义模型关闭深度思考，减少首字等待；复杂推理需要时可关闭。流式输出可逐字显示回答。";
     return section == 1 ? @"模型抓取使用兼容接口的 /v1/models；发送图片和文字时使用当前选中的模型。" : (section == 2 ? @"默认人设可修改配置，自定义人设可以添加或删除。" : nil);
 }
@@ -187,15 +226,25 @@ NSString *RSAIPersonaPrompt(BOOL imageQuestion) {
     UITableViewCell *cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleValue1 reuseIdentifier:nil]; cell.textLabel.text = title; cell.detailTextLabel.text = detail;
     cell.accessoryType = disclosure ? UITableViewCellAccessoryDisclosureIndicator : UITableViewCellAccessoryNone; return cell;
 }
+- (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)path { return tableView != self.modelTable && path.section == 1 && path.row == 3 ? 180 : 48; }
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)path {
+    if (tableView == self.modelTable) {
+        NSString *model = self.models.count ? self.models[path.row] : @"点击下方“模型抓取”加载列表";
+        UITableViewCell *cell = [self cell:model detail:nil disclosure:NO]; cell.backgroundColor = UIColor.clearColor;
+        cell.accessoryType = [model isEqual:self.model] ? UITableViewCellAccessoryCheckmark : UITableViewCellAccessoryNone; return cell;
+    }
     if (path.section == 0) return [self cell:@"当前使用的引擎" detail:[self.endpoint containsString:@"dashscope"] ? @"通义千问" : @"兼容服务" disclosure:YES];
     if (path.section == 1) {
         if (path.row == 0) return [self cell:@"API Key" detail:self.key.length ? @"已设置" : @"未设置" disclosure:YES];
         if (path.row == 1) return [self cell:@"服务地址" detail:self.endpoint disclosure:YES];
         if (path.row == 2) return [self cell:@"当前模型" detail:self.model disclosure:YES];
-        if (path.row == 3) return [self cell:self.fetching ? @"正在抓取模型…" : @"模型抓取" detail:nil disclosure:NO];
-        if (path.row == 4) return [self cell:@"打开获取 API 网址" detail:nil disclosure:NO];
-        NSString *model = self.models[path.row - 5]; UITableViewCell *cell = [self cell:model detail:nil disclosure:NO]; cell.accessoryType = [model isEqual:self.model] ? UITableViewCellAccessoryCheckmark : UITableViewCellAccessoryNone; return cell;
+        if (path.row == 4) return [self cell:self.fetching ? @"正在抓取模型…" : @"模型抓取" detail:nil disclosure:NO];
+        if (path.row == 5) return [self cell:@"打开获取 API 网址" detail:nil disclosure:NO];
+        UITableViewCell *cell = [self cell:@"" detail:nil disclosure:NO]; cell.selectionStyle = UITableViewCellSelectionStyleNone;
+        if (!self.modelTable) { self.modelTable = [[UITableView alloc] initWithFrame:CGRectZero style:UITableViewStylePlain]; self.modelTable.dataSource = self; self.modelTable.delegate = self; self.modelTable.separatorStyle = UITableViewCellSeparatorStyleNone; self.modelTable.backgroundColor = UIColor.tertiarySystemFill; self.modelTable.layer.cornerRadius = 18; self.modelTable.clipsToBounds = YES; }
+        [self.modelTable removeFromSuperview]; self.modelTable.translatesAutoresizingMaskIntoConstraints = NO; [cell.contentView addSubview:self.modelTable];
+        [NSLayoutConstraint activateConstraints:@[[self.modelTable.leadingAnchor constraintEqualToAnchor:cell.contentView.leadingAnchor constant:12], [self.modelTable.trailingAnchor constraintEqualToAnchor:cell.contentView.trailingAnchor constant:-12], [self.modelTable.topAnchor constraintEqualToAnchor:cell.contentView.topAnchor constant:8], [self.modelTable.bottomAnchor constraintEqualToAnchor:cell.contentView.bottomAnchor constant:-8]]];
+        [self.modelTable reloadData]; return cell;
     }
     if (path.section == 2) return [self cell:@"人设" detail:[NSString stringWithFormat:@"%lu 个", (unsigned long)RSAIPersonas().count] disclosure:YES];
     if (path.row == 0) return [self cell:@"AI 悬浮球设置" detail:nil disclosure:YES];
@@ -205,30 +254,29 @@ NSString *RSAIPersonaPrompt(BOOL imageQuestion) {
 }
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)path {
     [tableView deselectRowAtIndexPath:path animated:YES];
+    if (tableView == self.modelTable) { if (self.models.count) self.model = self.models[path.row]; [self.tableView reloadData]; return; }
     if (path.section == 0) { [self chooseEngine:path]; return; }
     if (path.section == 1) {
         if (path.row <= 2) { [self editValue:path.row]; return; }
-        if (path.row == 3) { [self fetchModels]; return; }
-        if (path.row == 4) { [UIApplication.sharedApplication openURL:[NSURL URLWithString:@"https://bailian.console.aliyun.com/"] options:@{} completionHandler:nil]; return; }
-        self.model = self.models[path.row - 5]; [tableView reloadSections:[NSIndexSet indexSetWithIndex:1] withRowAnimation:UITableViewRowAnimationNone]; return;
+        if (path.row == 4) { [self fetchModels]; return; }
+        if (path.row == 5) { [UIApplication.sharedApplication openURL:[NSURL URLWithString:@"https://bailian.console.aliyun.com/"] options:@{} completionHandler:nil]; return; }
+        return;
     }
     if (path.section == 2) { [self.navigationController pushViewController:[RSAIPersonasController new] animated:YES]; return; }
     if (path.row == 0) { [self.navigationController pushViewController:[RSAIBallSettingsController new] animated:YES]; return; }
     if (path.row == 1) [self chooseTheme:path];
 }
 - (void)chooseEngine:(NSIndexPath *)path {
-    UIAlertController *sheet = [UIAlertController alertControllerWithTitle:@"当前使用的引擎" message:nil preferredStyle:UIAlertControllerStyleActionSheet];
-    [sheet addAction:[UIAlertAction actionWithTitle:@"通义千问" style:UIAlertActionStyleDefault handler:^(UIAlertAction *a) { self.endpoint = @"https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions"; if (!self.model.length) self.model = @"qwen-vl-max"; [self.tableView reloadData]; }]];
-    [sheet addAction:[UIAlertAction actionWithTitle:@"自定义兼容服务" style:UIAlertActionStyleDefault handler:^(UIAlertAction *a) { [self editValue:1]; }]];
-    [sheet addAction:[UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:nil]]; sheet.popoverPresentationController.sourceView = self.tableView; sheet.popoverPresentationController.sourceRect = [self.tableView rectForRowAtIndexPath:path]; [self presentViewController:sheet animated:YES completion:nil];
+    RSAIChoiceController *page = [RSAIChoiceController new]; page.title = @"AI 引擎"; page.choices = @[@"通义千问", @"自定义兼容服务"]; page.selected = [self.endpoint containsString:@"dashscope"] ? 0 : 1;
+    __weak typeof(self) weakSelf = self;
+    page.choose = ^(NSInteger value) { if (value == 0) weakSelf.endpoint = @"https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions"; };
+    [self.navigationController pushViewController:page animated:YES];
 }
 - (void)editValue:(NSInteger)row {
-    NSArray *titles = @[@"API Key", @"服务地址", @"模型名称"]; NSArray *values = @[self.key ?: @"", self.endpoint ?: @"", self.model ?: @""];
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:titles[row] message:nil preferredStyle:UIAlertControllerStyleAlert];
-    [alert addTextFieldWithConfigurationHandler:^(UITextField *field) { field.text = values[row]; field.secureTextEntry = row == 0; field.autocapitalizationType = UITextAutocapitalizationTypeNone; field.autocorrectionType = UITextAutocorrectionTypeNo; }];
-    [alert addAction:[UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:nil]];
-    [alert addAction:[UIAlertAction actionWithTitle:@"完成" style:UIAlertActionStyleDefault handler:^(UIAlertAction *a) { NSString *v = [alert.textFields.firstObject.text stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet]; if (row == 0) self.key = v; else if (row == 1) self.endpoint = v; else self.model = v; [self.tableView reloadData]; }]];
-    [self presentViewController:alert animated:YES completion:nil];
+    RSAIValueController *page = [RSAIValueController new]; page.title = @[@"API Key", @"服务地址", @"模型名称"][row]; page.value = @[self.key ?: @"", self.endpoint ?: @"", self.model ?: @""][row]; page.secret = row == 0;
+    __weak typeof(self) weakSelf = self;
+    page.commit = ^(NSString *value) { if (row == 0) weakSelf.key = value; else if (row == 1) weakSelf.endpoint = value; else weakSelf.model = value; };
+    [self.navigationController pushViewController:page animated:YES];
 }
 - (NSURL *)modelsURL {
     NSURLComponents *parts = [NSURLComponents componentsWithString:self.endpoint]; if (![parts.scheme.lowercaseString isEqual:@"https"] || !parts.host.length || parts.user || parts.password) return nil;
@@ -249,9 +297,9 @@ NSString *RSAIPersonaPrompt(BOOL imageQuestion) {
     }] resume];
 }
 - (void)chooseTheme:(NSIndexPath *)path {
-    UIAlertController *sheet = [UIAlertController alertControllerWithTitle:@"AI 窗口主题" message:nil preferredStyle:UIAlertControllerStyleActionSheet];
-    for (NSInteger value = 0; value < 3; value++) { NSString *title = @[@"跟随系统", @"浅色", @"深色"][value]; [sheet addAction:[UIAlertAction actionWithTitle:title style:UIAlertActionStyleDefault handler:^(UIAlertAction *a) { RSSetOption(@"AITheme", @(value)); [self.tableView reloadData]; }]]; }
-    [sheet addAction:[UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:nil]]; sheet.popoverPresentationController.sourceView = self.tableView; sheet.popoverPresentationController.sourceRect = [self.tableView rectForRowAtIndexPath:path]; [self presentViewController:sheet animated:YES completion:nil];
+    RSAIChoiceController *page = [RSAIChoiceController new]; page.title = @"AI 窗口主题"; page.choices = @[@"跟随系统", @"浅色", @"深色"]; page.selected = [RSOption(@"AITheme") integerValue];
+    page.choose = ^(NSInteger value) { RSSetOption(@"AITheme", @(value)); };
+    [self.navigationController pushViewController:page animated:YES];
 }
 - (void)fastResponse:(UISwitch *)toggle { RSSetOption(@"AIFastResponse", @(toggle.on)); }
 - (void)stream:(UISwitch *)toggle { RSSetOption(@"AIStream", @(toggle.on)); }
@@ -260,7 +308,7 @@ NSString *RSAIPersonaPrompt(BOOL imageQuestion) {
     NSURL *url = [NSURL URLWithString:self.endpoint]; if (![url.scheme.lowercaseString isEqual:@"https"] || !url.host.length || url.user || url.password || !self.model.length) { [self show:@"请填写有效的 HTTPS 服务地址和模型名称。"]; return; }
     OSStatus status = RSAIWriteKey(self.key ?: @""); if (status != errSecSuccess) { [self show:[NSString stringWithFormat:@"钥匙串保存失败（%d）。", (int)status]]; return; }
     NSUserDefaults *prefs = RSAIPreferences(); [prefs setObject:self.endpoint forKey:@"AIEndpoint"]; [prefs setObject:self.model forKey:@"AIModel"]; [prefs setObject:self.models forKey:@"AIModels"]; [prefs synchronize];
-    [self dismissViewControllerAnimated:YES completion:self.saved];
+    if (self.navigationController.viewControllers.firstObject != self) [self.navigationController popViewControllerAnimated:YES]; else [self dismissViewControllerAnimated:YES completion:self.saved];
 }
-- (void)cancel { [self dismissViewControllerAnimated:YES completion:self.saved]; }
+- (void)cancel { if (self.navigationController.viewControllers.firstObject != self) [self.navigationController popViewControllerAnimated:YES]; else [self dismissViewControllerAnimated:YES completion:self.saved]; }
 @end

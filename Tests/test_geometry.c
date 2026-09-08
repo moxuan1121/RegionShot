@@ -3,6 +3,15 @@
 #include <stdio.h>
 
 int main(void) {
+    RSRectD nearEdge = RSSnapSelection((RSRectD){5, 5, 420, 916}, 428, 926, 0);
+    assert(nearEdge.x == 0 && nearEdge.y == 0 && nearEdge.width == 428 && nearEdge.height == 926);
+    RSRectD moving = RSSnapSelection((RSRectD){325, 821, 100, 100}, 428, 926, 1);
+    assert(moving.x == 328 && moving.y == 826 && moving.width == 100 && moving.height == 100);
+    assert(RSEdgeStart(6, 428) == 6);
+    assert(RSInterfaceOrientationFromDevice(3) == 4);
+    assert(RSInterfaceOrientationFromDevice(4) == 3);
+    assert(RSInterfaceOrientationFromDevice(1) == 1);
+    assert(RSInterfaceOrientationFromDevice(5) == 0);
     assert(RSEdgeStart(4, 428) == 0);
     assert(RSEdgeStart(424, 428) == 428);
     assert(RSEdgeStart(100, 428) == 100);

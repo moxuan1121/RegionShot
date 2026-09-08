@@ -32,8 +32,11 @@ static const CGFloat RSHandleHitRadius = 28.0;
 @property (nonatomic) CGRect selectionRect;
 @property (nonatomic) CGPoint startPoint;
 @property (nonatomic) CGPoint lastPoint;
+@property (nonatomic) CGRect dragOriginalRect;
 @property (nonatomic) CGPoint anchorPoint;
 @property (nonatomic) RSSelectionDragMode dragMode;
+@property (nonatomic) CFTimeInterval selectionAppearedAt;
+@property (nonatomic, strong) CADisplayLink *appearanceLink;
 @end
 
 @implementation RSSelectionView
@@ -92,10 +95,25 @@ static const CGFloat RSHandleHitRadius = 28.0;
     return RSSelectionDragMove;
 }
 
+- (void)tickAppearance:(CADisplayLink *)link {
+    [self setNeedsDisplay];
+    if (CACurrentMediaTime() - self.selectionAppearedAt >= 0.16) { [link invalidate]; self.appearanceLink = nil; }
+}
+- (void)willMoveToWindow:(UIWindow *)window {
+    if (!window) { [self.appearanceLink invalidate]; self.appearanceLink = nil; }
+    [super willMoveToWindow:window];
+}
 - (void)beginDragAtPoint:(CGPoint)point {
+    self.dragOriginalRect = self.selectionRect;
     self.startPoint = point;
     self.lastPoint = point;
     self.dragMode = [self modeForPoint:point];
+    if (self.dragMode == RSSelectionDragNew && !UIAccessibilityIsReduceMotionEnabled()) {
+        self.selectionAppearedAt = CACurrentMediaTime();
+        [self.appearanceLink invalidate];
+        self.appearanceLink = [CADisplayLink displayLinkWithTarget:self selector:@selector(tickAppearance:)];
+        [self.appearanceLink addToRunLoop:NSRunLoop.mainRunLoop forMode:NSRunLoopCommonModes];
+    }
     CGRect rect = self.selectionRect;
     switch (self.dragMode) {
         case RSSelectionDragTopLeft: self.anchorPoint = CGPointMake(CGRectGetMaxX(rect), CGRectGetMaxY(rect)); break;
@@ -121,13 +139,16 @@ static const CGFloat RSHandleHitRadius = 28.0;
         if (self.dragMode == RSSelectionDragNew) {
             self.selectionRect = [self newRectFromPoint:self.startPoint toPoint:point];
         } else if (self.dragMode == RSSelectionDragMove) {
-            CGRect rect = CGRectOffset(self.selectionRect, point.x - self.lastPoint.x, point.y - self.lastPoint.y);
+            CGRect rect = CGRectOffset(self.dragOriginalRect, point.x - self.startPoint.x, point.y - self.startPoint.y);
             rect.origin.x = MIN(MAX(rect.origin.x, 0), CGRectGetWidth(self.bounds) - rect.size.width);
             rect.origin.y = MIN(MAX(rect.origin.y, 0), CGRectGetHeight(self.bounds) - rect.size.height);
             self.selectionRect = rect;
         } else {
             self.selectionRect = [self newRectFromPoint:self.anchorPoint toPoint:point];
         }
+        CGRect raw = self.selectionRect;
+        RSRectD snapped = RSSnapSelection((RSRectD){raw.origin.x, raw.origin.y, raw.size.width, raw.size.height}, self.bounds.size.width, self.bounds.size.height, self.dragMode == RSSelectionDragMove);
+        self.selectionRect = CGRectMake(snapped.x, snapped.y, snapped.width, snapped.height);
         self.lastPoint = point;
         [self setNeedsDisplay];
         if (self.selectionChanged) self.selectionChanged(pan.state != UIGestureRecognizerStateEnded);
@@ -155,19 +176,27 @@ static const CGFloat RSHandleHitRadius = 28.0;
 
 - (void)drawRect:(CGRect)rect {
     UIBezierPath *shade = [UIBezierPath bezierPathWithRect:self.bounds];
-    if ([self hasValidSelection]) [shade appendPath:[UIBezierPath bezierPathWithRect:self.selectionRect]];
+    CGFloat progress = self.appearanceLink ? MIN(1, MAX(0, (CACurrentMediaTime() - self.selectionAppearedAt) / 0.16)) : 1;
+    progress = 1 - pow(1 - progress, 3);
+    CGRect visualRect = self.selectionRect;
+    if (self.appearanceLink) {
+        visualRect.origin.x = self.startPoint.x + (visualRect.origin.x - self.startPoint.x) * progress;
+        visualRect.origin.y = self.startPoint.y + (visualRect.origin.y - self.startPoint.y) * progress;
+        visualRect.size.width *= progress; visualRect.size.height *= progress;
+    }
+    if ([self hasValidSelection]) [shade appendPath:[UIBezierPath bezierPathWithRect:visualRect]];
     shade.usesEvenOddFillRule = YES;
     [[UIColor colorWithWhite:0 alpha:[RSOption(@"SelectionShade") doubleValue]] setFill];
     [shade fill];
     if (![self hasValidSelection]) return;
 
-    UIBezierPath *border = [UIBezierPath bezierPathWithRect:CGRectInset(self.selectionRect, 0.5, 0.5)];
+    UIBezierPath *border = [UIBezierPath bezierPathWithRect:CGRectInset(visualRect, 0.5, 0.5)];
     border.lineWidth = 1.5;
-    [UIColor.whiteColor setStroke];
+    [[UIColor.whiteColor colorWithAlphaComponent:progress] setStroke];
     [border stroke];
 
     CGFloat outset = RSCornerOutset(self.window.screen.scale ?: UIScreen.mainScreen.scale, 3);
-    CGRect selection = CGRectInset(self.selectionRect, -outset, -outset);
+    CGRect selection = CGRectInset(visualRect, -outset, -outset);
     CGPoint corners[] = {
         selection.origin,
         CGPointMake(CGRectGetMaxX(selection), CGRectGetMinY(selection)),
@@ -181,7 +210,7 @@ static const CGFloat RSHandleHitRadius = 28.0;
         [handle moveToPoint:CGPointMake(corners[index].x, corners[index].y + dy * 11)];
         [handle addLineToPoint:corners[index]];
         [handle addLineToPoint:CGPointMake(corners[index].x + dx * 11, corners[index].y)];
-        [UIColor.whiteColor setStroke]; handle.lineWidth = 3;
+        [[UIColor.whiteColor colorWithAlphaComponent:progress] setStroke]; handle.lineWidth = 3;
         handle.lineJoinStyle = kCGLineJoinRound;
         handle.lineCapStyle = kCGLineCapRound;
         [handle stroke];

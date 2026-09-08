@@ -4,8 +4,8 @@
 @interface RSFloatingController : UIViewController
 @end
 @implementation RSFloatingController
-- (BOOL)shouldAutorotate { return YES; }
-- (BOOL)autorotate { return YES; }
+- (BOOL)shouldAutorotate { return NO; }
+- (BOOL)autorotate { return NO; }
 - (UIInterfaceOrientationMask)supportedInterfaceOrientations { return UIInterfaceOrientationMaskAllButUpsideDown; }
 - (UIInterfaceOrientation)preferredInterfaceOrientationForPresentation {
     return RSActiveOrientation(self.view.window.windowScene);
@@ -21,8 +21,8 @@
     UIViewController *controller = [RSFloatingController new];
     controller.view.backgroundColor = UIColor.clearColor;
     self.rootViewController = controller;
-    [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(updateOrientation) name:@"com.moxuan.regionshot.orientation" object:nil];
-    [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(updateOrientation) name:UIDeviceOrientationDidChangeNotification object:nil];
+    [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(deviceRotated:) name:UIDeviceOrientationDidChangeNotification object:nil];
+    [UIDevice.currentDevice beginGeneratingDeviceOrientationNotifications];
     [self updateOrientation];
 }
 
@@ -41,6 +41,15 @@
     return self;
 }
 
+- (void)dealloc { [UIDevice.currentDevice endGeneratingDeviceOrientationNotifications]; }
+- (void)deviceRotated:(NSNotification *)note {
+    UIInterfaceOrientation orientation = (UIInterfaceOrientation)RSInterfaceOrientationFromDevice((int)UIDevice.currentDevice.orientation);
+    if (self.hidden || orientation == UIInterfaceOrientationUnknown) return;
+    // Use this event's target, not SpringBoard's still-previous orientation.
+    RSApplyWindowOrientation(self, orientation);
+    [self.rootViewController.view setNeedsLayout];
+    [self.rootViewController.view layoutIfNeeded];
+}
 - (void)updateOrientation {
     if (self.hidden) return;
     RSApplyWindowOrientation(self, RSActiveOrientation(self.windowScene));

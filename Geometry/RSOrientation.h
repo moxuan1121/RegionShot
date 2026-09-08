@@ -1,5 +1,6 @@
 #import <UIKit/UIKit.h>
 #import <objc/message.h>
+#import "RSGeometry.h"
 
 @interface UIWindow (RSOrientationPrivate)
 - (void)_setRotatableViewOrientation:(UIInterfaceOrientation)orientation updateStatusBar:(BOOL)update duration:(NSTimeInterval)duration force:(BOOL)force;
