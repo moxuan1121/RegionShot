@@ -87,6 +87,18 @@ static char RSStatusBarGestureKey;
 %end
 %end
 
+// Broadcast the actual SpringBoard orientation change to live overlays.
+%group RSOrientationUpdates
+%hook SpringBoard
+- (void)_postActiveInterfaceOrientationChangedNotificationAnimated:(BOOL)animated {
+    %orig;
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [NSNotificationCenter.defaultCenter postNotificationName:@"com.moxuan.regionshot.orientation" object:nil];
+    });
+}
+%end
+%end
+
 %group RSApplicationEntry
 %hook SpringBoard
 - (void)takeScreenshot {
@@ -180,6 +192,7 @@ static void RSPreferenceEvent(CFNotificationCenterRef center, void *observer, CF
             NSLog(@"[RegionShot] frozen system touch gate installed");
         } else NSLog(@"[RegionShot] frozen system touch gate unavailable");
         Class app = NSClassFromString(@"SpringBoard");
+        if (RSCompatible(app, @"_postActiveInterfaceOrientationChangedNotificationAnimated:", "Bc")) { %init(RSOrientationUpdates); }
         Class hardware = NSClassFromString(@"SBCombinationHardwareButtonActions");
         BOOL direct = RSCompatible(app, @"takeScreenshot", NULL);
         BOOL edit = RSCompatible(app, @"takeScreenshotAndEdit:", "Bc");

@@ -1,5 +1,6 @@
 #import "RSSelectionView.h"
 #import <math.h>
+#import <UIKit/UIGestureRecognizerSubclass.h>
 #import "../Geometry/RSGeometry.h"
 #import "../Preferences/RSOptions.h"
 
@@ -16,8 +17,13 @@ static const CGFloat RSMinimumSelectionSize = 44.0;
 static const CGFloat RSHandleHitRadius = 28.0;
 
 @interface RSSelectionPanGestureRecognizer : UIPanGestureRecognizer
+@property (nonatomic) CGPoint initialPoint;
 @end
 @implementation RSSelectionPanGestureRecognizer
+- (void)touchesBegan:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
+    self.initialPoint = [touches.anyObject locationInView:self.view];
+    [super touchesBegan:touches withEvent:event];
+}
 - (BOOL)canPreventGestureRecognizer:(UIGestureRecognizer *)prevented { return YES; }
 - (BOOL)canBePreventedByGestureRecognizer:(UIGestureRecognizer *)preventing { return NO; }
 @end
@@ -103,12 +109,15 @@ static const CGFloat RSHandleHitRadius = 28.0;
 - (void)handlePan:(UIPanGestureRecognizer *)pan {
     CGPoint point = [self clampedPoint:[pan locationInView:self]];
     if (pan.state == UIGestureRecognizerStateBegan) {
-        CGPoint translation = [pan translationInView:self];
-        [self beginDragAtPoint:[self clampedPoint:CGPointMake(point.x - translation.x, point.y - translation.y)]];
+        CGPoint start = [self clampedPoint:((RSSelectionPanGestureRecognizer *)pan).initialPoint];
+        if (!self.hasValidSelection) {
+            start.x = RSEdgeStart(start.x, self.bounds.size.width);
+            start.y = RSEdgeStart(start.y, self.bounds.size.height);
+        }
+        [self beginDragAtPoint:start];
         if (self.selectionChanged) self.selectionChanged(YES);
-        return;
     }
-    if (pan.state == UIGestureRecognizerStateChanged) {
+    if (pan.state == UIGestureRecognizerStateBegan || pan.state == UIGestureRecognizerStateChanged || pan.state == UIGestureRecognizerStateEnded) {
         if (self.dragMode == RSSelectionDragNew) {
             self.selectionRect = [self newRectFromPoint:self.startPoint toPoint:point];
         } else if (self.dragMode == RSSelectionDragMove) {
@@ -121,7 +130,7 @@ static const CGFloat RSHandleHitRadius = 28.0;
         }
         self.lastPoint = point;
         [self setNeedsDisplay];
-        if (self.selectionChanged) self.selectionChanged(YES);
+        if (self.selectionChanged) self.selectionChanged(pan.state != UIGestureRecognizerStateEnded);
         return;
     }
     if (pan.state == UIGestureRecognizerStateEnded || pan.state == UIGestureRecognizerStateCancelled || pan.state == UIGestureRecognizerStateFailed) {

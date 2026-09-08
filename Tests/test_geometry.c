@@ -3,6 +3,10 @@
 #include <stdio.h>
 
 int main(void) {
+    assert(RSEdgeStart(4, 428) == 0);
+    assert(RSEdgeStart(424, 428) == 428);
+    assert(RSEdgeStart(100, 428) == 100);
+    assert(RSEdgeStart(924, 926) == 926);
     assert(RSCaptureRotation(1284, 2778, 3) < 0);
     assert(RSCaptureRotation(1284, 2778, 4) > 0);
     assert(RSCaptureRotation(2778, 1284, 3) == 0); // Already rotated: do not rotate twice.

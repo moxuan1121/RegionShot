@@ -2,6 +2,7 @@
 #import "RSSSEDecoder.h"
 #import "RSAISettingsController.h"
 #import "../KeyboardAI/RSKAInterface.h"
+#import "../KeyboardAI/RSKACore.h"
 #import "../Preferences/RSOptions.h"
 #import <PhotosUI/PhotosUI.h>
 #import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
@@ -364,8 +365,10 @@ static NSUserDefaults *RSChatPreferences(void) {
     if (!persona.length) persona = RSAIPersonaPrompt(imageQuestion);
     if (persona.length) [messages insertObject:@{@"role":@"system", @"content":persona} atIndex:0];
     NSError *error = nil;
-    NSData *data = [NSJSONSerialization dataWithJSONObject:@{@"model":[prefs stringForKey:@"AIModel"] ?: @"",
-        @"messages":messages, @"stream":RSOption(@"AIStream")} options:0 error:&error];
+    NSString *model = [prefs stringForKey:@"AIModel"] ?: @"";
+    NSMutableDictionary *payload = [@{@"model":model, @"messages":messages, @"stream":RSOption(@"AIStream")} mutableCopy];
+    if ([RSOption(@"AIFastResponse") boolValue] && RSKASupportsFastResponse(endpoint.absoluteString, model)) payload[@"enable_thinking"] = @NO;
+    NSData *data = [NSJSONSerialization dataWithJSONObject:payload options:0 error:&error];
     if (!data || data.length > 32 * 1024 * 1024) {
         [self message:error.localizedDescription ?: @"对话图片总量超过 32 MB，请关闭后开始新对话。"]; return;
     }
@@ -385,7 +388,7 @@ static NSUserDefaults *RSChatPreferences(void) {
     self.decoder.onEvent = ^(NSString *event) { [weakSelf consumeEvent:event]; };
     NSURLSessionConfiguration *config = NSURLSessionConfiguration.ephemeralSessionConfiguration;
     config.timeoutIntervalForResource = 300;
-    self.session = [NSURLSession sessionWithConfiguration:config delegate:self delegateQueue:NSOperationQueue.mainQueue];
+    if (!self.session) self.session = [NSURLSession sessionWithConfiguration:config delegate:self delegateQueue:NSOperationQueue.mainQueue];
     self.task = [self.session dataTaskWithRequest:request];
     [self.sendButton setImage:[UIImage systemImageNamed:@"stop.circle.fill"] forState:UIControlStateNormal];
     self.sendButton.accessibilityLabel = @"停止生成";
@@ -407,7 +410,9 @@ static NSUserDefaults *RSChatPreferences(void) {
         if (self.answer.length + [piece length] > 256000) {
             self.failure = @"回答超过 256,000 字符，已停止接收。"; return;
         }
+        BOOL firstPiece = self.answer.length == 0;
         [self.answer appendString:piece];
+        if (firstPiece) { [self updateReply]; return; }
         if (!self.refreshScheduled) {
             self.refreshScheduled = YES;
             __weak typeof(self) weakSelf = self;
@@ -420,8 +425,8 @@ static NSUserDefaults *RSChatPreferences(void) {
 }
 - (void)updateReply {
     BOOL atBottom = self.scroll.contentOffset.y + self.scroll.bounds.size.height >= self.scroll.contentSize.height - 60;
+    if (self.keyboardPresentation) { RSKAUpdateAnswer(self.answer, NO, nil); self.history.lastObject[@"content"] = self.answer.copy; return; }
     self.reply.text = self.answer;
-    if (self.keyboardPresentation) RSKAUpdateAnswer(self.answer, NO, nil);
     self.history.lastObject[@"content"] = self.answer.copy;
     if (atBottom && !self.card.hidden) {
         [self.chat layoutIfNeeded];
@@ -474,7 +479,7 @@ static NSUserDefaults *RSChatPreferences(void) {
     if (!status && !self.answer.length) status = @"服务返回了空回答，请重新生成。";
     if (status) self.reply.text = self.answer.length ? [self.answer stringByAppendingFormat:@"\n\n〔%@〕", status] : status;
     if (self.keyboardPresentation) RSKAUpdateAnswer(self.answer, YES, status);
-    [session finishTasksAndInvalidate]; self.session = nil; self.task = nil; self.decoder = nil; self.body = nil;
+    self.task = nil; self.decoder = nil; self.body = nil;
     [self.sendButton setImage:[UIImage systemImageNamed:@"arrow.up.circle.fill"] forState:UIControlStateNormal];
     self.sendButton.accessibilityLabel = @"发送";
 }

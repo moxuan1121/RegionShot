@@ -4,8 +4,8 @@
 @interface RSFloatingController : UIViewController
 @end
 @implementation RSFloatingController
-- (BOOL)shouldAutorotate { return NO; }
-- (BOOL)autorotate { return NO; }
+- (BOOL)shouldAutorotate { return YES; }
+- (BOOL)autorotate { return YES; }
 - (UIInterfaceOrientationMask)supportedInterfaceOrientations { return UIInterfaceOrientationMaskAllButUpsideDown; }
 - (UIInterfaceOrientation)preferredInterfaceOrientationForPresentation {
     return RSActiveOrientation(self.view.window.windowScene);
@@ -21,7 +21,9 @@
     UIViewController *controller = [RSFloatingController new];
     controller.view.backgroundColor = UIColor.clearColor;
     self.rootViewController = controller;
-    RSApplyWindowOrientation(self, RSActiveOrientation(self.windowScene));
+    [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(updateOrientation) name:@"com.moxuan.regionshot.orientation" object:nil];
+    [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(updateOrientation) name:UIDeviceOrientationDidChangeNotification object:nil];
+    [self updateOrientation];
 }
 
 - (instancetype)initWithWindowScene:(UIWindowScene *)windowScene {
@@ -39,6 +41,12 @@
     return self;
 }
 
+- (void)updateOrientation {
+    if (self.hidden) return;
+    RSApplyWindowOrientation(self, RSActiveOrientation(self.windowScene));
+    [self.rootViewController.view setNeedsLayout];
+    [self.rootViewController.view layoutIfNeeded];
+}
 - (BOOL)canBecomeKeyWindow { return NO; }
 
 - (BOOL)pointInside:(CGPoint)point withEvent:(UIEvent *)event {

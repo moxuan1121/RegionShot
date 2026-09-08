@@ -31,6 +31,7 @@ NSArray<NSDictionary *> *RSOptionGroups(void) {
             @{@"key":@"LongMaxMP", @"title":@"合成像素上限（百万）", @"default":@24, @"min":@4, @"max":@24},
             @{@"key":@"LongMaxSlices", @"title":@"最多采集段数", @"default":@100, @"min":@5, @"max":@100} ]},
         @{@"title":@"AI 对话", @"footer":@"服务地址、模型和密钥在 AI 服务配置窗口设置。发送的图片和文字会提交到该服务。", @"items":@[
+            @{@"key":@"AIFastResponse", @"title":@"快速响应（兼容通义模型关闭思考）", @"default":@YES},
             @{@"key":@"AIStream", @"title":@"流式输出", @"default":@YES},
             @{@"key":@"AIAutoImage", @"title":@"图片问答直接发送", @"default":@NO},
             @{@"key":@"AIAutoText", @"title":@"文字问答直接发送", @"default":@NO},

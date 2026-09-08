@@ -45,3 +45,10 @@ static inline void RSKAUpdatePaintSelection(NSMutableIndexSet *selected, NSIndex
     [selected addIndexes:baseline];
     RSKAPaintSelection(selected, anchor, current, selecting);
 }
+
+static inline BOOL RSKASupportsFastResponse(NSString *endpoint, NSString *model) {
+    NSString *host = [NSURLComponents componentsWithString:endpoint].host.lowercaseString;
+    NSString *name = model.lowercaseString;
+    return ([host hasSuffix:@".maas.aliyuncs.com"] || [host isEqualToString:@"dashscope.aliyuncs.com"] || [host hasSuffix:@".dashscope.aliyuncs.com"]) &&
+        [name hasPrefix:@"qwen3"] && ![name containsString:@"thinking"] && ![name containsString:@"instruct"];
+}

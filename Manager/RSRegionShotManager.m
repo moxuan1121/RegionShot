@@ -251,32 +251,34 @@
             [self removeSnap:snap];
             break;
         case RSFloatingActionSave:
-            [self saveImage:image];
+            [self saveImage:image completion:^{ [self removeSnap:snap]; }];
             break;
         case RSFloatingActionShare:
-            [self shareImage:image];
+            [self shareImage:image completion:^{ [self removeSnap:snap]; }];
             break;
         case RSFloatingActionCloseAll:
             [self closeAllSnaps];
             break;
         case RSFloatingActionAI:
             [RSChatController showImage:image scene:snap.window.windowScene];
+            [self removeSnap:snap];
             break;
         case RSFloatingActionCloseCurrent: [self removeSnap:snap]; break;
         case RSFloatingActionHistory: [self showHistory]; break;
     }
 }
 
-- (void)saveImage:(UIImage *)image {
+- (void)saveImage:(UIImage *)image { [self saveImage:image completion:nil]; }
+- (void)saveImage:(UIImage *)image completion:(dispatch_block_t)completion {
     if ([RSOption(@"CopyOnSave") boolValue] || [RSOption(@"CopyOnly") boolValue]) UIPasteboard.generalPasteboard.image = image;
-    if ([RSOption(@"CopyOnly") boolValue]) { [self notice:@"已复制图片"]; return; }
+    if ([RSOption(@"CopyOnly") boolValue]) { [self notice:@"已复制图片"]; if (completion) completion(); return; }
     PHAuthorizationStatus status = [PHPhotoLibrary authorizationStatusForAccessLevel:PHAccessLevelAddOnly];
     if (status == PHAuthorizationStatusNotDetermined) {
         __weak typeof(self) weakSelf = self;
         [PHPhotoLibrary requestAuthorizationForAccessLevel:PHAccessLevelAddOnly handler:^(PHAuthorizationStatus result) {
             dispatch_async(dispatch_get_main_queue(), ^{
                 if (result == PHAuthorizationStatusAuthorized || result == PHAuthorizationStatusLimited)
-                    [weakSelf saveImage:image];
+                    [weakSelf saveImage:image completion:completion];
                 else
                     [weakSelf notice:@"未获得相册写入权限，请在系统设置中允许访问相册。"];
             });
@@ -294,6 +296,7 @@
             NSLog(@"[RegionShot] photo save %@%@", success ? @"succeeded" : @"failed",
                   error ? [NSString stringWithFormat:@": %@", error] : @"");
             [self notice:success ? @"已保存到相册" : error.localizedDescription ?: @"保存失败，请重试。"];
+            if (success && completion) completion();
         });
     }];
 }
@@ -309,7 +312,7 @@
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 3 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{ [label removeFromSuperview]; });
 }
 
-- (void)shareImage:(UIImage *)image {
+- (void)shareImage:(UIImage *)image completion:(dispatch_block_t)completion {
     UIViewController *presenter = self.floatingWindow.rootViewController;
     while (presenter.presentedViewController) presenter = presenter.presentedViewController;
     if (!presenter.view.window) {
@@ -318,6 +321,11 @@
     }
     UIActivityViewController *activity = [[UIActivityViewController alloc] initWithActivityItems:@[image]
                                                                            applicationActivities:nil];
+    activity.popoverPresentationController.sourceView = presenter.view;
+    activity.popoverPresentationController.sourceRect = CGRectMake(CGRectGetMidX(presenter.view.bounds), CGRectGetMidY(presenter.view.bounds), 1, 1);
+    activity.completionWithItemsHandler = ^(UIActivityType type, BOOL completed, NSArray *items, NSError *error) {
+        if (completed && !error && completion) dispatch_async(dispatch_get_main_queue(), completion);
+    };
     [presenter presentViewController:activity animated:YES completion:nil];
 }
 

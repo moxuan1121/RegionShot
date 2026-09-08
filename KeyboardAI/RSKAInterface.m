@@ -79,9 +79,16 @@ static UIWindowLevel RSKAPanelWindowLevel(NSDictionary *options, NSString *key) 
 @implementation RSKAPanel
 - (instancetype)init {
     if ((self = [super init])) {
+        [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(updateOrientation) name:@"com.moxuan.regionshot.orientation" object:nil];
         [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(close) name:UIApplicationProtectedDataWillBecomeUnavailable object:nil];
     }
     return self;
+}
+- (void)updateOrientation {
+    if (!self.overlayWindow) return;
+    RSApplyWindowOrientation(self.overlayWindow, RSActiveOrientation(self.overlayWindow.windowScene));
+    [self resizePanel];
+    [self.searchMenu setNeedsLayout];
 }
 - (void)buttonPressed {
     static UIImpactFeedbackGenerator *feedback;
@@ -290,7 +297,7 @@ static UIWindowLevel RSKAPanelWindowLevel(NSDictionary *options, NSString *key) 
         for (NSDictionary *engine in RSKASearchEngines(@{}))
             [menu addItemWithTitle:engine[@"name"] image:[UIImage systemImageNamed:@"magnifyingglass"] destructive:NO handler:^{ [weakSelf close]; RSKAOpenSearchEngine(engine, text); }];
         self.searchMenu = menu;
-        [menu presentFromView:self.replaceButton inView:self.overlayWindow];
+        [menu presentFromView:self.replaceButton inView:self.overlayWindow.rootViewController.view];
     }
     [self.searchMenu trackGestureRecognizer:gesture];
 }

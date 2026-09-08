@@ -2,6 +2,9 @@
 #import "../KeyboardAI/RSKAOptions.h"
 #include <assert.h>
 int main(void) { @autoreleasepool {
+    assert(RSKASupportsFastResponse(@"https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions", @"qwen3.8-max"));
+    assert(!RSKASupportsFastResponse(@"https://example.com/v1/chat/completions", @"qwen3.8-max"));
+    assert(!RSKASupportsFastResponse(@"https://dashscope.aliyuncs.com/v1/chat/completions", @"qwen3-max-thinking"));
     NSString *text = @"区域截图 AI 👨‍👩‍👧‍👦\n第二行";
     NSArray *pieces = RSKATextPieces(text);
     assert([[pieces componentsJoinedByString:@""] isEqual:text]);

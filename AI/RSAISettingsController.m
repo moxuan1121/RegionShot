@@ -176,10 +176,11 @@ NSString *RSAIPersonaPrompt(BOOL imageQuestion) {
 - (void)viewWillAppear:(BOOL)animated { [super viewWillAppear:animated]; [self.tableView reloadData]; }
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView { return 4; }
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
-    if (section == 0) return 1; if (section == 1) return 5 + self.models.count; if (section == 2) return 1; return 3;
+    if (section == 0) return 1; if (section == 1) return 5 + self.models.count; if (section == 2) return 1; return 4;
 }
 - (NSString *)tableView:(UITableView *)tableView titleForHeaderInSection:(NSInteger)section { return @[@"AI 引擎", @"通义千问", @"AI 人设", @"显示与输出"][section]; }
 - (NSString *)tableView:(UITableView *)tableView titleForFooterInSection:(NSInteger)section {
+    if (section == 3) return @"快速响应对兼容的通义模型关闭深度思考，减少首字等待；复杂推理需要时可关闭。流式输出可逐字显示回答。";
     return section == 1 ? @"模型抓取使用兼容接口的 /v1/models；发送图片和文字时使用当前选中的模型。" : (section == 2 ? @"默认人设可修改配置，自定义人设可以添加或删除。" : nil);
 }
 - (UITableViewCell *)cell:(NSString *)title detail:(NSString *)detail disclosure:(BOOL)disclosure {
@@ -199,6 +200,7 @@ NSString *RSAIPersonaPrompt(BOOL imageQuestion) {
     if (path.section == 2) return [self cell:@"人设" detail:[NSString stringWithFormat:@"%lu 个", (unsigned long)RSAIPersonas().count] disclosure:YES];
     if (path.row == 0) return [self cell:@"AI 悬浮球设置" detail:nil disclosure:YES];
     if (path.row == 1) return [self cell:@"AI 窗口主题" detail:@[@"跟随系统", @"浅色", @"深色"][MIN(2, [RSOption(@"AITheme") integerValue])] disclosure:YES];
+    if (path.row == 3) { UITableViewCell *cell = [self cell:@"快速响应" detail:nil disclosure:NO]; UISwitch *toggle = [UISwitch new]; toggle.on = [RSOption(@"AIFastResponse") boolValue]; [toggle addTarget:self action:@selector(fastResponse:) forControlEvents:UIControlEventValueChanged]; cell.accessoryView = toggle; return cell; }
     UITableViewCell *cell = [self cell:@"流式输出" detail:nil disclosure:NO]; UISwitch *toggle = [UISwitch new]; toggle.on = [RSOption(@"AIStream") boolValue]; [toggle addTarget:self action:@selector(stream:) forControlEvents:UIControlEventValueChanged]; cell.accessoryView = toggle; return cell;
 }
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)path {
@@ -251,6 +253,7 @@ NSString *RSAIPersonaPrompt(BOOL imageQuestion) {
     for (NSInteger value = 0; value < 3; value++) { NSString *title = @[@"跟随系统", @"浅色", @"深色"][value]; [sheet addAction:[UIAlertAction actionWithTitle:title style:UIAlertActionStyleDefault handler:^(UIAlertAction *a) { RSSetOption(@"AITheme", @(value)); [self.tableView reloadData]; }]]; }
     [sheet addAction:[UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:nil]]; sheet.popoverPresentationController.sourceView = self.tableView; sheet.popoverPresentationController.sourceRect = [self.tableView rectForRowAtIndexPath:path]; [self presentViewController:sheet animated:YES completion:nil];
 }
+- (void)fastResponse:(UISwitch *)toggle { RSSetOption(@"AIFastResponse", @(toggle.on)); }
 - (void)stream:(UISwitch *)toggle { RSSetOption(@"AIStream", @(toggle.on)); }
 - (void)show:(NSString *)message { UIAlertController *a = [UIAlertController alertControllerWithTitle:@"AI 问答" message:message preferredStyle:UIAlertControllerStyleAlert]; [a addAction:[UIAlertAction actionWithTitle:@"好" style:UIAlertActionStyleCancel handler:nil]]; [self presentViewController:a animated:YES completion:nil]; }
 - (void)save {

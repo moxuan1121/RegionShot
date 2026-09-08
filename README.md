@@ -1,4 +1,4 @@
-# RegionShot 0.5.0
+# RegionShot 0.5.1
 
 适用 iOS 15.6 / Dopamine RootHide，arm64e。安装后重新启动 SpringBoard。
 
@@ -73,3 +73,13 @@ L 角标向外移动距离包含半个线宽，让线条内缘与实际选区间
 每个人设的编辑页可选择现有对话窗口或 KeyboardAI 窗口。现有窗口模式保留当前对话历史；若仍在回答，则保留新图片待发送。KeyboardAI 窗口接收同一图片 AI 请求的流式回答，支持复制、搜索，长按回答进入分词；分词支持拖选、拆词与返回全文。RegionShot 原对话中的分词按钮也使用内置实现，无需另装 KeyboardAI。
 
 保留同一套 RegionShot 模型、密钥和人设配置。合入代码使用 RSKA 前缀，避免与单独安装的 KeyboardAI 类名冲突。来源及 GPL-3.0 许可见 KeyboardAI/THIRD_PARTY.md 和 COPYING。
+
+## 0.5.1 响应与手势优化
+
+- 记录触摸落点，首次创建选区时将距离四边 8 点内的起点对齐到屏幕边界，Began/Ended 阶段也应用当前坐标。
+- 浮图窗口允许旋转并监听 SpringBoard 前台方向更新，原生长按菜单跟随窗口；KeyboardAI 搜索菜单在旋转后重新计算位置。
+- AI 首段文字立即显示，同一对话复用网络会话，KeyboardAI 回答不重复刷新隐藏的聊天界面。
+- 新增默认开启的快速响应开关，仅在兼容通义 Qwen3 混合模型上发送 enable_thinking=false；其他服务保持原请求协议。复杂推理可关闭此选项。
+- 依据：https://www.alibabacloud.com/help/en/model-studio/deep-thinking 。服务端排队与模型推理时间仍由提供方决定，尚无真机计时结论。
+
+- 图片浮窗在交给 AI、成功复制/保存或完成分享后自动关闭；保存失败或取消分享保留原图。

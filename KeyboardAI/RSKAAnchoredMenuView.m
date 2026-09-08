@@ -12,6 +12,7 @@ static CGFloat const kKAAnchoredMenuMargin = 8.0;
 @property(nonatomic, strong) UIScrollView *scrollView;
 @property(nonatomic, strong) NSMutableArray<dispatch_block_t> *handlers;
 @property(nonatomic, assign) NSInteger highlightedIndex;
+@property(nonatomic, weak) UIView *sourceView;
 @end
 
 @implementation RSKAAnchoredMenuView
@@ -105,6 +106,23 @@ static CGFloat const kKAAnchoredMenuMargin = 8.0;
     self.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
     [hostView addSubview:self];
 
+    self.sourceView = sourceView;
+    [self setNeedsLayout];
+    [self layoutIfNeeded];
+    self.alpha = 0;
+    self.cardView.transform = CGAffineTransformMakeScale(0.96, 0.96);
+    [UIView animateWithDuration:0.16
+                     animations:^{
+                       self.alpha = 1;
+                       self.cardView.transform = CGAffineTransformIdentity;
+                     }];
+}
+
+- (void)layoutSubviews {
+    [super layoutSubviews];
+    UIView *hostView = self.superview;
+    UIView *sourceView = self.sourceView;
+    if (!hostView || !sourceView) return;
     CGRect sourceFrame = [sourceView convertRect:sourceView.bounds toView:hostView];
     CGFloat contentHeight = self.handlers.count * kKAAnchoredMenuRowHeight;
     CGFloat top = hostView.safeAreaInsets.top + 8;
@@ -125,13 +143,6 @@ static CGFloat const kKAAnchoredMenuMargin = 8.0;
     self.scrollView.frame = self.cardView.bounds;
     self.scrollView.contentSize = CGSizeMake(width, contentHeight);
     self.stackView.frame = CGRectMake(0, 0, width, contentHeight);
-    self.alpha = 0;
-    self.cardView.transform = CGAffineTransformMakeScale(0.96, 0.96);
-    [UIView animateWithDuration:0.16
-                     animations:^{
-                       self.alpha = 1;
-                       self.cardView.transform = CGAffineTransformIdentity;
-                     }];
 }
 
 - (void)handleItem:(UIButton *)sender {

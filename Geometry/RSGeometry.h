@@ -8,6 +8,13 @@ typedef struct {
     double height;
 } RSRectD;
 
+// Touch centroids near the physical border should crop from the border, not leave a strip.
+static inline double RSEdgeStart(double point, double extent) {
+    if (point <= 8) return 0;
+    if (point >= extent - 8) return extent;
+    return point;
+}
+
 // UIKit interface orientation values: landscape left=3, right=4.
 // Screen capture may still return portrait framebuffer pixels in landscape.
 static inline double RSCaptureRotation(double width, double height, int orientation) {
