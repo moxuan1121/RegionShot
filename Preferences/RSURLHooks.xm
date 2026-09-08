@@ -25,9 +25,12 @@ static BOOL RSHandleURL(id url) {
 %end
 %group RSSettingsURLCompletion
 %hook PreferencesAppController
-- (void)processURL:(id)url animated:(BOOL)animated fromSearch:(BOOL)search withCompletion:(void (^)(void))completion {
+- (void)processURL:(id)url animated:(BOOL)animated fromSearch:(BOOL)search withCompletion:(id)completion {
     if (!RSHandleURL(url)) { %orig; return; }
-    if (completion) completion();
+    // Keep the private completion opaque: Preferences invokes its own block with
+    // the correct ABI after resolving the real, single RegionShot settings entry.
+    id destination = [url isKindOfClass:NSString.class] ? (id)@"prefs:root=RegionShot" : [NSURL URLWithString:@"prefs:root=RegionShot"];
+    %orig(destination, animated, search, completion);
 }
 %end
 %end
