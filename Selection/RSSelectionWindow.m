@@ -70,7 +70,12 @@
         };
         _toolbar.captureHandler = ^{
             RSSelectionWindow *strongSelf = weakSelf;
-            if (!strongSelf.selectionView.hasValidSelection) [strongSelf.selectionView selectAll];
+            if (!strongSelf.selectionView.hasValidSelection) {
+                UIImage *image = strongSelf.imageView.image;
+                if (strongSelf.toolbar.cancelHandler) strongSelf.toolbar.cancelHandler();
+                if (image) [RSRegionShotManager.sharedManager saveImage:image];
+                return;
+            }
             confirm(strongSelf.selectionRect, strongSelf.displaySize);
         };
         _toolbar.cancelHandler = cancel;

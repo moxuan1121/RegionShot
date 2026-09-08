@@ -77,6 +77,16 @@ static char RSStatusBarGestureKey;
 }
 %end
 %end
+// Block SpringBoard's system touch routing only while the frozen selection is visible.
+%group RSFrozenSystemGestures
+%hook SBSystemGestureManager
+- (BOOL)shouldSystemGestureReceiveTouchWithLocation:(CGPoint)location {
+    if (RSRegionShotManager.sharedManager.isFrozenSelectionVisible) return NO;
+    return %orig;
+}
+%end
+%end
+
 %group RSApplicationEntry
 %hook SpringBoard
 - (void)takeScreenshot {
@@ -157,6 +167,18 @@ static void RSPreferenceEvent(CFNotificationCenterRef center, void *observer, CF
         if (![NSBundle.mainBundle.bundleIdentifier isEqualToString:@"com.apple.springboard"]) return;
         RSReload();
         if ([NSClassFromString(@"_UIStatusBar") isSubclassOfClass:UIView.class]) { %init(RSStatusBarEntry); }
+        Class gestures = NSClassFromString(@"SBSystemGestureManager");
+        Method receiveTouch = class_getInstanceMethod(gestures, NSSelectorFromString(@"shouldSystemGestureReceiveTouchWithLocation:"));
+        char returnType[16] = {0}, argumentType[128] = {0};
+        if (receiveTouch) {
+            method_getReturnType(receiveTouch, returnType, sizeof(returnType));
+            method_getArgumentType(receiveTouch, 2, argumentType, sizeof(argumentType));
+        }
+        if (receiveTouch && method_getNumberOfArguments(receiveTouch) == 3 &&
+            (returnType[0] == 'B' || returnType[0] == 'c') && strcmp(argumentType, @encode(CGPoint)) == 0) {
+            %init(RSFrozenSystemGestures);
+            NSLog(@"[RegionShot] frozen system touch gate installed");
+        } else NSLog(@"[RegionShot] frozen system touch gate unavailable");
         Class app = NSClassFromString(@"SpringBoard");
         Class hardware = NSClassFromString(@"SBCombinationHardwareButtonActions");
         BOOL direct = RSCompatible(app, @"takeScreenshot", NULL);

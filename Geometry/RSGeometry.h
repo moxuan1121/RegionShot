@@ -8,6 +8,11 @@ typedef struct {
     double height;
 } RSRectD;
 
+// Offset a stroked corner so its inner edge leaves one physical pixel outside the crop.
+static inline double RSCornerOutset(double scale, double strokeWidth) {
+    return strokeWidth / 2 + 1 / scale;
+}
+
 // Anchor stays fixed even when a corner is dragged through all four quadrants.
 static inline RSRectD RSRectAroundAnchor(double ax, double ay, double x, double y, double width, double height) {
     double minimum = 44;

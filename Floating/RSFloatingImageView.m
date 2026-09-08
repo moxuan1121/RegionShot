@@ -5,6 +5,7 @@
 @interface RSFloatingImageView () <UIGestureRecognizerDelegate, UIContextMenuInteractionDelegate>
 @property (nonatomic) CGFloat currentScale;
 @property (nonatomic, strong) UIImageView *roundedImage;
+@property (nonatomic) BOOL contextMenuActive;
 @end
 
 @implementation RSFloatingImageView
@@ -16,12 +17,12 @@
         self.userInteractionEnabled = YES;
         self.contentMode = UIViewContentModeScaleAspectFit;
         self.backgroundColor = UIColor.blackColor;
-        self.layer.cornerRadius = 12;
+        self.layer.cornerRadius = 5;
         self.layer.cornerCurve = kCACornerCurveContinuous;
         self.layer.masksToBounds = NO;
         _roundedImage = [[UIImageView alloc] initWithImage:image];
         _roundedImage.contentMode = UIViewContentModeScaleAspectFit;
-        _roundedImage.layer.cornerRadius = 12;
+        _roundedImage.layer.cornerRadius = 5;
         _roundedImage.layer.cornerCurve = kCACornerCurveContinuous;
         _roundedImage.clipsToBounds = YES;
         [self addSubview:_roundedImage];
@@ -51,7 +52,7 @@
 
 - (void)layoutSubviews {
     [super layoutSubviews]; self.roundedImage.frame = self.bounds;
-    self.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.bounds cornerRadius:12].CGPath;
+    self.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.bounds cornerRadius:5].CGPath;
 }
 - (UIImage *)image { return self.roundedImage.image; }
 - (void)setImage:(UIImage *)image { self.roundedImage.image = image; }
@@ -63,7 +64,7 @@
 }
 
 - (void)doubleTapped:(UITapGestureRecognizer *)gesture {
-    if (gesture.state == UIGestureRecognizerStateRecognized && [RSOption(@"FloatDoubleClose") boolValue])
+    if (!self.contextMenuActive && gesture.state == UIGestureRecognizerStateRecognized && [RSOption(@"FloatDoubleClose") boolValue])
         [self.actionDelegate floatingImageViewDidRequestRemoval:self];
 }
 
@@ -90,6 +91,28 @@
     BOOL secondPair = [gesture isKindOfClass:UIPinchGestureRecognizer.class] &&
                       [other isKindOfClass:UIPanGestureRecognizer.class];
     return firstPair || secondPair;
+}
+
+- (UITargetedPreview *)menuPreview {
+    UIPreviewParameters *parameters = [UIPreviewParameters new];
+    parameters.backgroundColor = UIColor.clearColor;
+    parameters.visiblePath = [UIBezierPath bezierPathWithRoundedRect:self.bounds cornerRadius:5];
+    return [[UITargetedPreview alloc] initWithView:self parameters:parameters];
+}
+- (UITargetedPreview *)contextMenuInteraction:(UIContextMenuInteraction *)interaction previewForHighlightingMenuWithConfiguration:(UIContextMenuConfiguration *)configuration { return [self menuPreview]; }
+- (UITargetedPreview *)contextMenuInteraction:(UIContextMenuInteraction *)interaction previewForDismissingMenuWithConfiguration:(UIContextMenuConfiguration *)configuration { return [self menuPreview]; }
+- (void)contextMenuInteraction:(UIContextMenuInteraction *)interaction willDisplayMenuForConfiguration:(UIContextMenuConfiguration *)configuration animator:(id<UIContextMenuInteractionAnimating>)animator {
+    self.contextMenuActive = YES;
+    for (UIGestureRecognizer *gesture in self.gestureRecognizers)
+        if ([gesture isKindOfClass:UITapGestureRecognizer.class]) gesture.enabled = NO;
+}
+- (void)contextMenuInteraction:(UIContextMenuInteraction *)interaction willEndForConfiguration:(UIContextMenuConfiguration *)configuration animator:(id<UIContextMenuInteractionAnimating>)animator {
+    void (^finish)(void) = ^{
+        self.contextMenuActive = NO;
+        for (UIGestureRecognizer *gesture in self.gestureRecognizers)
+            if ([gesture isKindOfClass:UITapGestureRecognizer.class]) gesture.enabled = YES;
+    };
+    if (animator) [animator addCompletion:finish]; else finish();
 }
 
 - (UIContextMenuConfiguration *)contextMenuInteraction:(UIContextMenuInteraction *)interaction

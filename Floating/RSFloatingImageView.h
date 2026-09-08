@@ -19,9 +19,10 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)floatingImageView:(RSFloatingImageView *)snap didRequestAction:(RSFloatingAction)action;
 @end
 
-@interface RSFloatingImageView : UIImageView
+@interface RSFloatingImageView : UIView
 @property (nonatomic, weak) id<RSFloatingImageViewDelegate> actionDelegate;
 @property (nonatomic, readonly) UIImage *croppedImage;
+@property (nonatomic, strong, nullable) UIImage *image;
 - (instancetype)initWithCroppedImage:(UIImage *)image;
 @end
 NS_ASSUME_NONNULL_END

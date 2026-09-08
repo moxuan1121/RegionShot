@@ -1,4 +1,4 @@
-# RegionShot 0.4.2
+# RegionShot 0.4.3
 
 适用 iOS 15.6 / Dopamine RootHide，arm64e。安装后重新启动 SpringBoard。
 
@@ -19,3 +19,12 @@
 GitHub Actions 使用固定版本 RootHide Theos 和 iOS 15.6 SDK，检查像素裁剪、菜单升级兼容、参数校验、历史持久化、几何、流式响应、长图对齐、扫码、安装包及 arm64e ABI。动画观感及系统边缘手势需实机验证。
 
 自动滚动长截图与完整编辑器仍在开发中。
+
+
+## 0.4.3 修复
+
+浮图外壳改用 UIView，图片独立裁剪，圆角缩小为 5 点，避免 UIImageView 外壳的图片绘制覆盖圆角。菜单高亮与退出使用相同圆角预览，菜单生命周期内暂停双击关闭识别。
+
+L 角标向外移动距离包含半个线宽，让线条内缘与实际选区间隔一个物理像素。冻结菜单的截屏按钮按保存设置直接保存/复制全屏；选区菜单截图和框内双击仍生成浮图。
+
+冻结界面显示时，拦截 SBSystemGestureManager 的 shouldSystemGestureReceiveTouchWithLocation:，阻止系统下拉手势接收触摸。安装前检查运行时方法签名，退出冻结界面即恢复原处理；长截图滚动阶段不拦截。接口依据运行时头文件，iOS 15.6 上是否挂接及触摸表现需实机验证。

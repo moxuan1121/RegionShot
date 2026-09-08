@@ -33,6 +33,8 @@
 
 - (NSArray<RSFloatingImageView *> *)activeSnaps { return self.mutableSnaps.copy; }
 
+- (BOOL)isFrozenSelectionVisible { return self.selectionWindow && !self.selectionWindow.hidden; }
+
 - (BOOL)beginCapture {
     if (![NSThread isMainThread]) {
         __block BOOL started;

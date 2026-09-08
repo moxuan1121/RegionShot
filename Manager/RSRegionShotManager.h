@@ -1,6 +1,6 @@
 #import <Foundation/Foundation.h>
 
-@class RSFloatingImageView;
+@class RSFloatingImageView, UIImage;
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -17,6 +17,8 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)removeSnap:(RSFloatingImageView *)snap;
 - (void)closeAllSnaps;
 - (void)showHistory;
+- (void)saveImage:(UIImage *)image;
+- (BOOL)isFrozenSelectionVisible;
 
 @end
 
