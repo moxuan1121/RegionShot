@@ -1,3 +1,4 @@
+#import "../History/RSHistoryController.h"
 #import "RSSelectionWindow.h"
 #import "RSSelectionToolbar.h"
 #import "RSSelectionView.h"
@@ -93,6 +94,7 @@
             RSSelectionWindow *strongSelf = weakSelf;
             if (!strongSelf.selectionView.hasValidSelection) {
                 UIImage *image = strongSelf.imageView.image;
+                if (image) [RSHistoryController recordImage:image completion:nil];
                 if (strongSelf.toolbar.cancelHandler) strongSelf.toolbar.cancelHandler();
                 if (image) [RSRegionShotManager.sharedManager saveImage:image];
                 return;
@@ -109,6 +111,7 @@
             CGRect rect = window.selectionView.hasValidSelection ? window.selectionRect : window.selectionView.bounds;
             UIImage *image = [RSScreenCapture cropImage:window.imageView.image toRect:rect displaySize:window.displaySize];
             if (!image) return;
+            [RSHistoryController recordImage:image completion:nil];
             UIPasteboard.generalPasteboard.image = image;
             if (window.toolbar.cancelHandler) window.toolbar.cancelHandler();
         };
@@ -117,6 +120,7 @@
             if (!window.selectionView.hasValidSelection) return;
             UIImage *image = [RSScreenCapture cropImage:window.imageView.image toRect:window.selectionRect displaySize:window.displaySize];
             if (!image) return;
+            [RSHistoryController recordImage:image completion:nil];
             if (window.toolbar.cancelHandler) window.toolbar.cancelHandler();
             [RSRegionShotManager.sharedManager saveImage:image];
         };
@@ -125,7 +129,7 @@
             if (!window.selectionView.hasValidSelection) [window.selectionView selectAll];
             UIImage *cropped = [RSScreenCapture cropImage:window.imageView.image toRect:window.selectionRect displaySize:window.displaySize];
             UIWindowScene *scene = window.windowScene;
-            if (cropped) { if (window.toolbar.cancelHandler) window.toolbar.cancelHandler(); [RSChatController showImage:cropped scene:scene]; }
+            if (cropped) { [RSHistoryController recordImage:cropped completion:nil]; if (window.toolbar.cancelHandler) window.toolbar.cancelHandler(); [RSChatController showImage:cropped scene:scene]; }
         };
         _toolbar.personaHandler = ^(NSDictionary *persona) {
             RSSelectionWindow *window = weakSelf;
@@ -133,6 +137,7 @@
             UIImage *cropped = [RSScreenCapture cropImage:window.imageView.image toRect:window.selectionRect displaySize:window.displaySize];
             UIWindowScene *scene = window.windowScene;
             if (cropped) {
+                [RSHistoryController recordImage:cropped completion:nil];
                 if (window.toolbar.cancelHandler) window.toolbar.cancelHandler();
                 [RSChatController showImage:cropped scene:scene persona:persona];
             }

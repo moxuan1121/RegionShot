@@ -196,7 +196,7 @@ static RSHistoryController *RSActiveHistory;
         return !query.length || [entry[@"title"] localizedCaseInsensitiveContainsString:query] || [[self dateText:entry] containsString:query];
     }]];
     UILabel *empty = [UILabel new]; empty.textAlignment = NSTextAlignmentCenter; empty.numberOfLines = 0;
-    empty.text = query.length ? @"没有匹配的截图" : @"暂无截图记录\n开启历史记录后，新生成的浮图会保存在这里";
+    empty.text = query.length ? @"没有匹配的截图" : @"暂无截图记录\n开启历史记录后，新生成的截图会保存在这里";
     self.tableView.backgroundView = self.filtered.count ? nil : empty;
     [self.tableView reloadData];
 }

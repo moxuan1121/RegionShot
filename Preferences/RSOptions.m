@@ -20,7 +20,7 @@ NSArray<NSDictionary *> *RSOptionGroups(void) {
             @{@"key":@"FloatDoubleClose", @"title":@"双击关闭当前浮图", @"default":@YES},
             @{@"key":@"FloatOpacity", @"title":@"浮图不透明度", @"default":@1.0, @"min":@0.25, @"max":@1.0},
             @{@"key":@"FloatWidth", @"title":@"初始最大宽度（点）", @"default":@260, @"min":@80, @"max":@380} ]},
-        @{@"title":@"截图历史", @"footer":@"保存 RegionShot 新生成的浮图。关闭后停止新增；已存记录仍可查看或清空。达到上限时自动清理旧图，修改限额在下次写入时执行。", @"items":@[
+        @{@"title":@"截图历史", @"footer":@"保存 RegionShot 新生成的截图（浮图、复制、保存和图片问答）。关闭后停止新增；已存记录仍可查看或清空。达到上限时自动清理旧图，修改限额在下次写入时执行。", @"items":@[
             @{@"key":@"HistoryEnabled", @"title":@"记录截图历史", @"default":@YES},
             @{@"key":@"HistoryCount", @"title":@"最多保留张数", @"default":@80, @"min":@5, @"max":@200},
             @{@"key":@"HistoryMB", @"title":@"历史容量上限（MB）", @"default":@64, @"min":@16, @"max":@128} ]},

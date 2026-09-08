@@ -1,6 +1,7 @@
 #import <UIKit/UIKit.h>
 #import <objc/runtime.h>
 #include <string.h>
+#include <dlfcn.h>
 #import "Manager/RSRegionShotManager.h"
 #import "Capture/RSScreenCapture.h"
 #import "Capture/RSCaptureStatus.h"
@@ -230,7 +231,10 @@ static void RSPreferenceEvent(CFNotificationCenterRef center, void *observer, CF
         CFNotificationCenterRef center = CFNotificationCenterGetDarwinNotifyCenter();
         CFNotificationCenterAddObserver(center, NULL, RSPreferenceEvent, CFSTR("com.moxuan.regionshot/AIWindow"), NULL, CFNotificationSuspensionBehaviorDeliverImmediately);
         CFNotificationCenterAddObserver(center, NULL, RSPreferenceEvent, CFSTR("com.jontelang.snapper3.history"), NULL, CFNotificationSuspensionBehaviorDeliverImmediately);
-        Class distributed = NSClassFromString(@"NSDistributedNotificationCenter");
+        CFNotificationCenterRef (*distributedCenter)(void) = (CFNotificationCenterRef (*)(void))dlsym(RTLD_DEFAULT, "CFNotificationCenterGetDistributedCenter");
+        CFNotificationCenterRef snapperCenter = distributedCenter ? distributedCenter() : NULL;
+        if (snapperCenter) CFNotificationCenterAddObserver(snapperCenter, NULL, RSPreferenceEvent, CFSTR("com.jontelang.snapper3.history"), NULL, CFNotificationSuspensionBehaviorDeliverImmediately);
+        Class distributed = snapperCenter ? Nil : NSClassFromString(@"NSDistributedNotificationCenter");
         if ([distributed respondsToSelector:@selector(defaultCenter)]) {
             id notifications = [distributed performSelector:@selector(defaultCenter)];
             [notifications addObserverForName:@"com.jontelang.snapper3.history" object:nil queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification *note) { [RSRegionShotManager.sharedManager showHistory]; }];
