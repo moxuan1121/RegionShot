@@ -24,6 +24,7 @@
 static BOOL RSEnabled = YES;
 static BOOL RSTargetOrientationInstalled;
 static __thread NSUInteger RSOriginalDepth;
+static BOOL RSNativeScreenshotPending;
 static int RSCheckToken = -1, RSStatusToken = -1;
 static uint32_t RSHookStatus;
 static void RSReload(void) {
@@ -33,7 +34,7 @@ static void RSReload(void) {
     RSEnabled = ![prefs objectForKey:@"Enabled"] || [prefs boolForKey:@"Enabled"];
 }
 static BOOL RSTryCapture(NSString *source) {
-    if (RSOriginalDepth) return NO;
+    if (RSOriginalDepth || RSNativeScreenshotPending) return NO;
     if (!NSThread.isMainThread) {
         __block BOOL handled;
         dispatch_sync(dispatch_get_main_queue(), ^{ handled = RSTryCapture(source); });
@@ -50,6 +51,18 @@ static BOOL RSTryCapture(NSString *source) {
         NSLog(@"[RegionShot] capture failed at %@: %@", source, exception.name);
         return NO;
     }
+}
+BOOL RSRequestNativeScreenshot(void) {
+    NSCAssert(NSThread.isMainThread, @"Native screenshot requires main thread");
+    SpringBoard *app = (id)UIApplication.sharedApplication;
+    if (![app respondsToSelector:@selector(takeScreenshot)]) return NO;
+    RSNativeScreenshotPending = YES;
+    RSOriginalDepth++;
+    @try { [app takeScreenshot]; }
+    @finally { RSOriginalDepth--; }
+    // The capturer consumes this bypass. Expire it if that private path is absent.
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 2 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{ RSNativeScreenshotPending = NO; });
+    return YES;
 }
 @interface RSStatusBarGesture : NSObject <UIGestureRecognizerDelegate>
 @end
@@ -141,6 +154,11 @@ static char RSStatusBarGestureKey;
 %group RSCapturerEntry
 %hook SSScreenCapturer
 - (void)takeScreenshotWithPresentationOptions:(id)options {
+    if (RSNativeScreenshotPending) {
+        RSOriginalDepth++;
+        @try { %orig(options); } @finally { RSOriginalDepth--; RSNativeScreenshotPending = NO; }
+        return;
+    }
     if (RSTryCapture(@"SSScreenCapturer.takeScreenshotWithPresentationOptions:")) return;
     RSOriginalDepth++;
     @try { %orig(options); } @finally { RSOriginalDepth--; }

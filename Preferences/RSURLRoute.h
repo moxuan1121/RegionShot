@@ -19,7 +19,7 @@ static inline NSString *RSURLNotification(id value) {
             root = [[[item substringFromIndex:equals.location + 1] stringByRemovingPercentEncoding] lowercaseString];
         }
     }
-    if ([root isEqual:@"regionshot_aiwindow"]) return @"com.moxuan.regionshot/AIWindow";
+    if (([root isEqual:@"regionshot_aiwindow"] || [root isEqual:@"regionshot_ai2"])) return @"com.moxuan.regionshot/AIWindow";
     if ([root isEqual:@"regionshot_history"]) return @"com.moxuan.regionshot/History";
     return nil;
 }

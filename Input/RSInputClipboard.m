@@ -157,7 +157,12 @@ void RSInputOpenSearch(NSString *text) { RSInputOpenSearchEngine(RSInputSearchEn
         button.titleLabel.textAlignment = NSTextAlignmentCenter;
         button.tintColor = UIColor.whiteColor;
         [button setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
-        button.titleLabel.font = [UIFont systemFontOfSize:16 * scale weight:UIFontWeightSemibold];
+        button.titleLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleCallout] scaledFontForFont:[UIFont systemFontOfSize:16 * scale weight:UIFontWeightSemibold]];
+        button.titleLabel.adjustsFontForContentSizeCategory = YES;
+        button.titleLabel.adjustsFontSizeToFitWidth = YES;
+        button.titleLabel.minimumScaleFactor = 0.5;
+        button.titleLabel.numberOfLines = 1;
+        button.titleLabel.baselineAdjustment = UIBaselineAdjustmentAlignCenters;
         button.accessibilityLabel = @"分词";
         button.accessibilityHint = @"轻按分词，长按打开搜索引擎和 AI 人设";
         button.accessibilityCustomActions = @[[[UIAccessibilityCustomAction alloc] initWithName:@"搜索复制文字" actionHandler:^BOOL(__unused UIAccessibilityCustomAction *action) {

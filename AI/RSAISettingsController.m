@@ -2,6 +2,7 @@
 #import "RSAISettingsController.h"
 #import "../Preferences/RSBehaviorSettings.h"
 #import <notify.h>
+extern UIViewController *RSCreateSileoSettings(void);
 extern UIViewController *RSInputCreatePersonaSelection(NSString *scope);
 #import "../Preferences/RSOptions.h"
 
@@ -333,11 +334,11 @@ static BOOL RSPublishInputSettings(NSString *key) {
 - (instancetype)init { return [super initWithStyle:UITableViewStyleInsetGrouped]; }
 - (void)viewDidLoad { [super viewDidLoad]; self.title = @"AI 对话与设置"; }
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)table { return 2; }
-- (NSInteger)tableView:(UITableView *)table numberOfRowsInSection:(NSInteger)section { return section == 0 ? 4 : 3; }
+- (NSInteger)tableView:(UITableView *)table numberOfRowsInSection:(NSInteger)section { return section == 0 ? 5 : 3; }
 - (NSString *)tableView:(UITableView *)table titleForHeaderInSection:(NSInteger)section { return section == 0 ? @"AI 对话" : @"各入口显示的人设"; }
 - (UITableViewCell *)tableView:(UITableView *)table cellForRowAtIndexPath:(NSIndexPath *)path {
     UITableViewCell *cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:nil];
-    cell.textLabel.text = path.section == 0 ? @[@"打开 AI 对话", @"对话外观与行为", @"AI 服务配置", @"AI 人设"][path.row] : @[@"微信菜单", @"LINE 菜单", @"分词按钮长按菜单"][path.row];
+    cell.textLabel.text = path.section == 0 ? @[@"打开 AI 对话", @"对话外观与行为", @"AI 服务配置", @"AI 人设", @"Sileo 介绍页翻译"][path.row] : @[@"微信菜单", @"LINE 菜单", @"分词按钮长按菜单"][path.row];
     cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator; return cell;
 }
 - (void)tableView:(UITableView *)table didSelectRowAtIndexPath:(NSIndexPath *)path {
@@ -347,7 +348,8 @@ static BOOL RSPublishInputSettings(NSString *key) {
     else if (path.row == 0) { notify_post("com.moxuan.regionshot/AIWindow"); return; }
     else if (path.row == 1) { RSBehaviorSettings *options = [RSBehaviorSettings new]; options.groupIndex = RSOptionGroups().count - 1; page = options; }
     else if (path.row == 2) page = [[RSAISettingsController alloc] initWithSaved:nil];
-    else page = [RSAIPersonasController new];
+    else if (path.row == 3) page = [RSAIPersonasController new];
+    else page = RSCreateSileoSettings();
     [self.navigationController pushViewController:page animated:YES];
 }
 @end

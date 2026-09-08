@@ -93,11 +93,7 @@
         _toolbar.captureHandler = ^{
             RSSelectionWindow *strongSelf = weakSelf;
             if (!strongSelf.selectionView.hasValidSelection) {
-                UIImage *image = strongSelf.imageView.image;
-                if (image) [RSHistoryController recordImage:image completion:nil];
-                UIWindowScene *scene = strongSelf.windowScene;
-                if (strongSelf.toolbar.cancelHandler) strongSelf.toolbar.cancelHandler();
-                if (image) [RSRegionShotManager.sharedManager saveScreenshot:image scene:scene];
+                [RSRegionShotManager.sharedManager takeNativeScreenshot];
                 return;
             }
             confirm(strongSelf.selectionRect, strongSelf.displaySize);

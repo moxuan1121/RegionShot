@@ -18,7 +18,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)closeAllSnaps;
 - (void)showHistory;
 - (void)saveImage:(UIImage *)image;
-- (void)saveScreenshot:(UIImage *)image scene:(nullable UIWindowScene *)scene;
+- (void)takeNativeScreenshot;
 - (BOOL)isFrozenSelectionVisible;
 
 @end

@@ -1,3 +1,19 @@
+# RegionShot 0.6.2 开发预览
+
+- 冻结菜单的截屏按钮退出冻结画布后调用 SpringBoard 原生截屏，交由系统保存相册；删除模拟白闪和手动保存这一路径。
+- Sileo 介绍页翻译入口移入「AI 对话与设置」。
+- 历史浮窗高度比上一版缩小 10%，列表与筛选间距压缩；点击窗外关闭。
+- 外部 URL 参考 ShellX 的系统入口实现：在 SpringBoard/FBSSystemService 接收并处理，另覆盖 Safari 地址输入和主动点击链接。支持 `prefs://root=regionshot_aiwindow` 和 `prefs://root=regionshot_ai2`；不截获 `shellx_ai2`。
+- AI 窗口点击模型弹出原生切换菜单，文字左对齐；保留当前模型及服务配置中已抓取的模型列表。
+- 设置子页在应用失去焦点前保存，覆盖 scene 生命周期和 RegionShot 根控制器重建后的恢复。
+- 分词按钮随字体与按钮宽度自动调整文字大小。
+
+安装后重启 SpringBoard，并彻底关闭再打开设置、Safari、Sileo。RootHide 中请允许 RegionShotURLs 注入 SpringBoard、Safari 和设置。Sileo 翻译入口现在为「RegionShot → AI 对话与设置 → Sileo 介绍页翻译」。
+
+自动化验证不能代替 iOS 15.6 真机确认；重点复测 Safari 的 URL 打开、原生截屏流程及设置前后台恢复。
+
+## 0.6.1 记录
+
 # RegionShot 0.6.1 开发预览
 
 适用 iOS 15.6 / Dopamine RootHide，arm64e。
@@ -21,7 +37,7 @@
 
 安装后重新启动 SpringBoard，并彻底关闭再打开设置、微信、LINE 和 Sileo。RootHide 中需允许 RegionShotURLs 注入设置、RegionShotInput 注入 Sileo。Sileo 翻译需先在独立设置页打开开关，并在 AI 服务配置中填写密钥、模型后点击保存。
 
-主截图模块只注入 SpringBoard；文字模块只注入 SpringBoard/微信/LINE/Sileo；URL 模块只注入设置。如果已安装独立 KeyboardAI，关闭其在这些进程的重复注入，避免出现两套入口。
+主截图模块只注入 SpringBoard；文字模块只注入 SpringBoard/微信/LINE/Sileo；URL 模块注入 SpringBoard、Safari 和设置。如果已安装独立 KeyboardAI，关闭其在这些进程的重复注入，避免出现两套入口。
 AI 服务配置以 Keychain 及 mobile 私有 0600 共享文件供各进程使用。仅主动调用时发送文本/图片到所配置的服务，不上传配置到仓库。
 
 GitHub Actions 检查 URL 路由、人设显示筛选、参数验证、图片裁剪、历史、几何、流式响应、扫码、包内单一设置入口及 arm64e 签名。实际 URL 冷启动、Sileo 触摸、设置后台恢复、动态气泡与横屏布局需 iOS 15.6 真机验证。

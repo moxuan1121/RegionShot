@@ -32,7 +32,7 @@ RegionShot_FRAMEWORKS = Foundation UIKit Photos QuartzCore Security PhotosUI Uni
 
 RegionShotURLs_FILES = Preferences/RSURLHooks.xm
 RegionShotURLs_CFLAGS = -fobjc-arc -Wall -Wextra
-RegionShotURLs_FRAMEWORKS = UIKit Foundation
+RegionShotURLs_FRAMEWORKS = UIKit Foundation WebKit
 RegionShotInput_FILES = Input/Tweak.xm Input/RSSileo.xm Input/RSInputInterface.m Input/RSInputStream.m Input/RSInputStore.m Input/RSInputTokenView.m Input/RSInputClipboard.m Input/RSInputAnchoredMenuView.m
 RegionShotInput_CFLAGS = -fobjc-arc -Wall -Wextra -Wno-unused-parameter
 RegionShotInput_FRAMEWORKS = UIKit Foundation WebKit

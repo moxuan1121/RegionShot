@@ -12,3 +12,10 @@
 RegionShot 独立实现：每个窗口仅一个长按识别器，触摸按介绍视图过滤；额外做几何命中，覆盖 userInteractionEnabled=NO 的 UILabel/CSText 子视图；提取原生 attributedText/text/accessibilityLabel 或网页选区/正文，提交至已整合的 KeyboardAI 文字回答窗口。保留独立开关与翻译人设设置。不会重新分发 ShellX。
 
 静态分析不能确认具体 Sileo 版本的实际视图树及与其他插件的手势竞争，安装后需在原生 Markdown 和 Web 介绍页分别验证。
+
+## ShellX 外部 AI URL（0.6.2 修复依据）
+
+`0x184cc4` 解析入口文字，`0x184dbc`–`0x184dcc` 比较 `shellx_ai2`；命中后异步打开对应窗口。
+`0x189208` 注册 SpringBoard 的 `applicationOpenURL:withApplication:sender:publicURLsOnly:animating:needsConfirm:options:windowContext:` 和 FBSSystemService 的 `openURL:application:options:clientPort:withResult:` / `clientProcess:` 版本。
+`0x189568` / `0x1896b8` 拦截成功时向结果 block 传入 nil；不命中则转发原实现。RegionShot 在同一系统入口识别自身 URL，并检查运行时方法签名。保留 `regionshot_aiwindow`，增加 `regionshot_ai2` 别名；不占用 ShellX 的原 URL。
+Safari 额外覆盖 TabDocument 的用户主动 `loadURL:userDriven:` 与 WebKit 链接导航策略，防止自定义协议在到达设置之前被拒绝。

@@ -49,8 +49,9 @@ static RSHistoryStore *RSStore(void) {
 }
 @end
 
-@interface RSHistoryPanel : UIViewController
+@interface RSHistoryPanel : UIViewController <UIGestureRecognizerDelegate>
 @property (nonatomic, strong) UINavigationController *navigation;
+@property (nonatomic, copy) dispatch_block_t dismissPanel;
 @end
 @implementation RSHistoryPanel
 - (BOOL)shouldAutorotate { return NO; }
@@ -67,12 +68,18 @@ static RSHistoryStore *RSStore(void) {
     UIView *panel = self.navigation.view; panel.translatesAutoresizingMaskIntoConstraints = NO;
     panel.layer.cornerRadius = 20; panel.clipsToBounds = YES;
     [self.view addSubview:panel]; [self.navigation didMoveToParentViewController:self];
+    UITapGestureRecognizer *outside = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(tappedOutside:)];
+    outside.delegate = self; [self.view addGestureRecognizer:outside];
     UILayoutGuide *safe = self.view.safeAreaLayoutGuide;
     [NSLayoutConstraint activateConstraints:@[
         [panel.centerXAnchor constraintEqualToAnchor:safe.centerXAnchor], [panel.centerYAnchor constraintEqualToAnchor:safe.centerYAnchor],
         [panel.widthAnchor constraintEqualToAnchor:safe.widthAnchor multiplier:0.82],
-        [panel.heightAnchor constraintEqualToAnchor:safe.heightAnchor multiplier:0.64]]];
+        [panel.heightAnchor constraintEqualToAnchor:safe.heightAnchor multiplier:0.576]]];
 }
+- (BOOL)gestureRecognizer:(UIGestureRecognizer *)gesture shouldReceiveTouch:(UITouch *)touch {
+    return touch.view == self.view && !self.navigation.presentedViewController;
+}
+- (void)tappedOutside:(UITapGestureRecognizer *)gesture { if (self.dismissPanel) self.dismissPanel(); }
 @end
 
 @interface RSHistoryController () <UISearchResultsUpdating>
@@ -127,6 +134,8 @@ static RSHistoryController *RSActiveHistory;
     controller.host.windowLevel = UIWindowLevelAlert + 160;
     RSHistoryPanel *panel = [RSHistoryPanel new];
     panel.navigation = [[UINavigationController alloc] initWithRootViewController:controller];
+    __weak RSHistoryController *weakController = controller;
+    panel.dismissPanel = ^{ [weakController close]; };
     controller.host.backgroundColor = UIColor.clearColor;
     controller.host.rootViewController = panel;
     RSActiveHistory = controller; RSApplyWindowOrientation(controller.host, RSActiveOrientation(scene)); [controller.host makeKeyAndVisible]; RSApplyWindowOrientation(controller.host, RSActiveOrientation(scene));
@@ -134,7 +143,8 @@ static RSHistoryController *RSActiveHistory;
 - (void)viewDidLoad {
     [super viewDidLoad]; self.title = @"截图历史";
     self.thumbnails = [NSCache new]; self.thumbnails.countLimit = 30;
-    self.tableView.rowHeight = 92;
+    self.tableView.rowHeight = 78;
+    self.tableView.separatorInset = UIEdgeInsetsMake(0, 8, 0, 8);
     self.tableView.backgroundColor = UIColor.systemBackgroundColor;
     self.search = [[UISearchController alloc] initWithSearchResultsController:nil];
     self.search.searchResultsUpdater = self; self.search.obscuresBackgroundDuringPresentation = NO;
@@ -162,9 +172,9 @@ static RSHistoryController *RSActiveHistory;
     });
 }
 - (void)rebuildFilters {
-    UIScrollView *scroll = [[UIScrollView alloc] initWithFrame:CGRectMake(0, 0, self.tableView.bounds.size.width, 54)];
+    UIScrollView *scroll = [[UIScrollView alloc] initWithFrame:CGRectMake(0, 0, self.tableView.bounds.size.width, 48)];
     scroll.showsHorizontalScrollIndicator = NO;
-    UIStackView *stack = [UIStackView new]; stack.spacing = 8; stack.translatesAutoresizingMaskIntoConstraints = NO;
+    UIStackView *stack = [UIStackView new]; stack.spacing = 4; stack.translatesAutoresizingMaskIntoConstraints = NO;
     [scroll addSubview:stack]; self.filters = stack;
     NSMutableOrderedSet *sources = [NSMutableOrderedSet orderedSetWithObject:@""];
     for (NSDictionary *entry in self.entries) if ([entry[@"source"] isKindOfClass:NSString.class] && [entry[@"source"] length]) [sources addObject:entry[@"source"]];
@@ -181,7 +191,7 @@ static RSHistoryController *RSActiveHistory;
         [button.widthAnchor constraintEqualToConstant:50].active = YES; [button.heightAnchor constraintEqualToConstant:44].active = YES;
         [button addTarget:self action:@selector(filterSource:) forControlEvents:UIControlEventTouchUpInside]; [stack addArrangedSubview:button];
     }
-    [NSLayoutConstraint activateConstraints:@[[stack.leadingAnchor constraintEqualToAnchor:scroll.contentLayoutGuide.leadingAnchor constant:8], [stack.trailingAnchor constraintEqualToAnchor:scroll.contentLayoutGuide.trailingAnchor constant:-8], [stack.topAnchor constraintEqualToAnchor:scroll.contentLayoutGuide.topAnchor constant:5], [stack.bottomAnchor constraintEqualToAnchor:scroll.contentLayoutGuide.bottomAnchor constant:-5]]];
+    [NSLayoutConstraint activateConstraints:@[[stack.leadingAnchor constraintEqualToAnchor:scroll.contentLayoutGuide.leadingAnchor constant:8], [stack.trailingAnchor constraintEqualToAnchor:scroll.contentLayoutGuide.trailingAnchor constant:-8], [stack.topAnchor constraintEqualToAnchor:scroll.contentLayoutGuide.topAnchor constant:2], [stack.bottomAnchor constraintEqualToAnchor:scroll.contentLayoutGuide.bottomAnchor constant:-2]]];
     self.tableView.tableHeaderView = scroll;
 }
 - (void)filterSource:(UIButton *)button { self.sourceFilter = button.accessibilityIdentifier; [self rebuildFilters]; [self updateSearchResultsForSearchController:self.search]; }

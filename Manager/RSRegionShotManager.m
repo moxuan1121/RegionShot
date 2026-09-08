@@ -244,19 +244,13 @@
     }
 }
 
-- (void)saveScreenshot:(UIImage *)image scene:(UIWindowScene *)scene {
-    [self saveImage:image completion:^{
-        UIWindow *flash = scene ? [[UIWindow alloc] initWithWindowScene:scene] : [[UIWindow alloc] initWithFrame:UIScreen.mainScreen.bounds];
-        flash.windowLevel = UIWindowLevelAlert + 200;
-        flash.userInteractionEnabled = NO;
-        flash.rootViewController = [UIViewController new];
-        flash.rootViewController.view.backgroundColor = UIColor.whiteColor;
-        RSApplyWindowOrientation(flash, RSActiveOrientation(scene));
-        flash.hidden = NO;
-        if ([RSOption(@"CaptureHaptic") boolValue]) [[[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleLight] impactOccurred];
-        [UIView animateWithDuration:UIAccessibilityIsReduceMotionEnabled() ? 0.12 : 0.25 animations:^{ flash.alpha = 0; }
-            completion:^(BOOL finished) { flash.hidden = YES; flash.rootViewController = nil; }];
-    }];
+- (void)takeNativeScreenshot {
+    [self cancelCapture];
+    // Let the compositor remove the frozen overlay before the system captures.
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 120 * NSEC_PER_MSEC), dispatch_get_main_queue(), ^{
+        extern BOOL RSRequestNativeScreenshot(void);
+        if (!RSRequestNativeScreenshot()) [self notice:@"系统截屏入口不可用。"];
+    });
 }
 
 - (void)saveImage:(UIImage *)image { [self saveImage:image completion:nil]; }

@@ -2,6 +2,7 @@
 #import "RSSSEDecoder.h"
 #import "../Geometry/RSOrientation.h"
 #import "RSAISettingsController.h"
+#import "../Input/RSInputStore.h"
 #import "../KeyboardAI/RSKAInterface.h"
 #import "../KeyboardAI/RSKACore.h"
 #import "../Preferences/RSOptions.h"
@@ -185,7 +186,9 @@ static NSUserDefaults *RSChatPreferences(void) {
     content.translatesAutoresizingMaskIntoConstraints = NO;
     [self.card addSubview:content];
     self.modelButton = [UIButton buttonWithType:UIButtonTypeSystem];
-    [self.modelButton addTarget:self action:@selector(settings) forControlEvents:UIControlEventTouchUpInside];
+    self.modelButton.contentHorizontalAlignment = UIControlContentHorizontalAlignmentLeft;
+    self.modelButton.titleLabel.textAlignment = NSTextAlignmentLeft;
+    self.modelButton.showsMenuAsPrimaryAction = YES;
     [self updateModelTitle];
     UILabel *heading = [UILabel new]; heading.text = @"图片问答"; heading.font = [UIFont boldSystemFontOfSize:17];
     [heading setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
@@ -280,8 +283,33 @@ static NSUserDefaults *RSChatPreferences(void) {
     self.ball.alpha = [RSOption(@"AIBallOpacity") doubleValue];
 }
 - (void)updateModelTitle {
-    NSString *model = [RSChatPreferences() stringForKey:@"AIModel"];
-    [self.modelButton setTitle:model.length ? model : @"图片问答 · 配置" forState:UIControlStateNormal];
+    NSUserDefaults *prefs = RSChatPreferences(); [prefs synchronize];
+    NSString *current = [prefs stringForKey:@"AIModel"] ?: @"";
+    [self.modelButton setTitle:current.length ? current : @"选择模型" forState:UIControlStateNormal];
+    NSMutableOrderedSet *models = [NSMutableOrderedSet orderedSet];
+    if (current.length) [models addObject:current];
+    id saved = [prefs objectForKey:@"AIModels"];
+    if ([saved isKindOfClass:NSArray.class]) for (id model in saved)
+        if ([model isKindOfClass:NSString.class] && [model length] && [model length] <= 200) [models addObject:model];
+    NSMutableArray *actions = [NSMutableArray array];
+    __weak typeof(self) weakSelf = self;
+    for (NSString *model in models) {
+        UIAction *action = [UIAction actionWithTitle:model image:nil identifier:nil handler:^(UIAction *item) {
+            RSChatController *chat = weakSelf;
+            if (chat.task) { [chat message:@"请先停止当前回答再切换模型。"]; return; }
+            NSMutableDictionary *config = [RSInputConfig() mutableCopy]; config[@"model"] = model;
+            if (!RSInputSaveConfig(config, RSAIReadKey() ?: @"")) { [chat message:@"模型未切换，请先在 AI 母菜单保存服务配置。"]; return; }
+            [prefs setObject:model forKey:@"AIModel"]; [prefs synchronize];
+            [chat updateModelTitle];
+        }];
+        action.state = [model isEqual:current] ? UIMenuElementStateOn : UIMenuElementStateOff;
+        [actions addObject:action];
+    }
+    if (!actions.count) {
+        UIAction *empty = [UIAction actionWithTitle:@"请在 AI 母菜单配置或抓取模型" image:nil identifier:nil handler:^(UIAction *action) {}];
+        empty.attributes = UIMenuElementAttributesDisabled; [actions addObject:empty];
+    }
+    self.modelButton.menu = [UIMenu menuWithTitle:@"切换模型" children:actions];
 }
 - (void)textViewDidChange:(UITextView *)textView { if (textView == self.input) self.placeholder.hidden = textView.text.length > 0; }
 - (void)hideKeyboard { [self.view endEditing:YES]; }
