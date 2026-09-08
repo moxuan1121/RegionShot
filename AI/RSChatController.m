@@ -1,7 +1,7 @@
 #import "RSChatController.h"
 #import "RSSSEDecoder.h"
+#import "RSAISettingsController.h"
 #import "../Preferences/RSOptions.h"
-#import <Security/Security.h>
 #import <PhotosUI/PhotosUI.h>
 #import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
 
@@ -52,29 +52,6 @@ static NSUserDefaults *RSChatPreferences(void) {
     dispatch_once(&once, ^{ prefs = [[NSUserDefaults alloc] initWithSuiteName:@"com.moxuan.regionshot"]; });
     return prefs;
 }
-static NSMutableDictionary *RSKeyQuery(void) {
-    return [@{(__bridge id)kSecClass:(__bridge id)kSecClassGenericPassword,
-              (__bridge id)kSecAttrService:@"com.moxuan.regionshot.ai",
-              (__bridge id)kSecAttrAccount:@"api-key"} mutableCopy];
-}
-static NSString *RSReadKey(void) {
-    NSMutableDictionary *query = RSKeyQuery();
-    query[(__bridge id)kSecReturnData] = @YES;
-    CFTypeRef result = NULL;
-    OSStatus status = SecItemCopyMatching((__bridge CFDictionaryRef)query, &result);
-    NSData *data = CFBridgingRelease(result);
-    return status == errSecSuccess ? [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding] : @"";
-}
-static OSStatus RSWriteKey(NSString *key) {
-    NSMutableDictionary *query = RSKeyQuery();
-    NSDictionary *value = @{(__bridge id)kSecValueData:[key dataUsingEncoding:NSUTF8StringEncoding],
-        (__bridge id)kSecAttrAccessible:(__bridge id)kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly};
-    OSStatus status = SecItemUpdate((__bridge CFDictionaryRef)query, (__bridge CFDictionaryRef)value);
-    if (status != errSecItemNotFound) return status;
-    [query addEntriesFromDictionary:value];
-    return SecItemAdd((__bridge CFDictionaryRef)query, NULL);
-}
-
 @implementation RSChatController
 + (void)showImage:(UIImage *)image scene:(UIWindowScene *)scene {
     NSAssert(NSThread.isMainThread, @"Chat UI requires main thread");
@@ -113,7 +90,12 @@ static OSStatus RSWriteKey(NSString *key) {
     for (UIScene *candidate in UIApplication.sharedApplication.connectedScenes)
         if ([candidate isKindOfClass:UIWindowScene.class] && candidate.activationState == UISceneActivationStateForegroundActive) { scene = (UIWindowScene *)candidate; break; }
     [self showImage:nil scene:scene];
-    [RSActiveChat settings];
+    RSChatController *chat = RSActiveChat;
+    chat.card.hidden = YES; chat.view.backgroundColor = UIColor.clearColor;
+    RSAISettingsController *settings = [[RSAISettingsController alloc] initWithSaved:^{ [chat close]; }];
+    UINavigationController *navigation = [[UINavigationController alloc] initWithRootViewController:settings];
+    navigation.modalPresentationStyle = UIModalPresentationFullScreen;
+    [chat presentViewController:navigation animated:YES completion:nil];
 }
 - (UIButton *)button:(NSString *)symbol title:(NSString *)title action:(SEL)selector {
     UIButton *button = [UIButton buttonWithType:UIButtonTypeSystem];
@@ -266,34 +248,11 @@ static OSStatus RSWriteKey(NSString *key) {
 }
 - (void)settings {
     if (self.task) { [self message:@"请先停止当前回复再修改服务配置。"]; return; }
-    NSUserDefaults *prefs = RSChatPreferences();
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"图片问答服务"
-        message:@"填写支持图片的 Chat Completions 服务完整地址、模型名称和 API Key。" preferredStyle:UIAlertControllerStyleAlert];
-    NSArray *values = @[[prefs stringForKey:@"AIEndpoint"] ?: @"", [prefs stringForKey:@"AIModel"] ?: @"", RSReadKey() ?: @""];
-    NSArray *hints = @[@"https://…/v1/chat/completions", @"模型名称", @"API Key（保存在钥匙串）"];
-    for (NSUInteger i = 0; i < 3; i++) [alert addTextFieldWithConfigurationHandler:^(UITextField *field) {
-        field.text = values[i]; field.placeholder = hints[i]; field.secureTextEntry = i == 2;
-        field.autocapitalizationType = UITextAutocapitalizationTypeNone;
-        field.autocorrectionType = UITextAutocorrectionTypeNo;
-    }];
-    [alert addAction:[UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:nil]];
-    [alert addAction:[UIAlertAction actionWithTitle:@"保存" style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
-        NSString *endpoint = [alert.textFields[0].text stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
-        NSString *model = [alert.textFields[1].text stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
-        NSURL *url = [NSURL URLWithString:endpoint];
-        if (![url.scheme.lowercaseString isEqualToString:@"https"] || !url.host.length || url.user || url.password || !model.length) {
-            dispatch_async(dispatch_get_main_queue(), ^{ [self message:@"请填写有效的 HTTPS 服务地址和模型名称。"]; }); return;
-        }
-        OSStatus status = RSWriteKey(alert.textFields[2].text ?: @"");
-        if (status != errSecSuccess) {
-            dispatch_async(dispatch_get_main_queue(), ^{ [self message:[NSString stringWithFormat:@"钥匙串保存失败（%d），配置未更改。", (int)status]]; }); return;
-        }
-        [prefs setObject:endpoint forKey:@"AIEndpoint"];
-        [prefs setObject:model forKey:@"AIModel"];
-        [prefs synchronize];
-        [self updateModelTitle];
-    }]];
-    [self presentViewController:alert animated:YES completion:nil];
+    __weak typeof(self) weakSelf = self;
+    RSAISettingsController *settings = [[RSAISettingsController alloc] initWithSaved:^{ [weakSelf updateModelTitle]; [weakSelf applyAppearance]; }];
+    UINavigationController *navigation = [[UINavigationController alloc] initWithRootViewController:settings];
+    navigation.modalPresentationStyle = UIModalPresentationFullScreen;
+    [self presentViewController:navigation animated:YES completion:nil];
 }
 - (UITextView *)addRow:(NSString *)text image:(UIImage *)image assistant:(BOOL)assistant index:(NSUInteger)index {
     UIStackView *row = [UIStackView new]; row.axis = UILayoutConstraintAxisVertical; row.spacing = 2;
@@ -377,7 +336,12 @@ static OSStatus RSWriteKey(NSString *key) {
         [self message:@"请先配置有效的 HTTPS 服务地址和模型。"]; return;
     }
     NSMutableArray *messages = self.history.mutableCopy;
+    BOOL imageQuestion = NO;
+    id lastContent = [self.history.lastObject objectForKey:@"content"];
+    if ([lastContent isKindOfClass:NSArray.class]) for (id part in lastContent)
+        if ([part isKindOfClass:NSDictionary.class] && [part[@"type"] isEqual:@"image_url"]) { imageQuestion = YES; break; }
     NSString *persona = RSOption(@"AIPersona");
+    if (!persona.length) persona = RSAIPersonaPrompt(imageQuestion);
     if (persona.length) [messages insertObject:@{@"role":@"system", @"content":persona} atIndex:0];
     NSError *error = nil;
     NSData *data = [NSJSONSerialization dataWithJSONObject:@{@"model":[prefs stringForKey:@"AIModel"] ?: @"",
@@ -389,7 +353,7 @@ static OSStatus RSWriteKey(NSString *key) {
     request.HTTPMethod = @"POST"; request.HTTPBody = data; request.timeoutInterval = 120;
     [request setValue:@"application/json" forHTTPHeaderField:@"Content-Type"];
     [request setValue:@"text/event-stream, application/json" forHTTPHeaderField:@"Accept"];
-    NSString *key = RSReadKey();
+    NSString *key = RSAIReadKey();
     if (key.length) [request setValue:[@"Bearer " stringByAppendingString:key] forHTTPHeaderField:@"Authorization"];
     self.reply = [self addRow:@"正在思考…" image:nil assistant:YES index:self.history.count];
     [self.history addObject:[@{@"role":@"assistant", @"content":@""} mutableCopy]];

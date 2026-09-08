@@ -167,6 +167,7 @@
     snap.actionDelegate = self;
     [self.floatingWindow.rootViewController.view addSubview:snap];
     [self.mutableSnaps addObject:snap];
+    [snap setShadowVisible:NO];
     snap.alpha = 0;
     BOOL reduceMotion = UIAccessibilityIsReduceMotionEnabled();
     snap.transform = reduceMotion ? CGAffineTransformIdentity : CGAffineTransformMakeScale(0.96, 0.96);
@@ -175,7 +176,8 @@
         [snap layoutIfNeeded];
         [UIView animateWithDuration:reduceMotion ? 0 : 0.22 delay:0
             options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction | UIViewAnimationOptionCurveEaseOut
-            animations:^{ snap.alpha = [RSOption(@"FloatOpacity") doubleValue]; snap.transform = CGAffineTransformIdentity; } completion:nil];
+            animations:^{ snap.alpha = [RSOption(@"FloatOpacity") doubleValue]; snap.transform = CGAffineTransformIdentity; }
+            completion:^(BOOL finished) { if (snap.superview) [snap setShadowVisible:YES]; }];
     });
     if (record) {
         __weak typeof(self) weakSelf = self;
@@ -204,6 +206,7 @@
     if (![self.mutableSnaps containsObject:snap] || !snap.userInteractionEnabled) return;
     snap.userInteractionEnabled = NO;
     snap.actionDelegate = nil;
+    [snap setShadowVisible:NO];
     BOOL reduceMotion = UIAccessibilityIsReduceMotionEnabled();
     [UIView animateWithDuration:reduceMotion ? 0 : 0.18 delay:0
         options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionCurveEaseIn

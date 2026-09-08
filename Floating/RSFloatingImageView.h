@@ -24,5 +24,6 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, readonly) UIImage *croppedImage;
 @property (nonatomic, strong, nullable) UIImage *image;
 - (instancetype)initWithCroppedImage:(UIImage *)image;
+- (void)setShadowVisible:(BOOL)visible;
 @end
 NS_ASSUME_NONNULL_END

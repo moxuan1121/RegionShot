@@ -15,12 +15,11 @@ typedef NS_ENUM(NSInteger, RSSelectionDragMode) {
 static const CGFloat RSMinimumSelectionSize = 44.0;
 static const CGFloat RSHandleHitRadius = 28.0;
 
-@interface RSSelectionView ()
+@interface RSSelectionView () <UIGestureRecognizerDelegate>
 @property (nonatomic) CGRect selectionRect;
 @property (nonatomic) CGPoint startPoint;
 @property (nonatomic) CGPoint lastPoint;
 @property (nonatomic) CGPoint anchorPoint;
-@property (nonatomic) BOOL dragging;
 @property (nonatomic) RSSelectionDragMode dragMode;
 @end
 
@@ -32,6 +31,14 @@ static const CGFloat RSHandleHitRadius = 28.0;
         self.backgroundColor = UIColor.clearColor;
         self.opaque = NO;
         self.multipleTouchEnabled = NO;
+        UIPanGestureRecognizer *pan = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(handlePan:)];
+        pan.maximumNumberOfTouches = 1;
+        pan.delegate = self;
+        [self addGestureRecognizer:pan];
+        UITapGestureRecognizer *doubleTap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(handleDoubleTap:)];
+        doubleTap.numberOfTapsRequired = 2;
+        doubleTap.delegate = self;
+        [self addGestureRecognizer:doubleTap];
     }
     return self;
 }
@@ -72,12 +79,10 @@ static const CGFloat RSHandleHitRadius = 28.0;
     return RSSelectionDragMove;
 }
 
-- (void)touchesBegan:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
-    CGPoint point = [self clampedPoint:touches.anyObject ? [touches.anyObject locationInView:self] : CGPointZero];
+- (void)beginDragAtPoint:(CGPoint)point {
     self.startPoint = point;
     self.lastPoint = point;
     self.dragMode = [self modeForPoint:point];
-    self.dragging = NO;
     CGRect rect = self.selectionRect;
     switch (self.dragMode) {
         case RSSelectionDragTopLeft: self.anchorPoint = CGPointMake(CGRectGetMaxX(rect), CGRectGetMaxY(rect)); break;
@@ -88,44 +93,48 @@ static const CGFloat RSHandleHitRadius = 28.0;
     }
 }
 
-- (void)touchesMoved:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
-    UITouch *touch = touches.anyObject;
-    if (!touch) return;
-    CGPoint point = [self clampedPoint:[touch locationInView:self]];
-    if (!self.dragging && hypot(point.x - self.startPoint.x, point.y - self.startPoint.y) < 6) return;
-    self.dragging = YES;
-    if (self.dragMode == RSSelectionDragNew) {
-        self.selectionRect = [self newRectFromPoint:self.startPoint toPoint:point];
-    } else if (self.dragMode == RSSelectionDragMove) {
-        CGFloat dx = point.x - self.lastPoint.x;
-        CGFloat dy = point.y - self.lastPoint.y;
-        CGRect rect = CGRectOffset(self.selectionRect, dx, dy);
-        rect.origin.x = MIN(MAX(rect.origin.x, 0), CGRectGetWidth(self.bounds) - rect.size.width);
-        rect.origin.y = MIN(MAX(rect.origin.y, 0), CGRectGetHeight(self.bounds) - rect.size.height);
-        self.selectionRect = rect;
-    } else {
-        self.selectionRect = [self newRectFromPoint:self.anchorPoint toPoint:point];
-    }
-    self.lastPoint = point;
-    [self setNeedsDisplay];
-    if (self.selectionChanged) self.selectionChanged(YES);
-}
-
-- (void)touchesEnded:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
-    UITouch *touch = touches.anyObject;
-    if (!self.dragging && touch.tapCount == 2) {
-        if (self.hasValidSelection && CGRectContainsPoint(self.selectionRect, [touch locationInView:self])) {
-            if (self.doubleTapHandler) self.doubleTapHandler();
-        } else if (self.cancelHandler) self.cancelHandler();
+- (void)handlePan:(UIPanGestureRecognizer *)pan {
+    CGPoint point = [self clampedPoint:[pan locationInView:self]];
+    if (pan.state == UIGestureRecognizerStateBegan) {
+        CGPoint translation = [pan translationInView:self];
+        [self beginDragAtPoint:[self clampedPoint:CGPointMake(point.x - translation.x, point.y - translation.y)]];
+        if (self.selectionChanged) self.selectionChanged(YES);
         return;
     }
-    self.dragging = NO;
-    [self setNeedsDisplay];
-    if (self.selectionChanged) self.selectionChanged(NO);
+    if (pan.state == UIGestureRecognizerStateChanged) {
+        if (self.dragMode == RSSelectionDragNew) {
+            self.selectionRect = [self newRectFromPoint:self.startPoint toPoint:point];
+        } else if (self.dragMode == RSSelectionDragMove) {
+            CGRect rect = CGRectOffset(self.selectionRect, point.x - self.lastPoint.x, point.y - self.lastPoint.y);
+            rect.origin.x = MIN(MAX(rect.origin.x, 0), CGRectGetWidth(self.bounds) - rect.size.width);
+            rect.origin.y = MIN(MAX(rect.origin.y, 0), CGRectGetHeight(self.bounds) - rect.size.height);
+            self.selectionRect = rect;
+        } else {
+            self.selectionRect = [self newRectFromPoint:self.anchorPoint toPoint:point];
+        }
+        self.lastPoint = point;
+        [self setNeedsDisplay];
+        if (self.selectionChanged) self.selectionChanged(YES);
+        return;
+    }
+    if (pan.state == UIGestureRecognizerStateEnded || pan.state == UIGestureRecognizerStateCancelled || pan.state == UIGestureRecognizerStateFailed) {
+        [self setNeedsDisplay];
+        if (self.selectionChanged) self.selectionChanged(NO);
+    }
 }
-- (void)touchesCancelled:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
-    self.dragging = NO;
-    [self setNeedsDisplay]; if (self.selectionChanged) self.selectionChanged(NO);
+
+- (void)handleDoubleTap:(UITapGestureRecognizer *)tap {
+    CGPoint point = [tap locationInView:self];
+    if (self.hasValidSelection && CGRectContainsPoint(self.selectionRect, point)) {
+        if (self.doubleTapHandler) self.doubleTapHandler();
+    } else if (self.cancelHandler) self.cancelHandler();
+}
+
+- (BOOL)gestureRecognizer:(UIGestureRecognizer *)gesture shouldRecognizeSimultaneouslyWithGestureRecognizer:(UIGestureRecognizer *)other {
+    return YES;
+}
+- (BOOL)gestureRecognizer:(UIGestureRecognizer *)gesture shouldBeRequiredToFailByGestureRecognizer:(UIGestureRecognizer *)other {
+    return NO;
 }
 
 - (void)drawRect:(CGRect)rect {

@@ -16,7 +16,7 @@
         _currentScale = 1;
         self.userInteractionEnabled = YES;
         self.contentMode = UIViewContentModeScaleAspectFit;
-        self.backgroundColor = UIColor.blackColor;
+        self.backgroundColor = UIColor.clearColor;
         self.layer.cornerRadius = 5;
         self.layer.cornerCurve = kCACornerCurveContinuous;
         self.layer.masksToBounds = NO;
@@ -57,6 +57,7 @@
 - (UIImage *)image { return self.roundedImage.image; }
 - (void)setImage:(UIImage *)image { self.roundedImage.image = image; }
 - (UIImage *)croppedImage { return self.roundedImage.image; }
+- (void)setShadowVisible:(BOOL)visible { self.layer.shadowOpacity = visible && [RSOption(@"FloatShadow") boolValue] ? 0.35 : 0; }
 
 - (void)tapped:(UITapGestureRecognizer *)gesture {
     if (gesture.state == UIGestureRecognizerStateRecognized)
@@ -103,12 +104,14 @@
 - (UITargetedPreview *)contextMenuInteraction:(UIContextMenuInteraction *)interaction previewForDismissingMenuWithConfiguration:(UIContextMenuConfiguration *)configuration { return [self menuPreview]; }
 - (void)contextMenuInteraction:(UIContextMenuInteraction *)interaction willDisplayMenuForConfiguration:(UIContextMenuConfiguration *)configuration animator:(id<UIContextMenuInteractionAnimating>)animator {
     self.contextMenuActive = YES;
+    [self setShadowVisible:NO];
     for (UIGestureRecognizer *gesture in self.gestureRecognizers)
         if ([gesture isKindOfClass:UITapGestureRecognizer.class]) gesture.enabled = NO;
 }
 - (void)contextMenuInteraction:(UIContextMenuInteraction *)interaction willEndForConfiguration:(UIContextMenuConfiguration *)configuration animator:(id<UIContextMenuInteractionAnimating>)animator {
     void (^finish)(void) = ^{
         self.contextMenuActive = NO;
+        [self setShadowVisible:YES];
         for (UIGestureRecognizer *gesture in self.gestureRecognizers)
             if ([gesture isKindOfClass:UITapGestureRecognizer.class]) gesture.enabled = YES;
     };

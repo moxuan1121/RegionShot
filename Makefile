@@ -22,6 +22,7 @@ RegionShot_FILES = Trigger.xm \
 	Floating/RSFloatingWindow.m \
 	Floating/RSFloatingImageView.m \
 	AI/RSChatController.m \
+	AI/RSAISettingsController.m \
 	AI/RSSSEDecoder.m
 RegionShot_CFLAGS = -fobjc-arc -Wall -Wextra -Wno-unused-parameter
 RegionShot_FRAMEWORKS = Foundation UIKit Photos QuartzCore Security PhotosUI UniformTypeIdentifiers Vision CoreImage PencilKit
