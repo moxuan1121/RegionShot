@@ -1,6 +1,7 @@
 #import "RSChatController.h"
 #import "RSSSEDecoder.h"
 #import "RSAISettingsController.h"
+#import "../KeyboardAI/RSKAInterface.h"
 #import "../Preferences/RSOptions.h"
 #import <PhotosUI/PhotosUI.h>
 #import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
@@ -38,6 +39,7 @@
 @property (nonatomic, strong) UITextView *reply;
 @property (nonatomic, copy) NSString *failure;
 @property (nonatomic, copy) NSString *personaPrompt;
+@property (nonatomic) BOOL keyboardPresentation;
 @property (nonatomic) NSInteger responseStatus;
 @property (nonatomic) BOOL streaming;
 @property (nonatomic) BOOL done;
@@ -56,6 +58,7 @@ static NSUserDefaults *RSChatPreferences(void) {
 @implementation RSChatController
 + (void)showImage:(UIImage *)image scene:(UIWindowScene *)scene {
     NSAssert(NSThread.isMainThread, @"Chat UI requires main thread");
+    RSKAClosePanel();
     if (RSActiveChat) {
         [RSActiveChat restore];
         RSActiveChat.attachment = image;
@@ -86,6 +89,13 @@ static NSUserDefaults *RSChatPreferences(void) {
     if (RSActiveChat) [RSActiveChat close];
     [self showImage:nil scene:scene];
     RSActiveChat.personaPrompt = persona[@"prompt"] ?: @"";
+    if ([persona[@"presentation"] isEqual:@"keyboardai"] && [RSChatPreferences() stringForKey:@"AIEndpoint"].length) {
+        RSChatController *chat = RSActiveChat;
+        chat.host.hidden = YES; [chat.previousKey makeKeyWindow];
+        __weak RSChatController *weakChat = chat;
+        chat.keyboardPresentation = RSKABeginAnswer(persona[@"name"] ?: @"AI 助手", ^{ [weakChat close]; });
+        if (!chat.keyboardPresentation) [chat.host makeKeyAndVisible];
+    }
     RSActiveChat.input.text = @"请按当前人设处理这张图片。";
     RSActiveChat.attachment = image; RSActiveChat.chip.image = image; RSActiveChat.chip.hidden = NO;
     [RSActiveChat send];
@@ -248,9 +258,10 @@ static NSUserDefaults *RSChatPreferences(void) {
     [self.previousKey makeKeyWindow];
     self.host.rootViewController = nil;
     self.host = nil;
-    RSActiveChat = nil;
+    if (RSActiveChat == self) RSActiveChat = nil;
 }
 - (void)message:(NSString *)message {
+    if (self.keyboardPresentation) { RSKAUpdateAnswer(self.answer ?: @"", YES, message); return; }
     if (self.presentedViewController) return;
     UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"RegionShot" message:message preferredStyle:UIAlertControllerStyleAlert];
     [alert addAction:[UIAlertAction actionWithTitle:@"好" style:UIAlertActionStyleCancel handler:nil]];
@@ -298,11 +309,8 @@ static NSUserDefaults *RSChatPreferences(void) {
     if (button.tag >= (NSInteger)self.history.count) return;
     NSString *text = self.history[button.tag][@"content"];
     if (!text.length) return;
-    NSMutableDictionary *request = [@{@"text":text, @"handled":@NO} mutableCopy];
-    // A synchronous in-process bridge; KeyboardAI owns its segmentation implementation.
-    [[NSNotificationCenter defaultCenter] postNotificationName:@"com.moxuan.regionshot.tokenize" object:request];
-    if ([request[@"handled"] boolValue]) [self minimize];
-    else [self message:@"请安装支持 RegionShot 分词接入的 KeyboardAI。"];
+    [self minimize];
+    RSKAOpenTokens(text);
 }
 - (void)regenerate:(UIButton *)button {
     if (self.task || button.tag <= 0 || button.tag >= (NSInteger)self.history.count) return;
@@ -411,6 +419,7 @@ static NSUserDefaults *RSChatPreferences(void) {
 - (void)updateReply {
     BOOL atBottom = self.scroll.contentOffset.y + self.scroll.bounds.size.height >= self.scroll.contentSize.height - 60;
     self.reply.text = self.answer;
+    if (self.keyboardPresentation) RSKAUpdateAnswer(self.answer, NO, nil);
     self.history.lastObject[@"content"] = self.answer.copy;
     if (atBottom && !self.card.hidden) {
         [self.chat layoutIfNeeded];
@@ -462,6 +471,7 @@ static NSUserDefaults *RSChatPreferences(void) {
     NSString *status = self.stopped ? @"已停止生成" : self.failure;
     if (!status && !self.answer.length) status = @"服务返回了空回答，请重新生成。";
     if (status) self.reply.text = self.answer.length ? [self.answer stringByAppendingFormat:@"\n\n〔%@〕", status] : status;
+    if (self.keyboardPresentation) RSKAUpdateAnswer(self.answer, YES, status);
     [session finishTasksAndInvalidate]; self.session = nil; self.task = nil; self.decoder = nil; self.body = nil;
     [self.sendButton setImage:[UIImage systemImageNamed:@"arrow.up.circle.fill"] forState:UIControlStateNormal];
     self.sendButton.accessibilityLabel = @"发送";

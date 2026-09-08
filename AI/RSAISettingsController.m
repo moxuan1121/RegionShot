@@ -59,6 +59,7 @@ NSString *RSAIPersonaPrompt(BOOL imageQuestion) {
 @interface RSAIPersonaEditor : UIViewController <UITextViewDelegate>
 @property (nonatomic, strong) UITextField *nameField;
 @property (nonatomic, strong) UITextView *promptView;
+@property (nonatomic, strong) UISegmentedControl *presentation;
 @property (nonatomic, copy) NSDictionary *persona;
 @property (nonatomic, copy) void (^saveHandler)(NSDictionary *persona);
 @end
@@ -76,11 +77,16 @@ NSString *RSAIPersonaPrompt(BOOL imageQuestion) {
     self.promptView.backgroundColor = UIColor.secondarySystemGroupedBackgroundColor; self.promptView.layer.cornerRadius = 18;
     self.nameField.translatesAutoresizingMaskIntoConstraints = NO; self.promptView.translatesAutoresizingMaskIntoConstraints = NO;
     [self.view addSubview:self.nameField]; [self.view addSubview:self.promptView];
+    self.presentation = [[UISegmentedControl alloc] initWithItems:@[@"现有对话窗口", @"KeyboardAI 窗口"]];
+    self.presentation.selectedSegmentIndex = [self.persona[@"presentation"] isEqual:@"keyboardai"] ? 1 : 0;
+    self.presentation.accessibilityLabel = @"AI 回答展示方式";
+    self.presentation.translatesAutoresizingMaskIntoConstraints = NO;
+    [self.view addSubview:self.presentation];
     UILayoutGuide *safe = self.view.safeAreaLayoutGuide;
     [NSLayoutConstraint activateConstraints:@[[self.nameField.leadingAnchor constraintEqualToAnchor:safe.leadingAnchor constant:16],
         [self.nameField.trailingAnchor constraintEqualToAnchor:safe.trailingAnchor constant:-16], [self.nameField.topAnchor constraintEqualToAnchor:safe.topAnchor constant:16],
         [self.nameField.heightAnchor constraintEqualToConstant:72], [self.promptView.leadingAnchor constraintEqualToAnchor:self.nameField.leadingAnchor],
-        [self.promptView.trailingAnchor constraintEqualToAnchor:self.nameField.trailingAnchor], [self.promptView.topAnchor constraintEqualToAnchor:self.nameField.bottomAnchor constant:16],
+        [self.promptView.trailingAnchor constraintEqualToAnchor:self.nameField.trailingAnchor], [self.presentation.topAnchor constraintEqualToAnchor:self.nameField.bottomAnchor constant:12], [self.presentation.leadingAnchor constraintEqualToAnchor:self.nameField.leadingAnchor], [self.presentation.trailingAnchor constraintEqualToAnchor:self.nameField.trailingAnchor], [self.presentation.heightAnchor constraintEqualToConstant:40], [self.promptView.topAnchor constraintEqualToAnchor:self.presentation.bottomAnchor constant:12],
         [self.promptView.bottomAnchor constraintEqualToAnchor:safe.bottomAnchor constant:-16]]];
 }
 - (void)save {
@@ -88,6 +94,7 @@ NSString *RSAIPersonaPrompt(BOOL imageQuestion) {
     NSString *prompt = [self.promptView.text stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
     if (!name.length || !prompt.length) return;
     NSMutableDictionary *value = [self.persona mutableCopy] ?: [NSMutableDictionary dictionary];
+    value[@"presentation"] = self.presentation.selectedSegmentIndex == 1 ? @"keyboardai" : @"chat";
     value[@"name"] = name; value[@"prompt"] = prompt; value[@"scope"] = value[@"scope"] ?: @"自定义人设"; value[@"builtin"] = value[@"builtin"] ?: @NO;
     if (self.saveHandler) self.saveHandler(value.copy); [self.navigationController popViewControllerAnimated:YES];
 }

@@ -1,4 +1,4 @@
-# RegionShot 0.4.9
+# RegionShot 0.5.0
 
 适用 iOS 15.6 / Dopamine RootHide，arm64e。安装后重新启动 SpringBoard。
 
@@ -67,3 +67,9 @@ GitHub Actions 使用固定版本 RootHide Theos 和 iOS 15.6 SDK，检查像素
 L 角标向外移动距离包含半个线宽，让线条内缘与实际选区间隔一个物理像素。冻结菜单的截屏按钮按保存设置直接保存/复制全屏；选区菜单截图和框内双击仍生成浮图。
 
 冻结界面显示时，拦截 SBSystemGestureManager 的 shouldSystemGestureReceiveTouchWithLocation:，阻止系统下拉手势接收触摸。安装前检查运行时方法签名，退出冻结界面即恢复原处理；长截图滚动阶段不拦截。接口依据运行时头文件，iOS 15.6 上是否挂接及触摸表现需实机验证。
+
+## 0.5.0 KeyboardAI 界面整合
+
+每个人设的编辑页可选择现有对话窗口或 KeyboardAI 窗口。KeyboardAI 窗口接收同一图片 AI 请求的流式回答，支持复制、搜索，长按回答进入分词；分词支持拖选、拆词与返回全文。RegionShot 原对话中的分词按钮也使用内置实现，无需另装 KeyboardAI。
+
+保留同一套 RegionShot 模型、密钥和人设配置。合入代码使用 RSKA 前缀，避免与单独安装的 KeyboardAI 类名冲突。来源及 GPL-3.0 许可见 KeyboardAI/THIRD_PARTY.md 和 COPYING。
