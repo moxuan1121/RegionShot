@@ -61,7 +61,7 @@
 - (void)imagePickerControllerDidCancel:(UIImagePickerController *)picker { [self finish:nil]; }
 @end
 @interface RSCameraApp : UIResponder <UIApplicationDelegate>
-@property(strong) UIWindow *window;
+@property(nonatomic, strong) UIWindow *window;
 @end
 @implementation RSCameraApp
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)options {
