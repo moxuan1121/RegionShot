@@ -10,13 +10,12 @@ extern UIViewController *RSInputCreateOptions(BOOL search);
 @property (nonatomic, strong) PSSpecifier *diagnosticGroup;
 @property (nonatomic) BOOL diagnosticPending;
 @property (nonatomic, strong) UINavigationController *pages;
-@property (nonatomic) BOOL outerBackEnabled;
 @end
 @implementation RSPreferences
 - (NSArray *)specifiers {
     if (_specifiers) return _specifiers;
     NSMutableArray *items = [NSMutableArray array];
-    PSSpecifier *group = [PSSpecifier groupSpecifierWithName:@"RegionShot 0.6.4"];
+    PSSpecifier *group = [PSSpecifier groupSpecifierWithName:@"RegionShot 0.6.5"];
     [group setProperty:@"侧边键 + 音量加进入区域截图。安装后需重新启动 SpringBoard。关闭开关恢复系统截图。" forKey:@"footerText"];
     [items addObject:group];
     PSSpecifier *enabled = [PSSpecifier preferenceSpecifierNamed:@"启用区域截图" target:self set:@selector(setPreferenceValue:specifier:) get:@selector(readPreferenceValue:) detail:nil cell:PSSwitchCell edit:nil];
@@ -62,48 +61,26 @@ extern UIViewController *RSInputCreateOptions(BOOL search);
     CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(), CFSTR("com.moxuan.regionshot/ReloadPrefs"), NULL, NULL, YES);
 }
 - (void)viewDidLoad { [super viewDidLoad]; self.title = @"RegionShot"; }
-- (void)viewWillAppear:(BOOL)animated {
-    [super viewWillAppear:animated];
-    [self.navigationController setNavigationBarHidden:self.pages != nil animated:NO];
-}
-- (void)viewWillDisappear:(BOOL)animated {
-    [super viewWillDisappear:animated];
-    if (self.isMovingFromParentViewController) {
-        if (self.pages) [self closePages];
-        [self.navigationController setNavigationBarHidden:NO animated:NO];
-    }
-}
-- (void)viewDidLayoutSubviews {
-    [super viewDidLayoutSubviews];
-    self.pages.view.frame = self.navigationController.view.bounds;
-}
 - (void)closePages {
-    [self.pages willMoveToParentViewController:nil];
-    [self.pages.view removeFromSuperview]; [self.pages removeFromParentViewController];
-    self.pages = nil;
-    self.navigationController.interactivePopGestureRecognizer.enabled = self.outerBackEnabled;
-    [self.navigationController setNavigationBarHidden:NO animated:NO];
+    UINavigationController *pages = self.pages;
+    [pages dismissViewControllerAnimated:YES completion:^{ if (self.pages == pages) self.pages = nil; }];
 }
 - (void)backGesture:(UIScreenEdgePanGestureRecognizer *)gesture {
     if (gesture.state == UIGestureRecognizerStateEnded && self.pages.viewControllers.count == 1 &&
         ([gesture translationInView:self.view].x > 60 || [gesture velocityInView:self.view].x > 400)) [self closePages];
 }
 - (void)openPage:(UIViewController *)page {
-    // Settings serializes its PSListController path. Keep UIKit children inside
-    // this stable PS page instead of putting them on Settings' navigation stack.
+    if (!page || self.presentedViewController) return;
+    // Present through UIKit: attaching a child navigation view to the outer
+    // Settings controller bypassed its presentation and touch hierarchy.
     page.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithTitle:@"‹ RegionShot" style:UIBarButtonItemStylePlain target:self action:@selector(closePages)];
-    self.outerBackEnabled = self.navigationController.interactivePopGestureRecognizer.enabled;
-    self.navigationController.interactivePopGestureRecognizer.enabled = NO;
     self.pages = [[UINavigationController alloc] initWithRootViewController:page];
-    [self addChildViewController:self.pages];
-    self.pages.view.frame = self.navigationController.view.bounds;
-    self.pages.view.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-    [self.navigationController.view addSubview:self.pages.view]; [self.pages didMoveToParentViewController:self];
+    self.pages.modalPresentationStyle = UIModalPresentationFullScreen;
     UIScreenEdgePanGestureRecognizer *back = [[UIScreenEdgePanGestureRecognizer alloc] initWithTarget:self action:@selector(backGesture:)];
     back.edges = UIRectEdgeLeft;
     [back requireGestureRecognizerToFail:self.pages.interactivePopGestureRecognizer];
     [self.pages.view addGestureRecognizer:back];
-    [self.navigationController setNavigationBarHidden:YES animated:NO];
+    [self presentViewController:self.pages animated:YES completion:nil];
 }
 - (void)openMenu { [self openPage:[RSMenuSettings new]]; }
 - (void)openFrozenMenu { RSMenuSettings *settings = [RSMenuSettings new]; settings.frozenMenu = YES; [self openPage:settings]; }
@@ -151,7 +128,7 @@ extern UIViewController *RSInputCreateOptions(BOOL search);
         uint32_t status = (uint32_t)response;
         NSString *message;
         if (!received) {
-            message = @"SpringBoard 在 3 秒内未响应。请确认安装的是 0.6.4、已重新启动 SpringBoard，并检查 RootHide 注入管理器是否允许 RegionShot 注入 SpringBoard。此状态尚不能确认插件已加载。";
+            message = @"SpringBoard 在 3 秒内未响应。请确认安装的是 0.6.5、已重新启动 SpringBoard，并检查 RootHide 注入管理器是否允许 RegionShot 注入 SpringBoard。此状态尚不能确认插件已加载。";
         } else {
             NSString *result = !launch ? @"状态检查完成。" : (status & RSStatusStarted) ? @"截图请求已接受并建立选区窗口；请确认屏幕上实际可见。" : @"区域截图启动失败。";
             message = [NSString stringWithFormat:@"SpringBoard 已响应。\n插件开关：%@\n截图接口：%@\n入口：按键 %@ / 应用 %@ / 编辑 %@ / 捕获器 %@\n%@",

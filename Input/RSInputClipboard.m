@@ -57,7 +57,7 @@ void RSInputOpenSearch(NSString *text) { RSInputOpenSearchEngine(RSInputSearchEn
     CGSize visible = landscape ? CGSizeMake(physical.height, physical.width) : physical;
     self.canvas.bounds = (CGRect){CGPointZero, visible};
     self.canvas.center = CGPointMake(physical.width / 2, physical.height / 2);
-    CGFloat angle = self.orientation == UIInterfaceOrientationLandscapeLeft ? M_PI_2 : self.orientation == UIInterfaceOrientationLandscapeRight ? -M_PI_2 : 0;
+    CGFloat angle = self.orientation == UIInterfaceOrientationLandscapeLeft ? -M_PI_2 : self.orientation == UIInterfaceOrientationLandscapeRight ? M_PI_2 : 0;
     self.canvas.transform = CGAffineTransformMakeRotation(angle);
     RSRectD rect = RSPromptRect(visible.width, visible.height, self.buttonScale, self.heightPercent);
     self.button.frame = CGRectMake(rect.x, rect.y, rect.width, rect.height);
