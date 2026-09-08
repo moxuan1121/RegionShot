@@ -86,6 +86,7 @@ static NSUserDefaults *RSChatPreferences(void) {
     if (RSActiveChat) [RSActiveChat close];
     [self showImage:nil scene:scene];
     RSActiveChat.personaPrompt = persona[@"prompt"] ?: @"";
+    RSActiveChat.input.text = @"请按当前人设处理这张图片。";
     RSActiveChat.attachment = image; RSActiveChat.chip.image = image; RSActiveChat.chip.hidden = NO;
     [RSActiveChat send];
 }

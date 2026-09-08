@@ -3,6 +3,12 @@
 #include <math.h>
 #import "../Selection/RSMenuConfiguration.h"
 int main(void) { @autoreleasepool {
+    NSArray *personas = @[@{@"id":@100, @"enabled":@YES, @"persona":@{@"prompt":@"updated"}}];
+    NSArray *personaMenu = RSNormalizeMenu(@[@{@"id":@100, @"enabled":@NO, @"persona":@{@"prompt":@"stale"}}], personas, nil);
+    assert(![personaMenu[0][@"enabled"] boolValue]);
+    assert([personaMenu[0][@"persona"][@"prompt"] isEqual:@"updated"]);
+    assert(RSNormalizeMenu(personaMenu, @[], nil).count == 0);
+
     NSMutableSet *keys = [NSMutableSet set];
     for (NSDictionary *group in RSOptionGroups()) for (NSDictionary *option in group[@"items"]) {
         assert(![keys containsObject:option[@"key"]]); [keys addObject:option[@"key"]];

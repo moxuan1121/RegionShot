@@ -39,13 +39,14 @@ static NSArray<NSDictionary *> *RSAIDefaultPersonas(void) {
 NSArray<NSDictionary *> *RSAIPersonas(void) {
     id saved = [RSAIPreferences() objectForKey:@"AIPersonas"];
     NSArray *source = [saved isKindOfClass:NSArray.class] && [saved count] ? saved : RSAIDefaultPersonas();
-    NSMutableArray *result = [NSMutableArray array]; NSInteger next = 100;
+    NSMutableArray *result = [NSMutableArray array]; NSInteger next = MAX(100, [RSAIPreferences() integerForKey:@"AINextPersonaMenuID"]);
     for (NSDictionary *p in source) next = MAX(next, [p[@"menuID"] integerValue] + 1);
     for (NSDictionary *p in source) {
         NSMutableDictionary *entry = p.mutableCopy;
         if (!entry[@"menuID"]) entry[@"menuID"] = @(next++);
         [result addObject:entry];
     }
+    [RSAIPreferences() setInteger:next forKey:@"AINextPersonaMenuID"];
     [RSAIPreferences() setObject:result forKey:@"AIPersonas"];
     return result;
 }
