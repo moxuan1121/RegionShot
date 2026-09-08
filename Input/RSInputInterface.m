@@ -1,3 +1,5 @@
+#define RS_PANEL_CONTROLLER RSInputPanelController
+#import "../Geometry/RSPanelController.h"
 // Adapted from KeyboardAI-RootHide 23c761e, GPL-3.0; see THIRD_PARTY.md.
 #import "RSInputInterface.h"
 #import "RSInputCore.h"
@@ -76,18 +78,10 @@ static NSString *RSInputFullText(id<UITextInput> target) {
 @implementation RSInputPanelWindow
 - (UIView *)hitTest:(CGPoint)point withEvent:(UIEvent *)event {
     UIView *hit = [super hitTest:point withEvent:event];
-    return hit == self || hit == self.rootViewController.view ? nil : hit;
+    return hit == self || hit == self.rootViewController.view || hit == ((RSInputPanelController *)self.rootViewController).canvas ? nil : hit;
 }
 @end
 
-@interface RSInputPanelController : UIViewController
-@property(copy) void (^onLayout)(void);
-@end
-@implementation RSInputPanelController
-- (BOOL)shouldAutorotate { return NO; }
-- (UIInterfaceOrientationMask)supportedInterfaceOrientations { return UIInterfaceOrientationMaskAllButUpsideDown; }
-- (void)viewDidLayoutSubviews { [super viewDidLayoutSubviews]; if (self.onLayout) self.onLayout(); }
-@end
 @interface RSInputPanel : NSObject <NSURLSessionDataDelegate>
 @property(strong) UIView *panel;
 @property(strong) UIWindow *overlayWindow;
@@ -148,7 +142,7 @@ static NSString *RSInputFullText(id<UITextInput> target) {
     if (!self.overlayWindow) return;
     [self.searchMenu dismiss];
     NSNumber *target = note.userInfo[@"orientation"];
-    RSApplyWindowOrientation(self.overlayWindow, target ? target.integerValue : RSActiveOrientation(self.overlayWindow.windowScene));
+    ((RSInputPanelController *)self.overlayWindow.rootViewController).orientation = target ? target.integerValue : RSActiveOrientation(self.overlayWindow.windowScene);
     [self.overlayWindow.rootViewController.view setNeedsLayout];
     [self resizePanel];
 }
@@ -194,7 +188,7 @@ static NSString *RSInputFullText(id<UITextInput> target) {
     if (!window) return NO;
     self.previousWindow = window;
     self.overlayWindow = window.windowScene ? [[RSInputPanelWindow alloc] initWithWindowScene:window.windowScene] : [[RSInputPanelWindow alloc] initWithFrame:UIScreen.mainScreen.bounds];
-    self.overlayWindow.frame = UIScreen.mainScreen.bounds;
+    self.overlayWindow.frame = UIScreen.mainScreen.fixedCoordinateSpace.bounds;
     RSInputPanelController *controller = [RSInputPanelController new];
     self.overlayWindow.rootViewController = controller;
     controller.view.backgroundColor = UIColor.clearColor;
@@ -261,8 +255,10 @@ static NSString *RSInputFullText(id<UITextInput> target) {
     stack.spacing = 8;
     stack.translatesAutoresizingMaskIntoConstraints = NO;
     [panel addSubview:stack];
-    RSApplyWindowOrientation(window, RSActiveOrientation(window.windowScene));
-    UIView *host = window.rootViewController.view;
+    controller.orientation = RSActiveOrientation(window.windowScene);
+    RSApplyWindowOrientation(window, UIInterfaceOrientationPortrait);
+    [controller.view setNeedsLayout]; [controller.view layoutIfNeeded];
+    UIView *host = controller.canvas;
     [host addSubview:panel];
     self.heightConstraint = [panel.heightAnchor constraintEqualToConstant:160];
     self.heightConstraint.priority = UILayoutPriorityDefaultHigh;
@@ -298,7 +294,7 @@ static NSString *RSInputFullText(id<UITextInput> target) {
         chrome += [view systemLayoutSizeFittingSize:CGSizeMake(width, UILayoutFittingCompressedSize.height)
             withHorizontalFittingPriority:UILayoutPriorityRequired verticalFittingPriority:UILayoutPriorityFittingSizeLevel].height;
     }
-    UIView *host = window.rootViewController.view;
+    UIView *host = ((RSInputPanelController *)window.rootViewController).canvas;
     CGFloat available = MAX(0, host.bounds.size.height - host.safeAreaInsets.top - host.safeAreaInsets.bottom - 20);
     CGFloat percent = [self.windowOptions[self.tokenView ? @"tokenMaxHeight" : @"aiMaxHeight"] doubleValue];
     self.heightConstraint.constant = RSInputFittedPanelHeight(contentHeight, chrome, available, percent);
@@ -586,7 +582,7 @@ static NSString *RSInputFullText(id<UITextInput> target) {
         self.searchMenu = menu;
         // The panel itself is attached directly to the overlay window. Attach
         // the menu there afterwards so it stays above every panel priority.
-        [menu presentFromView:self.replaceButton inView:self.overlayWindow.rootViewController.view];
+        [menu presentFromView:self.replaceButton inView:((RSInputPanelController *)self.overlayWindow.rootViewController).canvas];
         RSInputSelectionFeedback();
     }
     [self.searchMenu trackGestureRecognizer:gesture];

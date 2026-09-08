@@ -1,3 +1,5 @@
+#define RS_PANEL_CONTROLLER RSKAPanelController
+#import "../Geometry/RSPanelController.h"
 // Adapted from KeyboardAI-RootHide 23c761e, GPL-3.0; see THIRD_PARTY.md.
 #import "RSKAInterface.h"
 #import "RSKACore.h"
@@ -49,7 +51,7 @@ static UIWindowLevel RSKAPanelWindowLevel(NSDictionary *options, NSString *key) 
 @implementation RSKAPanelWindow
 - (UIView *)hitTest:(CGPoint)point withEvent:(UIEvent *)event {
     UIView *hit = [super hitTest:point withEvent:event];
-    return hit == self || hit == self.rootViewController.view ? nil : hit;
+    return hit == self || hit == self.rootViewController.view || hit == ((RSKAPanelController *)self.rootViewController).canvas ? nil : hit;
 }
 @end
 
@@ -87,7 +89,8 @@ static UIWindowLevel RSKAPanelWindowLevel(NSDictionary *options, NSString *key) 
 }
 - (void)updateOrientation:(NSNotification *)note {
     if (!self.overlayWindow) return;
-    RSApplyWindowOrientation(self.overlayWindow, note.userInfo[@"orientation"] ? [note.userInfo[@"orientation"] integerValue] : RSActiveOrientation(self.overlayWindow.windowScene));
+    ((RSKAPanelController *)self.overlayWindow.rootViewController).orientation = note.userInfo[@"orientation"] ? [note.userInfo[@"orientation"] integerValue] : RSActiveOrientation(self.overlayWindow.windowScene);
+    [self.overlayWindow.rootViewController.view setNeedsLayout];
     [self resizePanel];
     [self.searchMenu setNeedsLayout];
 }
@@ -128,8 +131,11 @@ static UIWindowLevel RSKAPanelWindowLevel(NSDictionary *options, NSString *key) 
     if (!window) return NO;
     self.previousWindow = window;
     self.overlayWindow = window.windowScene ? [[RSKAPanelWindow alloc] initWithWindowScene:window.windowScene] : [[RSKAPanelWindow alloc] initWithFrame:UIScreen.mainScreen.bounds];
-    self.overlayWindow.frame = UIScreen.mainScreen.bounds;
-    self.overlayWindow.rootViewController = [UIViewController new];
+    self.overlayWindow.frame = UIScreen.mainScreen.fixedCoordinateSpace.bounds;
+    RSKAPanelController *controller = [RSKAPanelController new];
+    self.overlayWindow.rootViewController = controller;
+    __weak typeof(self) weakSelf = self;
+    controller.onLayout = ^{ [weakSelf resizePanel]; };
     self.overlayWindow.backgroundColor = UIColor.clearColor; self.overlayWindow.opaque = NO;
     self.overlayWindow.rootViewController.view.backgroundColor = UIColor.clearColor;
     self.overlayWindow.windowLevel = RSKAPanelWindowLevel(self.windowOptions, @"aiWindowPriority");
@@ -192,8 +198,10 @@ static UIWindowLevel RSKAPanelWindowLevel(NSDictionary *options, NSString *key) 
     stack.spacing = 8;
     stack.translatesAutoresizingMaskIntoConstraints = NO;
     [panel addSubview:stack];
-    RSApplyWindowOrientation(window, RSActiveOrientation(window.windowScene));
-    UIView *host = window.rootViewController.view;
+    controller.orientation = RSActiveOrientation(window.windowScene);
+    RSApplyWindowOrientation(window, UIInterfaceOrientationPortrait);
+    [controller.view setNeedsLayout]; [controller.view layoutIfNeeded];
+    UIView *host = controller.canvas;
     [host addSubview:panel];
     self.heightConstraint = [panel.heightAnchor constraintEqualToConstant:160];
     self.heightConstraint.priority = UILayoutPriorityDefaultHigh;
@@ -229,7 +237,7 @@ static UIWindowLevel RSKAPanelWindowLevel(NSDictionary *options, NSString *key) 
         chrome += [view systemLayoutSizeFittingSize:CGSizeMake(width, UILayoutFittingCompressedSize.height)
             withHorizontalFittingPriority:UILayoutPriorityRequired verticalFittingPriority:UILayoutPriorityFittingSizeLevel].height;
     }
-    CGFloat available = MAX(0, window.rootViewController.view.bounds.size.height - window.rootViewController.view.safeAreaInsets.top - window.rootViewController.view.safeAreaInsets.bottom - 20);
+    CGFloat available = MAX(0, ((RSKAPanelController *)window.rootViewController).canvas.bounds.size.height - ((RSKAPanelController *)window.rootViewController).canvas.safeAreaInsets.top - ((RSKAPanelController *)window.rootViewController).canvas.safeAreaInsets.bottom - 20);
     CGFloat percent = [self.windowOptions[self.tokenView ? @"tokenMaxHeight" : @"aiMaxHeight"] doubleValue];
     self.heightConstraint.constant = RSKAFittedPanelHeight(contentHeight, chrome, available, percent);
     [window layoutIfNeeded];
@@ -298,7 +306,7 @@ static UIWindowLevel RSKAPanelWindowLevel(NSDictionary *options, NSString *key) 
         for (NSDictionary *engine in RSKASearchEngines(RSKAConfig()))
             [menu addItemWithTitle:engine[@"name"] image:[UIImage systemImageNamed:@"magnifyingglass"] destructive:NO handler:^{ [weakSelf close]; RSKAOpenSearchEngine(engine, text); }];
         self.searchMenu = menu;
-        [menu presentFromView:self.replaceButton inView:self.overlayWindow.rootViewController.view];
+        [menu presentFromView:self.replaceButton inView:((RSKAPanelController *)self.overlayWindow.rootViewController).canvas];
     }
     [self.searchMenu trackGestureRecognizer:gesture];
 }
