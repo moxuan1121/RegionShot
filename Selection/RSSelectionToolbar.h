@@ -10,6 +10,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, copy, nullable) dispatch_block_t editHandler;
 @property (nonatomic, copy, nullable) dispatch_block_t aiHandler;
 @property (nonatomic, copy, nullable) dispatch_block_t copyHandler;
+@property (nonatomic, copy, nullable) dispatch_block_t saveHandler;
 @property (nonatomic, copy, nullable) dispatch_block_t fullscreenHandler;
 @property (nonatomic, copy, nullable) dispatch_block_t historyHandler;
 - (void)reloadButtons;

@@ -10,8 +10,8 @@
     CGFloat width = CGRectGetWidth(self.bounds);
     CGFloat size = RSSelectionMenuSize(YES);
     BOOL hideNames = RSSelectionMenuHideNames();
-    self.imageView.frame = CGRectMake((width - size) / 2.0, 8, size, size);
-    self.titleLabel.frame = hideNames ? CGRectZero : CGRectMake(0, size + 12, width, 20);
+    self.imageView.frame = CGRectMake((width - size) / 2.0, 3, size, size);
+    self.titleLabel.frame = hideNames ? CGRectZero : CGRectMake(0, size + 5, width, 16);
     self.titleLabel.textAlignment = NSTextAlignmentCenter;
     self.titleLabel.font = [UIFont systemFontOfSize:RSSelectionMenuSize(NO) weight:UIFontWeightMedium];
 }
@@ -22,7 +22,7 @@
 - (instancetype)initWithFrame:(CGRect)frame {
     self = [super initWithFrame:frame];
     if (self) {
-        self.backgroundColor = [UIColor colorWithWhite:0.08 alpha:0.88];
+        self.backgroundColor = UIColor.clearColor;
         self.layer.cornerRadius = 22;
         self.layer.masksToBounds = YES;
         [self reloadButtons];
@@ -72,6 +72,8 @@
         if (self.aiHandler) self.aiHandler();
     } else if (button.tag == 9) {
         if (self.copyHandler) self.copyHandler();
+    } else if (button.tag == 10) {
+        if (self.saveHandler) self.saveHandler();
     } else if (button.tag == 7) {
         if (self.fullscreenHandler) self.fullscreenHandler();
     } else if (button.tag == 8) {

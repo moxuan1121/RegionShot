@@ -21,6 +21,7 @@
 @property (nonatomic, strong) UIImageView *imageView;
 @property (nonatomic, strong) RSSelectionView *selectionView;
 @property (nonatomic, strong) RSSelectionToolbar *toolbar;
+@property (nonatomic, strong) UIVisualEffectView *toolbarBlur;
 @property (nonatomic, weak) UIWindow *previousKeyWindow;
 @property (nonatomic, strong) UIScrollView *toolbarScroll;
 @end
@@ -57,6 +58,10 @@
         _toolbar = [[RSSelectionToolbar alloc] initWithFrame:CGRectZero];
         _toolbarScroll = [UIScrollView new];
         [controller.view addSubview:_toolbarScroll];
+        _toolbarBlur = [[UIVisualEffectView alloc] initWithEffect:[UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemChromeMaterialDark]];
+        _toolbarBlur.userInteractionEnabled = NO;
+        _toolbarBlur.clipsToBounds = YES;
+        [_toolbarScroll addSubview:_toolbarBlur];
         [_toolbarScroll addSubview:_toolbar];
         __weak typeof(self) weakSelf = self;
         _selectionView.selectionChanged = ^(BOOL dragging) {
@@ -91,6 +96,14 @@
             UIPasteboard.generalPasteboard.image = image;
             if (window.toolbar.cancelHandler) window.toolbar.cancelHandler();
         };
+        _toolbar.saveHandler = ^{
+            RSSelectionWindow *window = weakSelf;
+            if (!window.selectionView.hasValidSelection) return;
+            UIImage *image = [RSScreenCapture cropImage:window.imageView.image toRect:window.selectionRect displaySize:window.displaySize];
+            if (!image) return;
+            if (window.toolbar.cancelHandler) window.toolbar.cancelHandler();
+            [RSRegionShotManager.sharedManager saveImage:image];
+        };
         _toolbar.aiHandler = ^{
             RSSelectionWindow *window = weakSelf;
             if (!window.selectionView.hasValidSelection) [window.selectionView selectAll];
@@ -121,7 +134,7 @@
     CGFloat safeBottom = self.safeAreaInsets.bottom;
     CGFloat buttonWidth = MAX(44, RSSelectionMenuSize(YES) + 16);
     CGFloat width = MIN(CGRectGetWidth(self.bounds) - 32, MIN(396, self.toolbar.subviews.count * buttonWidth));
-    CGFloat height = MAX(44, RSSelectionMenuSize(YES) + (RSSelectionMenuHideNames() ? 16 : 32));
+    CGFloat height = MAX(40, RSSelectionMenuSize(YES) + (RSSelectionMenuHideNames() ? 6 : 24));
     self.toolbarScroll.frame = CGRectMake((CGRectGetWidth(self.bounds) - width) / 2.0,
                                     CGRectGetHeight(self.bounds) - safeBottom - height - 12, width, height);
     if (self.selectionView.hasValidSelection) {
@@ -133,6 +146,9 @@
         self.toolbarScroll.frame = CGRectMake(frame.x, frame.y, frame.width, frame.height);
     }
     CGFloat contentWidth = MAX(width, self.toolbar.subviews.count * buttonWidth);
+    self.toolbarBlur.frame = CGRectMake(0, 0, contentWidth, height);
+    self.toolbarBlur.layer.cornerRadius = height / 2.0;
+    self.toolbarBlur.alpha = [RSOption(@"MenuBlurOpacity") doubleValue];
     self.toolbar.frame = CGRectMake(0, 0, contentWidth, height);
     self.toolbarScroll.contentSize = self.toolbar.bounds.size;
     [self bringSubviewToFront:self.rootViewController.view];
@@ -170,7 +186,10 @@
     self.previousKeyWindow = [RSSelectionWindow currentKeyWindow];
     self.hidden = NO;
     [self makeKeyAndVisible];
+    [self.rootViewController setNeedsUpdateOfScreenEdgesDeferringSystemGestures];
 }
+
+- (BOOL)_shouldCreateScreenEdgesDeferringGestureRecognizer { return YES; }
 
 - (void)dismiss {
     self.hidden = YES;
@@ -181,7 +200,7 @@
     self.toolbar.longCaptureHandler = nil;
     self.toolbar.recognitionHandler = nil;
     self.toolbar.editHandler = nil;
-    self.toolbar.aiHandler = nil; self.toolbar.copyHandler = nil; self.toolbar.fullscreenHandler = nil;
+    self.toolbar.aiHandler = nil; self.toolbar.copyHandler = nil; self.toolbar.saveHandler = nil; self.toolbar.fullscreenHandler = nil;
     self.toolbar.historyHandler = nil;
     self.selectionView.doubleTapHandler = nil;
     self.selectionView.cancelHandler = nil;

@@ -96,8 +96,8 @@
 - (UITargetedPreview *)menuPreview {
     UIPreviewParameters *parameters = [UIPreviewParameters new];
     parameters.backgroundColor = UIColor.clearColor;
-    parameters.visiblePath = [UIBezierPath bezierPathWithRoundedRect:self.bounds cornerRadius:5];
-    return [[UITargetedPreview alloc] initWithView:self parameters:parameters];
+    parameters.visiblePath = [UIBezierPath bezierPathWithRoundedRect:self.roundedImage.bounds cornerRadius:5];
+    return [[UITargetedPreview alloc] initWithView:self.roundedImage parameters:parameters];
 }
 - (UITargetedPreview *)contextMenuInteraction:(UIContextMenuInteraction *)interaction previewForHighlightingMenuWithConfiguration:(UIContextMenuConfiguration *)configuration { return [self menuPreview]; }
 - (UITargetedPreview *)contextMenuInteraction:(UIContextMenuInteraction *)interaction previewForDismissingMenuWithConfiguration:(UIContextMenuConfiguration *)configuration { return [self menuPreview]; }

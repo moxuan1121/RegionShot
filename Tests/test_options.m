@@ -25,9 +25,9 @@ int main(void) { @autoreleasepool {
     assert(menu.count == 2 && [menu[0][@"id"] isEqual:@1] && [menu[0][@"enabled"] boolValue]);
     assert([menu[1] isEqual:defaults[0]]);
     assert([RSNormalizeMenu(@{}, defaults, @1) isEqual:defaults]);
-    NSArray *remaining = @[@{@"id":@0, @"title":@"复制"}, @{@"id":@4, @"title":@"关闭", @"enabled":@YES}, @{@"id":@9, @"title":@"新增复制"}];
+    NSArray *remaining = @[@{@"id":@0, @"title":@"复制"}, @{@"id":@4, @"title":@"关闭", @"enabled":@YES}, @{@"id":@9, @"title":@"新增复制"}, @{@"id":@10, @"title":@"新增保存"}];
     NSArray *migrated = RSNormalizeMenu(@[@{@"id":@4, @"title":@"自定义关闭"}, @{@"id":@3}, @{@"id":@6}, @{@"id":@0}], remaining, @4);
-    assert(migrated.count == 3);
+    assert(migrated.count == 4);
     assert([migrated[0][@"id"] isEqual:@4] && [migrated[0][@"title"] isEqual:@"自定义关闭"]);
-    assert([migrated[1][@"id"] isEqual:@0] && [migrated[2][@"id"] isEqual:@9]);
+    assert([migrated[1][@"id"] isEqual:@0] && [migrated[2][@"id"] isEqual:@9] && [migrated[3][@"id"] isEqual:@10]);
 } return 0; }

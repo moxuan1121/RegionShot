@@ -13,8 +13,10 @@ NSArray<NSDictionary *> *RSOptionGroups(void) {
             @{@"key":@"StatusBarSwipe", @"title":@"状态栏右半侧右滑截图", @"default":@YES},
             @{@"key":@"CaptureHaptic", @"title":@"截图完成震动", @"default":@NO},
             @{@"key":@"CopyOnSave", @"title":@"复制 + 保存到相册", @"default":@NO},
-            @{@"key":@"CopyOnly", @"title":@"仅复制，不保存到相册", @"default":@NO},
-            @{@"key":@"SelectionShade", @"title":@"选区外遮罩浓度", @"default":@0.38, @"min":@0.05, @"max":@0.8} ]},
+            @{@"key":@"CopyOnly", @"title":@"仅复制，不保存到相册", @"default":@NO} ]},
+        @{@"title":@"选区与菜单外观", @"items":@[
+            @{@"key":@"SelectionShade", @"title":@"选区外遮罩浓度", @"default":@0.38, @"min":@0.05, @"max":@0.8},
+            @{@"key":@"MenuBlurOpacity", @"title":@"菜单磨砂玻璃透明度", @"default":@0.88, @"min":@0.15, @"max":@1.0} ]},
         @{@"title":@"悬浮图片", @"items":@[
             @{@"key":@"FloatShadow", @"title":@"显示阴影", @"default":@YES},
             @{@"key":@"FloatDoubleClose", @"title":@"双击关闭当前浮图", @"default":@YES},
