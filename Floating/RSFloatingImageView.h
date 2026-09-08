@@ -1,15 +1,13 @@
 #import <UIKit/UIKit.h>
 
 typedef NS_ENUM(NSInteger, RSFloatingAction) {
-    RSFloatingActionCopy,
-    RSFloatingActionSave,
-    RSFloatingActionShare,
-    RSFloatingActionHide,
-    RSFloatingActionCloseAll,
-    RSFloatingActionAI,
-    RSFloatingActionCloseCurrent,
-    RSFloatingActionHistory,
-    RSFloatingActionRestoreAll,
+    RSFloatingActionCopy = 0,
+    RSFloatingActionSave = 1,
+    RSFloatingActionShare = 2,
+    RSFloatingActionCloseAll = 4,
+    RSFloatingActionAI = 5,
+    RSFloatingActionCloseCurrent = 6,
+    RSFloatingActionHistory = 7,
 };
 
 NS_ASSUME_NONNULL_BEGIN

@@ -24,10 +24,9 @@ int main(void) {
         BOOL success = [handler performRequests:@[request] error:&error];
         if (!success) NSLog(@"Vision test failed: %@", error);
         assert(success && !error);
-        NSLog(@"Barcode observations: %@, payloads: %@", request.results, RSRecognizedStrings(request.results, YES));
+        NSLog(@"Barcode observations: %@, payloads: %@", request.results, RSBarcodePayloads(request.results));
         assert([RSBarcodeStrings(cg, request.results) containsObject:payload]);
         assert([RSBarcodeStrings(cg, @[]) containsObject:payload]);
-        assert(RSRecognizedStrings(request.results, NO).count == 0);
         CGImageRelease(cg);
         puts("RegionShot real QR generation/recognition check passed");
     }

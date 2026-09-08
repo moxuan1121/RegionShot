@@ -11,26 +11,28 @@
 - (NSArray *)specifiers {
     if (_specifiers) return _specifiers;
     NSMutableArray *items = [NSMutableArray array];
-    PSSpecifier *group = [PSSpecifier groupSpecifierWithName:@"RegionShot 0.4.1"];
+    PSSpecifier *group = [PSSpecifier groupSpecifierWithName:@"RegionShot 0.4.2"];
     [group setProperty:@"侧边键 + 音量加进入区域截图。安装后需重新启动 SpringBoard。关闭开关恢复系统截图。" forKey:@"footerText"];
     [items addObject:group];
     PSSpecifier *enabled = [PSSpecifier preferenceSpecifierNamed:@"启用区域截图" target:self set:@selector(setPreferenceValue:specifier:) get:@selector(readPreferenceValue:) detail:nil cell:PSSwitchCell edit:nil];
     [enabled setProperty:@"Enabled" forKey:@"key"]; [enabled setProperty:@YES forKey:@"default"];
     [items addObject:enabled];
+    [items addObject:[PSSpecifier groupSpecifierWithName:@"菜单与外观"]];
     PSSpecifier *menu = [PSSpecifier preferenceSpecifierNamed:@"选区菜单：排序、功能与图标" target:self set:nil get:nil detail:nil cell:PSButtonCell edit:nil];
     menu.buttonAction = @selector(openMenu); [items addObject:menu];
     PSSpecifier *frozen = [PSSpecifier preferenceSpecifierNamed:@"冻结菜单：排序、功能与图标" target:self set:nil get:nil detail:nil cell:PSButtonCell edit:nil];
     frozen.buttonAction = @selector(openFrozenMenu); [items addObject:frozen];
     PSSpecifier *floating = [PSSpecifier preferenceSpecifierNamed:@"浮图长按菜单与图标" target:self set:nil get:nil detail:nil cell:PSButtonCell edit:nil];
     floating.buttonAction = @selector(openFloatingMenu); [items addObject:floating];
-    PSSpecifier *options = [PSSpecifier preferenceSpecifierNamed:@"截图、浮图、OCR、长图与 AI 设置" target:self set:nil get:nil detail:nil cell:PSButtonCell edit:nil];
+    [items addObject:[PSSpecifier groupSpecifierWithName:@"功能参数"]];
+    PSSpecifier *options = [PSSpecifier preferenceSpecifierNamed:@"截图、浮图、历史、长图与 AI" target:self set:nil get:nil detail:nil cell:PSButtonCell edit:nil];
     options.buttonAction = @selector(openOptions); [items addObject:options];
     PSSpecifier *ai = [PSSpecifier preferenceSpecifierNamed:@"配置 AI 服务、模型与密钥" target:self set:nil get:nil detail:nil cell:PSButtonCell edit:nil];
     ai.buttonAction = @selector(openAI); [items addObject:ai];
+    [items addObject:[PSSpecifier groupSpecifierWithName:@"截图记录"]];
     PSSpecifier *history = [PSSpecifier preferenceSpecifierNamed:@"截图历史" target:self set:nil get:nil detail:nil cell:PSButtonCell edit:nil];
     history.buttonAction = @selector(openHistory); [items addObject:history];
-    PSSpecifier *restore = [PSSpecifier preferenceSpecifierNamed:@"恢复隐藏的浮图" target:self set:nil get:nil detail:nil cell:PSButtonCell edit:nil];
-    restore.buttonAction = @selector(restoreFloating); [items addObject:restore];
+    [items addObject:[PSSpecifier groupSpecifierWithName:@"入口与诊断"]];
     PSSpecifier *test = [PSSpecifier preferenceSpecifierNamed:@"测试截图入口" target:self set:nil get:nil detail:nil cell:PSButtonCell edit:nil];
     test.buttonAction = @selector(testCapture); [items addObject:test];
     PSSpecifier *check = [PSSpecifier preferenceSpecifierNamed:@"检查 SpringBoard 状态" target:self set:nil get:nil detail:nil cell:PSButtonCell edit:nil];
@@ -39,7 +41,7 @@
     [self.diagnosticGroup setProperty:@"尚未检查。点击上方按钮可检查插件加载、截图接口和按键入口。" forKey:@"footerText"];
     [items addObject:self.diagnosticGroup];
     group = [PSSpecifier groupSpecifierWithName:@"当前开发预览"];
-    [group setProperty:@"已接入截图历史、区域/浮图菜单定制及截图、OCR、长图、AI 参数。AI 服务配置在 SpringBoard 窗口打开，密钥保存于该进程的钥匙串。自动上滑长截图、外部 OCR 与独立翻译引擎、完整编辑器及其余设置仍在开发中。" forKey:@"footerText"];
+    [group setProperty:@"菜单设置按冻结、选区和浮图区分。功能参数按截图保存、悬浮图片、历史、长截图、AI 分类。AI 服务配置在 SpringBoard 窗口打开，密钥存于钥匙串。" forKey:@"footerText"];
     [items addObject:group]; _specifiers = items.copy; return _specifiers;
 }
 - (id)readPreferenceValue:(PSSpecifier *)specifier {
@@ -58,7 +60,6 @@
 - (void)openOptions { [self.navigationController pushViewController:[RSBehaviorSettings new] animated:YES]; }
 - (void)openAI { notify_post("com.moxuan.regionshot/AISettings"); }
 - (void)openHistory { notify_post("com.moxuan.regionshot/History"); }
-- (void)restoreFloating { notify_post("com.moxuan.regionshot/ShowFloating"); }
 - (void)testCapture { [self diagnoseCapture:YES]; }
 - (void)checkCapture { [self diagnoseCapture:NO]; }
 - (void)showDiagnostic:(NSString *)message {
@@ -97,7 +98,7 @@
         uint32_t status = (uint32_t)response;
         NSString *message;
         if (!received) {
-            message = @"SpringBoard 在 3 秒内未响应。请确认安装的是 0.4.1、已重新启动 SpringBoard，并检查 RootHide 注入管理器是否允许 RegionShot 注入 SpringBoard。此状态尚不能确认插件已加载。";
+            message = @"SpringBoard 在 3 秒内未响应。请确认安装的是 0.4.2、已重新启动 SpringBoard，并检查 RootHide 注入管理器是否允许 RegionShot 注入 SpringBoard。此状态尚不能确认插件已加载。";
         } else {
             NSString *result = !launch ? @"状态检查完成。" : (status & RSStatusStarted) ? @"截图请求已接受并建立选区窗口；请确认屏幕上实际可见。" : @"区域截图启动失败。";
             message = [NSString stringWithFormat:@"SpringBoard 已响应。\n插件开关：%@\n截图接口：%@\n入口：按键 %@ / 应用 %@ / 编辑 %@ / 捕获器 %@\n%@",

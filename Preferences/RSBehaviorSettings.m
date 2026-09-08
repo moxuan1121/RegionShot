@@ -2,14 +2,20 @@
 #import "RSOptions.h"
 
 @implementation RSBehaviorSettings
-- (instancetype)init { return [super initWithStyle:UITableViewStyleInsetGrouped]; }
-- (void)viewDidLoad { [super viewDidLoad]; self.title = @"截图与功能设置"; RSReloadOptions(); }
-- (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView { return RSOptionGroups().count; }
-- (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section { return [RSOptionGroups()[section][@"items"] count]; }
-- (NSString *)tableView:(UITableView *)tableView titleForHeaderInSection:(NSInteger)section { return RSOptionGroups()[section][@"title"]; }
-- (NSString *)tableView:(UITableView *)tableView titleForFooterInSection:(NSInteger)section { return RSOptionGroups()[section][@"footer"]; }
-- (NSDictionary *)optionAt:(NSIndexPath *)path { return RSOptionGroups()[path.section][@"items"][path.row]; }
+- (instancetype)init { if ((self = [super initWithStyle:UITableViewStyleInsetGrouped])) _groupIndex = NSNotFound; return self; }
+- (void)viewDidLoad { [super viewDidLoad]; self.title = self.groupIndex == NSNotFound ? @"功能设置" : RSOptionGroups()[self.groupIndex][@"title"]; RSReloadOptions(); }
+- (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView { return self.groupIndex == NSNotFound ? RSOptionGroups().count : 1; }
+- (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section { return self.groupIndex == NSNotFound ? 1 : [RSOptionGroups()[self.groupIndex][@"items"] count]; }
+- (NSString *)tableView:(UITableView *)tableView titleForHeaderInSection:(NSInteger)section { return self.groupIndex == NSNotFound ? nil : RSOptionGroups()[self.groupIndex][@"title"]; }
+- (NSString *)tableView:(UITableView *)tableView titleForFooterInSection:(NSInteger)section { return self.groupIndex == NSNotFound ? nil : RSOptionGroups()[self.groupIndex][@"footer"]; }
+- (NSDictionary *)optionAt:(NSIndexPath *)path { return RSOptionGroups()[self.groupIndex][@"items"][path.row]; }
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)path {
+    if (self.groupIndex == NSNotFound) {
+        UITableViewCell *category = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:nil];
+        category.textLabel.text = RSOptionGroups()[path.section][@"title"];
+        category.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
+        return category;
+    }
     NSDictionary *option = [self optionAt:path];
     UITableViewCell *cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:nil];
     cell.textLabel.text = option[@"title"]; cell.textLabel.numberOfLines = 0;
@@ -31,6 +37,10 @@
 }
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)path {
     [tableView deselectRowAtIndexPath:path animated:YES];
+    if (self.groupIndex == NSNotFound) {
+        RSBehaviorSettings *page = [RSBehaviorSettings new]; page.groupIndex = path.section;
+        [self.navigationController pushViewController:page animated:YES]; return;
+    }
     NSDictionary *option = [self optionAt:path];
     BOOL number = option[@"min"] != nil;
     if (!number && [option[@"default"] isKindOfClass:NSNumber.class]) return;

@@ -129,9 +129,6 @@ static void RSPreferenceEvent(CFNotificationCenterRef center, void *observer, CF
     if (CFEqual(name, CFSTR("com.moxuan.regionshot/History"))) {
         dispatch_async(dispatch_get_main_queue(), ^{ [RSRegionShotManager.sharedManager showHistory]; }); return;
     }
-    if (CFEqual(name, CFSTR("com.moxuan.regionshot/ShowFloating"))) {
-        dispatch_async(dispatch_get_main_queue(), ^{ [RSRegionShotManager.sharedManager showAllSnaps]; }); return;
-    }
     if (CFEqual(name, CFSTR("com.moxuan.regionshot/AISettings"))) {
         dispatch_async(dispatch_get_main_queue(), ^{ [RSChatController showServiceSettings]; });
         return;
@@ -176,7 +173,6 @@ static void RSPreferenceEvent(CFNotificationCenterRef center, void *observer, CF
         if (notify_register_check(RS_CAPTURE_STATUS, &RSStatusToken) != NOTIFY_STATUS_OK) RSStatusToken = -1;
         CFNotificationCenterRef center = CFNotificationCenterGetDarwinNotifyCenter();
         CFNotificationCenterAddObserver(center, NULL, RSPreferenceEvent, CFSTR("com.moxuan.regionshot/History"), NULL, CFNotificationSuspensionBehaviorDeliverImmediately);
-        CFNotificationCenterAddObserver(center, NULL, RSPreferenceEvent, CFSTR("com.moxuan.regionshot/ShowFloating"), NULL, CFNotificationSuspensionBehaviorDeliverImmediately);
         CFNotificationCenterAddObserver(center, NULL, RSPreferenceEvent, CFSTR("com.moxuan.regionshot/AISettings"), NULL, CFNotificationSuspensionBehaviorDeliverImmediately);
         CFNotificationCenterAddObserver(center, NULL, RSPreferenceEvent, CFSTR(RS_CAPTURE_CHECK), NULL, CFNotificationSuspensionBehaviorDeliverImmediately);
         CFNotificationCenterAddObserver(center, NULL, RSPreferenceEvent, CFSTR("com.moxuan.regionshot/ReloadPrefs"), NULL, CFNotificationSuspensionBehaviorDeliverImmediately);

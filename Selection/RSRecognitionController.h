@@ -2,5 +2,5 @@
 
 @interface RSRecognitionController : UIViewController
 @property (nonatomic, copy) dispatch_block_t onForward;
-- (instancetype)initWithImage:(UIImage *)image barcode:(BOOL)barcode;
+- (instancetype)initWithImage:(UIImage *)image;
 @end

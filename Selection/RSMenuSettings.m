@@ -15,21 +15,19 @@ static NSArray *RSMenuDefaults(BOOL floating) {
         @{@"id":@0, @"title":@"复制", @"symbol":@"doc.on.doc", @"enabled":@YES},
         @{@"id":@1, @"title":@"保存", @"symbol":@"square.and.arrow.down", @"enabled":@YES},
         @{@"id":@2, @"title":@"分享", @"symbol":@"square.and.arrow.up", @"enabled":@YES},
-        @{@"id":@3, @"title":@"隐藏当前", @"symbol":@"eye.slash", @"enabled":@YES},
         @{@"id":@4, @"title":@"关闭全部", @"symbol":@"trash", @"enabled":@YES},
         @{@"id":@5, @"title":@"图片问答", @"symbol":@"text.bubble", @"enabled":@YES},
         @{@"id":@6, @"title":@"关闭当前", @"symbol":@"xmark", @"enabled":@YES},
-        @{@"id":@7, @"title":@"截图历史", @"symbol":@"clock.arrow.circlepath", @"enabled":@YES},
-        @{@"id":@8, @"title":@"恢复隐藏浮图", @"symbol":@"eye", @"enabled":@YES}];
+        @{@"id":@7, @"title":@"截图历史", @"symbol":@"clock.arrow.circlepath", @"enabled":@YES}];
     return @[@{@"id":@0, @"title":@"截图", @"symbol":@"camera", @"enabled":@YES},
              @{@"id":@1, @"title":@"标记", @"symbol":@"pencil.tip", @"enabled":@YES},
              @{@"id":@2, @"title":@"长截图", @"symbol":@"doc.on.doc", @"enabled":@YES},
              @{@"id":@3, @"title":@"扫码", @"symbol":@"qrcode.viewfinder", @"enabled":@YES},
              @{@"id":@4, @"title":@"取消", @"symbol":@"xmark", @"enabled":@YES},
              @{@"id":@5, @"title":@"图片问答", @"symbol":@"text.bubble", @"enabled":@YES},
-             @{@"id":@6, @"title":@"识别文字", @"symbol":@"text.viewfinder", @"enabled":@YES},
              @{@"id":@7, @"title":@"全屏", @"symbol":@"arrow.up.left.and.arrow.down.right", @"enabled":@YES},
-             @{@"id":@8, @"title":@"历史", @"symbol":@"clock.arrow.circlepath", @"enabled":@YES}];
+             @{@"id":@8, @"title":@"历史", @"symbol":@"clock.arrow.circlepath", @"enabled":@YES},
+             @{@"id":@9, @"title":@"复制", @"symbol":@"doc.on.clipboard", @"enabled":@YES}];
 }
 static NSArray *RSMenuItems(BOOL floating) {
     [RSMenuPrefs() synchronize];
@@ -42,7 +40,7 @@ NSArray<NSDictionary *> *RSFrozenMenuItems(void) {
     NSMutableArray *defaults = [NSMutableArray array];
     for (NSDictionary *item in RSMenuDefaults(NO)) {
         NSMutableDictionary *entry = item.mutableCopy;
-        if ([entry[@"id"] integerValue] > 4) entry[@"enabled"] = @NO;
+        if ([entry[@"id"] integerValue] > 4 && [entry[@"id"] integerValue] != 9) entry[@"enabled"] = @NO;
         [defaults addObject:entry];
     }
     return RSNormalizeMenu([RSMenuPrefs() objectForKey:@"FrozenMenu"], defaults, @4);
@@ -105,12 +103,11 @@ BOOL RSSelectionMenuHideNames(void) { return [RSMenuPrefs() boolForKey:@"HideSel
     [super viewDidLoad];
     self.title = self.floatingMenu ? @"浮图长按菜单" : self.frozenMenu ? @"冻结菜单（未框选）" : @"选区菜单（已框选）";
     [self reloadItems];
-    self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithTitle:@"完成" style:UIBarButtonItemStyleDone target:self action:@selector(close)];
-    self.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithTitle:@"手动排序" style:UIBarButtonItemStylePlain target:self action:@selector(toggleSorting)];
+    self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithTitle:@"手动排序" style:UIBarButtonItemStylePlain target:self action:@selector(toggleSorting)];
 }
 - (void)toggleSorting {
     [self setEditing:!self.editing animated:YES];
-    self.navigationItem.leftBarButtonItem.title = self.editing ? @"结束排序" : @"手动排序";
+    self.navigationItem.rightBarButtonItem.title = self.editing ? @"结束排序" : @"手动排序";
 }
 - (void)reloadItems {
     self.items = [NSMutableArray array];
@@ -213,7 +210,7 @@ BOOL RSSelectionMenuHideNames(void) { return [RSMenuPrefs() boolForKey:@"HideSel
     }]];
     [sheet addAction:[UIAlertAction actionWithTitle:@"恢复原图标" style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
         NSMutableDictionary *item = [self itemForID:self.editingIdentifier]; [item removeObjectForKey:@"image"];
-        item[@"symbol"] = RSMenuDefaults(self.floatingMenu)[self.editingIdentifier.unsignedIntegerValue][@"symbol"];
+        for (NSDictionary *entry in RSMenuDefaults(self.floatingMenu)) if ([entry[@"id"] isEqual:self.editingIdentifier]) item[@"symbol"] = entry[@"symbol"];
         [self save]; [self.tableView reloadData];
     }]];
     [sheet addAction:[UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:nil]];

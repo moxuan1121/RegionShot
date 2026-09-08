@@ -96,8 +96,7 @@
         // Match the reference: the cropped region becomes a floating image in place.
         if (snap && CGSizeEqualToSize(displaySize, self.floatingWindow.bounds.size)) {
             snap.bounds = (CGRect){CGPointZero, rect.size}; snap.center = CGPointMake(CGRectGetMidX(rect), CGRectGetMidY(rect));
-            snap.alpha = 0;
-            [UIView animateWithDuration:UIAccessibilityIsReduceMotionEnabled() ? 0 : 0.12 animations:^{ snap.alpha = [RSOption(@"FloatOpacity") doubleValue]; }];
+
         }
     } else {
         NSLog(@"[RegionShot] selection crop failed");
@@ -166,6 +165,16 @@
     snap.actionDelegate = self;
     [self.floatingWindow.rootViewController.view addSubview:snap];
     [self.mutableSnaps addObject:snap];
+    snap.alpha = 0;
+    BOOL reduceMotion = UIAccessibilityIsReduceMotionEnabled();
+    snap.transform = reduceMotion ? CGAffineTransformIdentity : CGAffineTransformMakeScale(0.96, 0.96);
+    dispatch_async(dispatch_get_main_queue(), ^{
+        if (!snap.userInteractionEnabled || !snap.superview) return;
+        [snap layoutIfNeeded];
+        [UIView animateWithDuration:reduceMotion ? 0 : 0.22 delay:0
+            options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction | UIViewAnimationOptionCurveEaseOut
+            animations:^{ snap.alpha = [RSOption(@"FloatOpacity") doubleValue]; snap.transform = CGAffineTransformIdentity; } completion:nil];
+    });
     if (record) {
         __weak typeof(self) weakSelf = self;
         [RSHistoryController recordImage:image completion:^(NSError *error) { if (error) [weakSelf notice:error.localizedDescription]; }];
@@ -190,33 +199,24 @@
         dispatch_async(dispatch_get_main_queue(), ^{ [self removeSnap:snap]; });
         return;
     }
-    if (![self.mutableSnaps containsObject:snap]) return;
-    [self.mutableSnaps removeObject:snap];
+    if (![self.mutableSnaps containsObject:snap] || !snap.userInteractionEnabled) return;
+    snap.userInteractionEnabled = NO;
     snap.actionDelegate = nil;
-    snap.image = nil;
-    [snap removeFromSuperview];
-    if (self.mutableSnaps.count == 0) {
-        self.floatingWindow.hidden = YES;
-        self.floatingWindow.rootViewController = nil;
-        self.floatingWindow = nil;
-    }
-    NSLog(@"[RegionShot] floating snap removed");
-}
-
-- (void)hideAllSnaps {
-    if (![NSThread isMainThread]) {
-        dispatch_async(dispatch_get_main_queue(), ^{ [self hideAllSnaps]; });
-        return;
-    }
-    for (RSFloatingImageView *snap in self.mutableSnaps) snap.hidden = YES;
-}
-
-- (void)showAllSnaps {
-    if (![NSThread isMainThread]) {
-        dispatch_async(dispatch_get_main_queue(), ^{ [self showAllSnaps]; });
-        return;
-    }
-    for (RSFloatingImageView *snap in self.mutableSnaps) snap.hidden = NO;
+    BOOL reduceMotion = UIAccessibilityIsReduceMotionEnabled();
+    [UIView animateWithDuration:reduceMotion ? 0 : 0.18 delay:0
+        options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionCurveEaseIn
+        animations:^{
+            snap.alpha = 0;
+            if (!reduceMotion) snap.transform = CGAffineTransformScale(snap.transform, 0.96, 0.96);
+        } completion:^(BOOL finished) {
+            [self.mutableSnaps removeObject:snap];
+            snap.image = nil; [snap removeFromSuperview];
+            if (self.mutableSnaps.count == 0) {
+                self.floatingWindow.hidden = YES;
+                self.floatingWindow.rootViewController = nil;
+                self.floatingWindow = nil;
+            }
+        }];
 }
 
 - (void)closeAllSnaps {
@@ -241,15 +241,13 @@
     switch (action) {
         case RSFloatingActionCopy:
             UIPasteboard.generalPasteboard.image = image;
+            [self removeSnap:snap];
             break;
         case RSFloatingActionSave:
             [self saveImage:image];
             break;
         case RSFloatingActionShare:
             [self shareImage:image];
-            break;
-        case RSFloatingActionHide:
-            snap.hidden = YES;
             break;
         case RSFloatingActionCloseAll:
             [self closeAllSnaps];
@@ -259,7 +257,6 @@
             break;
         case RSFloatingActionCloseCurrent: [self removeSnap:snap]; break;
         case RSFloatingActionHistory: [self showHistory]; break;
-        case RSFloatingActionRestoreAll: [self showAllSnaps]; break;
     }
 }
 

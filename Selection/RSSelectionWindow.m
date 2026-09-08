@@ -78,7 +78,14 @@
         _selectionView.doubleTapHandler = ^{ if (weakSelf.toolbar.captureHandler) weakSelf.toolbar.captureHandler(); };
         _toolbar.fullscreenHandler = ^{ [weakSelf.selectionView selectAll]; };
         _toolbar.historyHandler = ^{ [RSRegionShotManager.sharedManager showHistory]; };
-        _toolbar.ocrHandler = ^{ [weakSelf showRecognition:NO]; };
+        _toolbar.copyHandler = ^{
+            RSSelectionWindow *window = weakSelf;
+            CGRect rect = window.selectionView.hasValidSelection ? window.selectionRect : window.selectionView.bounds;
+            UIImage *image = [RSScreenCapture cropImage:window.imageView.image toRect:rect displaySize:window.displaySize];
+            if (!image) return;
+            UIPasteboard.generalPasteboard.image = image;
+            if (window.toolbar.cancelHandler) window.toolbar.cancelHandler();
+        };
         _toolbar.aiHandler = ^{
             RSSelectionWindow *window = weakSelf;
             if (!window.selectionView.hasValidSelection) [window.selectionView selectAll];
@@ -128,27 +135,10 @@
 }
 
 - (void)recognizeSelection {
-    if (self.rootViewController.presentedViewController) return;
     if (!self.selectionView.hasValidSelection) [self.selectionView selectAll];
     UIImage *image = [RSScreenCapture cropImage:self.imageView.image toRect:self.selectionRect displaySize:self.displaySize];
     if (!image) return;
-    UIAlertController *sheet = [UIAlertController alertControllerWithTitle:@"识别选区" message:nil preferredStyle:UIAlertControllerStyleActionSheet];
-    for (NSNumber *barcode in @[@YES, @NO]) {
-        [sheet addAction:[UIAlertAction actionWithTitle:barcode.boolValue ? @"二维码 / 条码" : @"识别文字（OCR）"
-            style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
-                [self showRecognition:barcode.boolValue];
-            }]];
-    }
-    [sheet addAction:[UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:nil]];
-    sheet.popoverPresentationController.sourceView = self.toolbar;
-    sheet.popoverPresentationController.sourceRect = self.toolbar.bounds;
-    [self.rootViewController presentViewController:sheet animated:YES completion:nil];
-}
-- (void)showRecognition:(BOOL)barcode {
-    if (!self.selectionView.hasValidSelection) [self.selectionView selectAll];
-    UIImage *image = [RSScreenCapture cropImage:self.imageView.image toRect:self.selectionRect displaySize:self.displaySize];
-    if (!image) return;
-    RSRecognitionController *result = [[RSRecognitionController alloc] initWithImage:image barcode:barcode];
+    RSRecognitionController *result = [[RSRecognitionController alloc] initWithImage:image];
     __weak typeof(self) weakSelf = self;
     result.onForward = ^{ if (weakSelf.toolbar.cancelHandler) weakSelf.toolbar.cancelHandler(); };
     UINavigationController *navigation = [[UINavigationController alloc] initWithRootViewController:result];
@@ -186,7 +176,7 @@
     self.toolbar.longCaptureHandler = nil;
     self.toolbar.recognitionHandler = nil;
     self.toolbar.editHandler = nil;
-    self.toolbar.aiHandler = nil; self.toolbar.ocrHandler = nil; self.toolbar.fullscreenHandler = nil;
+    self.toolbar.aiHandler = nil; self.toolbar.copyHandler = nil; self.toolbar.fullscreenHandler = nil;
     self.toolbar.historyHandler = nil;
     self.selectionView.doubleTapHandler = nil;
     self.selectionView.cancelHandler = nil;

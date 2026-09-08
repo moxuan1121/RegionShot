@@ -141,7 +141,8 @@ static const CGFloat RSHandleHitRadius = 28.0;
     [UIColor.whiteColor setStroke];
     [border stroke];
 
-    CGRect selection = self.selectionRect;
+    CGFloat pixel = 1.0 / (self.window.screen.scale ?: UIScreen.mainScreen.scale);
+    CGRect selection = CGRectInset(self.selectionRect, -pixel, -pixel);
     CGPoint corners[] = {
         selection.origin,
         CGPointMake(CGRectGetMaxX(selection), CGRectGetMinY(selection)),

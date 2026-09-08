@@ -15,8 +15,6 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)cancelCapture;
 - (void)bringSnapToFront:(RSFloatingImageView *)snap;
 - (void)removeSnap:(RSFloatingImageView *)snap;
-- (void)hideAllSnaps;
-- (void)showAllSnaps;
 - (void)closeAllSnaps;
 - (void)showHistory;
 
