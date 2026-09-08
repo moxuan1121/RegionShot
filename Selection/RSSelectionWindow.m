@@ -8,6 +8,7 @@
 #import "../AI/RSChatController.h"
 #import "../Manager/RSRegionShotManager.h"
 #import "../Geometry/RSGeometry.h"
+#import "../Preferences/RSOptions.h"
 
 @interface RSSelectionController : UIViewController
 @end
