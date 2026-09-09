@@ -45,6 +45,7 @@ print('Verified PreferenceLoader registration, Settings controller/version, sign
 
 assert sum(p.startswith("Library/PreferenceLoader/Preferences/") for p in files) == 1
 assert not any("RegionShotScroll" in p or "RSLongCapture" in p for p in files)
+assert not any(p.startswith('usr/share/doc/com.moxuan.regionshot/') for p in files)
 
 camera_info = plistlib.loads(files['Applications/RegionShotCamera.app/Info.plist'])
 assert camera_info['NSCameraUsageDescription']
