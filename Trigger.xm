@@ -99,8 +99,8 @@ static char RSStatusBarGestureKey;
 %group RSSideButtonLock
 %hook SBLockHardwareButtonActions
 - (void)performSinglePressAction {
-    [RSRegionShotManager.sharedManager cancelCapture];
     %orig;
+    [RSRegionShotManager.sharedManager cancelCapture];
 }
 %end
 %end

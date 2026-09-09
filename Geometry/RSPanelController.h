@@ -4,8 +4,31 @@
 @property(strong) UIView *canvas;
 @property UIInterfaceOrientation orientation;
 @property(copy) void (^onLayout)(void);
+@property CGPoint temporaryOffset;
+- (void)attachDragHandleToPanel:(UIView *)panel;
 @end
 @implementation RS_PANEL_CONTROLLER
+- (void)attachDragHandleToPanel:(UIView *)panel {
+    UIView *handle = [UIView new];
+    handle.translatesAutoresizingMaskIntoConstraints = NO;
+    handle.accessibilityLabel = @"拖动窗口";
+    [panel addSubview:handle];
+    [NSLayoutConstraint activateConstraints:@[
+        [handle.topAnchor constraintEqualToAnchor:panel.topAnchor],
+        [handle.centerXAnchor constraintEqualToAnchor:panel.centerXAnchor],
+        [handle.widthAnchor constraintEqualToConstant:90],
+        [handle.heightAnchor constraintEqualToConstant:22]]];
+    UIView *line = [[UIView alloc] initWithFrame:CGRectMake(29,5,32,3)];
+    line.backgroundColor = UIColor.tertiaryLabelColor; line.layer.cornerRadius = 1.5;
+    line.userInteractionEnabled = NO; [handle addSubview:line];
+    [handle addGestureRecognizer:[[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(dragPanel:)]];
+}
+- (void)dragPanel:(UIPanGestureRecognizer *)gesture {
+    CGPoint delta = [gesture translationInView:self.canvas];
+    self.temporaryOffset = CGPointMake(self.temporaryOffset.x+delta.x, self.temporaryOffset.y+delta.y);
+    [gesture setTranslation:CGPointZero inView:self.canvas];
+    if (self.onLayout) self.onLayout();
+}
 - (BOOL)shouldAutorotate { return NO; }
 - (UIInterfaceOrientationMask)supportedInterfaceOrientations { return UIInterfaceOrientationMaskPortrait; }
 - (void)viewDidLoad {

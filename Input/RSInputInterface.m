@@ -284,6 +284,7 @@ static NSString *RSInputFullText(id<UITextInput> target) {
     ]];
     self.replaceButton.enabled = NO;
     self.clipboardButton.enabled = NO;
+    [controller attachDragHandleToPanel:panel];
     RSOpenWindowSurface(self.panel);
     [[[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleLight] impactOccurred];
     return YES;
@@ -297,6 +298,11 @@ static NSString *RSInputFullText(id<UITextInput> target) {
     RSRectD placement = RSPopupFrame(canvas.bounds.size.width, canvas.bounds.size.height,
         UIScreen.mainScreen.fixedCoordinateSpace.bounds.size.width, landscape ? [self.windowOptions[@"panelPosition"] intValue] : 1,
         [self.windowOptions[landscape ? @"panelTopLandscape" : @"panelTop"] doubleValue], [self.windowOptions[@"panelHeight"] doubleValue]);
+    RSInputPanelController *controller = (id)window.rootViewController;
+    CGFloat baseX = placement.x, baseY = placement.y;
+    placement.x = MIN(MAX(0, placement.x + controller.temporaryOffset.x), MAX(0, canvas.bounds.size.width - placement.width));
+    placement.y = MIN(MAX(0, placement.y + controller.temporaryOffset.y), MAX(0, canvas.bounds.size.height - 100));
+    controller.temporaryOffset = CGPointMake(placement.x-baseX, placement.y-baseY);
     self.panelTop.constant = placement.y; self.panelLeading.constant = placement.x; self.panelWidth.constant = placement.width;
     [window layoutIfNeeded];
     CGFloat available = MAX(0, canvas.bounds.size.height - placement.y - 12);

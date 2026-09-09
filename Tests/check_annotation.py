@@ -23,7 +23,8 @@ assert "if (!record) snap.center" in read("Manager/RSRegionShotManager.m")
 
 assert "addChildViewController:navigation" in read("Selection/RSSelectionWindow.m")
 assert "performSinglePressAction" in read("Trigger.xm")
-assert "acquireSystemGestureDisableAssertion" not in read("Selection/RSSelectionWindow.m")
+assert "deviceHardwareButtonGestureTypes" in read("Selection/RSSelectionWindow.m")
+assert "allowed count" in read("Selection/RSSelectionWindow.m")
 for folder, prefix in [("Input", "RSInput"), ("KeyboardAI", "RSKA")]:
     assert "RSPopupContentHeight(" in read(f"{folder}/{prefix}Interface.m")
     assert "safeAreaInsets.top -" not in read(f"{folder}/{prefix}Interface.m")

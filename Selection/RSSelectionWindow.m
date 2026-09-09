@@ -36,6 +36,7 @@
 @property (nonatomic, weak) UIWindow *previousKeyWindow;
 @property (nonatomic, strong) UIScrollView *toolbarScroll;
 @property (nonatomic) UIInterfaceOrientation captureOrientation;
+@property (nonatomic, strong) id touchGestureAssertion;
 @end
 
 @implementation RSSelectionWindow
@@ -221,6 +222,17 @@
 }
 
 - (void)show {
+    Class managerClass = NSClassFromString(@"SBSystemGestureManager");
+    SEL hardwareTypes = NSSelectorFromString(@"deviceHardwareButtonGestureTypes");
+    SEL mainDisplay = NSSelectorFromString(@"mainDisplayManager");
+    SEL acquire = NSSelectorFromString(@"acquireSystemGestureDisableAssertionForReason:exceptSystemGestureTypes:");
+    if ([managerClass respondsToSelector:hardwareTypes] && [managerClass respondsToSelector:mainDisplay]) {
+        id allowed = ((id (*)(id, SEL))objc_msgSend)(managerClass, hardwareTypes);
+        id manager = ((id (*)(id, SEL))objc_msgSend)(managerClass, mainDisplay);
+        if ([allowed isKindOfClass:NSSet.class] && [allowed count] && [manager respondsToSelector:acquire])
+            self.touchGestureAssertion = ((id (*)(id, SEL, id, id))objc_msgSend)(manager, acquire, @"RegionShot touch selection", allowed);
+    }
+
     self.previousKeyWindow = [RSSelectionWindow currentKeyWindow];
     RSApplyWindowOrientation(self, self.captureOrientation);
     self.hidden = NO;
@@ -236,7 +248,14 @@
 - (BOOL)_containedGestureRecognizersShouldRespectGestureServerInstructions { return NO; }
 - (BOOL)_shouldDelayTouchForSystemGestures:(UITouch *)touch { return NO; }
 
+- (void)releaseTouchGestures {
+    SEL invalidate = NSSelectorFromString(@"invalidate");
+    if ([self.touchGestureAssertion respondsToSelector:invalidate]) ((void (*)(id, SEL))objc_msgSend)(self.touchGestureAssertion, invalidate);
+    self.touchGestureAssertion = nil;
+}
+- (void)dealloc { [self releaseTouchGestures]; }
 - (void)dismiss {
+    [self releaseTouchGestures];
     self.hidden = YES;
     [self resignKeyWindow];
     [self.previousKeyWindow makeKeyWindow];
