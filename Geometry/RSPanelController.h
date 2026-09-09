@@ -16,11 +16,13 @@
     [NSLayoutConstraint activateConstraints:@[
         [handle.topAnchor constraintEqualToAnchor:panel.topAnchor],
         [handle.centerXAnchor constraintEqualToAnchor:panel.centerXAnchor],
-        [handle.widthAnchor constraintEqualToConstant:90],
-        [handle.heightAnchor constraintEqualToConstant:22]]];
-    UIView *line = [[UIView alloc] initWithFrame:CGRectMake(29,5,32,3)];
+        [handle.widthAnchor constraintEqualToAnchor:panel.widthAnchor constant:-24],
+        [handle.heightAnchor constraintEqualToConstant:32]]];
+    UIView *line = [UIView new];
+    line.translatesAutoresizingMaskIntoConstraints = NO;
     line.backgroundColor = UIColor.tertiaryLabelColor; line.layer.cornerRadius = 1.5;
     line.userInteractionEnabled = NO; [handle addSubview:line];
+    [NSLayoutConstraint activateConstraints:@[[line.centerXAnchor constraintEqualToAnchor:handle.centerXAnchor], [line.topAnchor constraintEqualToAnchor:handle.topAnchor constant:8], [line.widthAnchor constraintEqualToConstant:32], [line.heightAnchor constraintEqualToConstant:3]]];
     [handle addGestureRecognizer:[[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(dragPanel:)]];
     UIView *bottom = [UIView new];
     bottom.translatesAutoresizingMaskIntoConstraints = NO;
@@ -30,7 +32,7 @@
         [bottom.bottomAnchor constraintEqualToAnchor:panel.bottomAnchor],
         [bottom.leadingAnchor constraintEqualToAnchor:panel.leadingAnchor constant:12],
         [bottom.trailingAnchor constraintEqualToAnchor:panel.trailingAnchor constant:-12],
-        [bottom.heightAnchor constraintEqualToConstant:10]]];
+        [bottom.heightAnchor constraintEqualToConstant:28]]];
     [bottom addGestureRecognizer:[[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(dragPanelVertically:)]];
 }
 - (void)dragPanelVertically:(UIPanGestureRecognizer *)gesture {

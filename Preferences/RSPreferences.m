@@ -127,7 +127,7 @@ static __weak UINavigationController *RSSettingsNavigation;
         uint32_t status = (uint32_t)response;
         NSString *message;
         if (!received) {
-            message = @"SpringBoard 在 3 秒内未响应。请确认安装的是 0.6.14、已重新启动 SpringBoard，并检查 RootHide 注入管理器是否允许 RegionShot 注入 SpringBoard。此状态尚不能确认插件已加载。";
+            message = @"SpringBoard 在 3 秒内未响应。请确认安装的是 0.6.15、已重新启动 SpringBoard，并检查 RootHide 注入管理器是否允许 RegionShot 注入 SpringBoard。此状态尚不能确认插件已加载。";
         } else {
             NSString *result = !launch ? @"状态检查完成。" : (status & RSStatusStarted) ? @"截图请求已接受并建立选区窗口；请确认屏幕上实际可见。" : @"区域截图启动失败。";
             message = [NSString stringWithFormat:@"SpringBoard 已响应。\n插件开关：%@\n截图接口：%@\n入口：按键 %@ / 应用 %@ / 编辑 %@ / 捕获器 %@\n%@",

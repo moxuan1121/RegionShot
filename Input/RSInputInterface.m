@@ -279,8 +279,8 @@ static NSString *RSInputFullText(id<UITextInput> target) {
         [panel.bottomAnchor constraintLessThanOrEqualToAnchor:host.bottomAnchor constant:-12],
         [stack.leadingAnchor constraintEqualToAnchor:panel.leadingAnchor constant:12],
         [stack.trailingAnchor constraintEqualToAnchor:panel.trailingAnchor constant:-12],
-        [stack.topAnchor constraintEqualToAnchor:panel.topAnchor constant:12],
-        [stack.bottomAnchor constraintEqualToAnchor:panel.bottomAnchor constant:-10]
+        [stack.topAnchor constraintEqualToAnchor:panel.topAnchor constant:32],
+        [stack.bottomAnchor constraintEqualToAnchor:panel.bottomAnchor constant:-28]
     ]];
     self.replaceButton.enabled = NO;
     self.clipboardButton.enabled = NO;
