@@ -13,3 +13,10 @@ assert "[self layoutToolbarButtons];" in editor.split("- (void)viewDidLayoutSubv
 assert "forceDestroyOnRotation" not in editor
 assert "Snapper3.h" not in editor
 print("Annotation entry, text/highlight export, pixel sampling and layout wiring verified")
+
+for path in ["Input/RSInputInterface.m", "KeyboardAI/RSKAInterface.m"]:
+    popup = read(path)
+    assert "host.keyboardLayoutGuide.topAnchor" not in popup
+    assert "insertArrangedSubview:self.tokenView atIndex:1" in popup
+assert "lockcomplete" in read("Trigger.xm")
+assert "if (!record) snap.center" in read("Manager/RSRegionShotManager.m")
