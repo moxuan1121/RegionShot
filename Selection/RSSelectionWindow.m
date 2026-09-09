@@ -229,7 +229,7 @@
     RSApplyWindowOrientation(self, self.captureOrientation);
     [self setNeedsLayout];
     [self layoutIfNeeded];
-    NSLog(@"[RegionShot] freeze orientation=%ld window=%@ canvas=%@", (long)self.captureOrientation, NSStringFromCGRect(self.bounds), NSStringFromCGRect(self.selectionView.bounds));
+
     [self.rootViewController setNeedsUpdateOfScreenEdgesDeferringSystemGestures];
 }
 

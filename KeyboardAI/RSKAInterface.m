@@ -85,12 +85,10 @@ static UIWindowLevel RSKAPanelWindowLevel(NSDictionary *options, NSString *key) 
 - (void)enterTokens;
 @end
 @implementation RSKAPanel
-- (instancetype)init {
-    if ((self = [super init])) {
+- (void)observePanelEvents {
+        [NSNotificationCenter.defaultCenter removeObserver:self];
         [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(updateOrientation:) name:@"com.moxuan.regionshot.orientation.target" object:nil];
         [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(close) name:UIApplicationProtectedDataWillBecomeUnavailable object:nil];
-    }
-    return self;
 }
 - (void)updateOrientation:(NSNotification *)note {
     if (!self.overlayWindow) return;
@@ -134,6 +132,7 @@ static UIWindowLevel RSKAPanelWindowLevel(NSDictionary *options, NSString *key) 
     self.windowOptions = RSKAPromptOptions(RSKAConfig());
     UIWindow *window = RSKAWindow();
     if (!window) return NO;
+    [self observePanelEvents];
     UIInterfaceOrientation openingOrientation = RSActiveOrientation(window.windowScene);
     self.previousWindow = window;
     self.overlayWindow = window.windowScene ? [[RSKAPanelWindow alloc] initWithWindowScene:window.windowScene] : [[RSKAPanelWindow alloc] initWithFrame:UIScreen.mainScreen.bounds];
@@ -263,6 +262,7 @@ static UIWindowLevel RSKAPanelWindowLevel(NSDictionary *options, NSString *key) 
     [self resizePanel];
 }
 - (void)close {
+    [NSNotificationCenter.defaultCenter removeObserver:self];
     dispatch_block_t callback = self.onClose; self.onClose = nil;
     [self.searchMenu dismiss]; self.searchMenu = nil;
     RSCloseWindowSurface(self.overlayWindow, self.panel); self.panel = nil;

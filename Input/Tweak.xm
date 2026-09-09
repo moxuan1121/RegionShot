@@ -71,7 +71,6 @@ static NSDictionary *RSInputActionAt(id view, NSUInteger index) {
         }
         [self setValue:[items copy] forKey:@"m_inputSwitcherItems"];
     } @catch (__unused NSException *exception) {
-        NSLog(@"[KeyboardAI] Switcher layout unavailable; keeping original menu.");
     }
 }
 - (BOOL)shouldSelectItemAtIndex:(NSUInteger)index {

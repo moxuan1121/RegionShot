@@ -154,7 +154,11 @@ static RSHistoryController *RSActiveHistory;
     __weak typeof(self) weakSelf = self;
     dispatch_async(RSHistoryQueue(), ^{
         NSArray *entries = RSStore().entries;
-        dispatch_async(dispatch_get_main_queue(), ^{ weakSelf.entries = entries; [weakSelf rebuildFilters]; [weakSelf updateSearchResultsForSearchController:weakSelf.search]; });
+        dispatch_async(dispatch_get_main_queue(), ^{
+            RSHistoryController *controller = weakSelf;
+            if (!controller.host) return;
+            controller.entries = entries; [controller rebuildFilters]; [controller updateSearchResultsForSearchController:controller.search];
+        });
     });
 }
 - (void)rebuildFilters {

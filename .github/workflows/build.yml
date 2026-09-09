@@ -21,6 +21,8 @@ jobs:
         run: clang -fobjc-arc -Wall -Wextra -Werror -framework Foundation Tests/test_history.m History/RSHistoryStore.m -o /tmp/regionshot-history && /tmp/regionshot-history
       - name: Check settings structure and unchanged preferences
         run: python3 Tests/check_settings_structure.py
+      - name: Check release cleanup
+        run: python3 Tests/check_release_cleanup.py
       - name: Check annotation integration
         run: python3 Tests/check_annotation.py
       - name: Check settings validation
@@ -43,12 +45,6 @@ jobs:
         run: clang -fobjc-arc -Wall -Wextra -Werror -framework Foundation Tests/test_stream.m AI/RSSSEDecoder.m -o /tmp/regionshot-stream && /tmp/regionshot-stream
       - name: Check generated QR recognition
         run: clang -fobjc-arc -Wall -Wextra -Werror -framework Foundation -framework Vision -framework CoreImage -framework CoreGraphics -framework ImageIO Tests/test_recognition.m -o /tmp/regionshot-recognition && /tmp/regionshot-recognition
-      - name: Upload QR diagnostic image
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: recognition-diagnostic
-          path: /tmp/regionshot-test-qr.png
       - name: Install signing tools
         run: brew install ldid xz
       - name: Install pinned RootHide Theos and iOS 15.6 SDK

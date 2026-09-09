@@ -21,6 +21,10 @@ int main(void) { @autoreleasepool {
         }
     }
     assert(keys.count >= 20);
+    NSUserDefaults *prefs = [[NSUserDefaults alloc] initWithSuiteName:@"com.moxuan.regionshot"];
+    for (NSDictionary *group in RSOptionGroups()) for (NSDictionary *option in group[@"items"])
+        assert([RSOption(option[@"key"]) isEqual:RSValidateOption(option, [prefs objectForKey:option[@"key"]])]);
+    assert(RSOption(@"UnknownReleaseCheckKey") == nil);
     NSArray *defaults = @[@{@"id":@0, @"title":@"截图", @"enabled":@YES}, @{@"id":@1, @"title":@"关闭", @"enabled":@YES}];
     NSArray *menu = RSNormalizeMenu(@[@{@"id":@1, @"enabled":@NO}, @{@"id":@1}, @{@"id":@(-1)}, @{@"id":@0.5}, @{@"id":@88}], defaults, @1);
     assert(menu.count == 2 && [menu[0][@"id"] isEqual:@1] && [menu[0][@"enabled"] boolValue]);

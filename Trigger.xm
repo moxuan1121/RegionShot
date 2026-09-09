@@ -4,8 +4,6 @@
 #include <dlfcn.h>
 #include <atomic>
 #import "Manager/RSRegionShotManager.h"
-#import "Capture/RSScreenCapture.h"
-#import "Capture/RSCaptureStatus.h"
 #import "Preferences/RSOptions.h"
 #import "AI/RSChatController.h"
 #import "Geometry/RSGeometry.h"
@@ -26,30 +24,29 @@ static BOOL RSEnabled = YES;
 static BOOL RSTargetOrientationInstalled;
 static __thread NSUInteger RSOriginalDepth;
 static std::atomic<bool> RSNativeScreenshotPending(false);
-static int RSCheckToken = -1, RSStatusToken = -1;
-static uint32_t RSHookStatus;
+static NSUInteger RSNativeScreenshotGeneration;
 static void RSReload(void) {
     RSReloadOptions();
     NSUserDefaults *prefs = [[NSUserDefaults alloc] initWithSuiteName:@"com.moxuan.regionshot"];
     [prefs synchronize];
     RSEnabled = ![prefs objectForKey:@"Enabled"] || [prefs boolForKey:@"Enabled"];
 }
-static BOOL RSTryCapture(NSString *source) {
+static BOOL RSTryCapture(void) {
     if (RSOriginalDepth || RSNativeScreenshotPending) return NO;
     if (!NSThread.isMainThread) {
         __block BOOL handled;
-        dispatch_sync(dispatch_get_main_queue(), ^{ handled = RSTryCapture(source); });
+        dispatch_sync(dispatch_get_main_queue(), ^{ handled = RSTryCapture(); });
         return handled;
     }
     if (!RSEnabled) return NO;
     RSRegionShotManager *manager = RSRegionShotManager.sharedManager;
     if (manager.isInternalCapture) return NO;
     if (manager.isCapturing) return YES;
-    NSLog(@"[RegionShot] screenshot entry: %@", source);
+
     @try { return [manager beginCapture]; }
     @catch (NSException *exception) {
         [manager cancelCapture];
-        NSLog(@"[RegionShot] capture failed at %@: %@", source, exception.name);
+
         return NO;
     }
 }
@@ -58,12 +55,15 @@ extern "C" BOOL RSRequestNativeScreenshot(void) {
     SpringBoard *app = (id)UIApplication.sharedApplication;
     if (![app respondsToSelector:@selector(takeScreenshot)]) return NO;
     RSNativeScreenshotPending = YES;
+    NSUInteger generation = ++RSNativeScreenshotGeneration;
     RSOriginalDepth++;
     @try { [app takeScreenshot]; }
     @catch (NSException *exception) { RSNativeScreenshotPending = false; return NO; }
     @finally { RSOriginalDepth--; }
     // The capturer consumes this bypass. Expire it if that private path is absent.
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 2 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{ RSNativeScreenshotPending = NO; });
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 2 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
+        if (generation == RSNativeScreenshotGeneration) RSNativeScreenshotPending = NO;
+    });
     return YES;
 }
 @interface RSStatusBarGesture : NSObject <UIGestureRecognizerDelegate>
@@ -77,7 +77,7 @@ extern "C" BOOL RSRequestNativeScreenshot(void) {
 }
 - (void)swiped:(UISwipeGestureRecognizer *)gesture {
     if (gesture.state != UIGestureRecognizerStateRecognized || !gesture.view.window) return;
-    dispatch_async(dispatch_get_main_queue(), ^{ if ([RSOption(@"StatusBarSwipe") boolValue]) RSTryCapture(@"StatusBar.rightSwipe"); });
+    dispatch_async(dispatch_get_main_queue(), ^{ if ([RSOption(@"StatusBarSwipe") boolValue]) RSTryCapture(); });
 }
 @end
 static char RSStatusBarGestureKey;
@@ -129,7 +129,7 @@ static char RSStatusBarGestureKey;
 %group RSApplicationEntry
 %hook SpringBoard
 - (void)takeScreenshot {
-    if (RSTryCapture(@"SpringBoard.takeScreenshot")) return;
+    if (RSTryCapture()) return;
     RSOriginalDepth++;
     @try { %orig; } @finally { RSOriginalDepth--; }
 }
@@ -138,7 +138,7 @@ static char RSStatusBarGestureKey;
 %group RSEditEntry
 %hook SpringBoard
 - (void)takeScreenshotAndEdit:(BOOL)edit {
-    if (RSTryCapture(@"SpringBoard.takeScreenshotAndEdit:")) return;
+    if (RSTryCapture()) return;
     RSOriginalDepth++;
     @try { %orig(edit); } @finally { RSOriginalDepth--; }
 }
@@ -147,7 +147,7 @@ static char RSStatusBarGestureKey;
 %group RSHardwareEntry
 %hook SBCombinationHardwareButtonActions
 - (void)performTakeScreenshotAction {
-    if (RSTryCapture(@"hardware.performTakeScreenshotAction")) return;
+    if (RSTryCapture()) return;
     RSOriginalDepth++;
     @try { %orig; } @finally { RSOriginalDepth--; }
 }
@@ -161,7 +161,7 @@ static char RSStatusBarGestureKey;
         @try { %orig(options); } @finally { RSOriginalDepth--; RSNativeScreenshotPending = NO; }
         return;
     }
-    if (RSTryCapture(@"SSScreenCapturer.takeScreenshotWithPresentationOptions:")) return;
+    if (RSTryCapture()) return;
     RSOriginalDepth++;
     @try { %orig(options); } @finally { RSOriginalDepth--; }
 }
@@ -193,24 +193,8 @@ static void RSPreferenceEvent(CFNotificationCenterRef center, void *observer, CF
         dispatch_async(dispatch_get_main_queue(), ^{ [RSChatController showServiceSettings]; });
         return;
     }
-    if (CFEqual(name, CFSTR(RS_CAPTURE_CHECK))) {
-        uint64_t request = 0;
-        if (RSCheckToken < 0 || notify_get_state(RSCheckToken, &request) != NOTIFY_STATUS_OK) return;
-        dispatch_async(dispatch_get_main_queue(), ^{
-            RSReload();
-            uint32_t status = RSStatusLoaded | RSHookStatus;
-            if (RSEnabled) status |= RSStatusEnabled;
-            if ([RSScreenCapture isCaptureAvailable]) status |= RSStatusSymbol;
-            if ((request & 1) && RSTryCapture(@"Settings.test")) status |= RSStatusStarted;
-            if (RSStatusToken >= 0) {
-                notify_set_state(RSStatusToken, (request & UINT64_C(0xffffffff00000000)) | status);
-                notify_post(RS_CAPTURE_STATUS);
-            }
-        });
-        return;
-    }
     BOOL launch = CFEqual(name, CFSTR("com.moxuan.regionshot/TakeScreenshot"));
-    dispatch_async(dispatch_get_main_queue(), ^{ RSReload(); if (launch) RSTryCapture(@"Settings.test"); });
+    dispatch_async(dispatch_get_main_queue(), ^{ RSReload(); if (launch) RSTryCapture(); });
 }
 %ctor {
     @autoreleasepool {
@@ -228,8 +212,8 @@ static void RSPreferenceEvent(CFNotificationCenterRef center, void *observer, CF
         if (receiveTouch && method_getNumberOfArguments(receiveTouch) == 3 &&
             (returnType[0] == 'B' || returnType[0] == 'c') && strcmp(argumentType, @encode(CGPoint)) == 0) {
             %init(RSFrozenSystemGestures);
-            NSLog(@"[RegionShot] frozen system touch gate installed");
-        } else NSLog(@"[RegionShot] frozen system touch gate unavailable");
+
+        }
         Class app = NSClassFromString(@"SpringBoard");
         if (RSCompatible(app, @"_postActiveInterfaceOrientationChangedNotificationAnimated:", "Bc")) { %init(RSOrientationUpdates); }
         Method rotate = class_getInstanceMethod(app, NSSelectorFromString(@"noteInterfaceOrientationChanged:duration:updateMirroredDisplays:force:logMessage:"));
@@ -248,10 +232,6 @@ static void RSPreferenceEvent(CFNotificationCenterRef center, void *observer, CF
         if (edit) { %init(RSEditEntry); }
         if (keys) { %init(RSHardwareEntry); }
         if (capturer) { %init(RSCapturerEntry); }
-        RSHookStatus = (keys ? RSStatusHardware : 0) | (direct ? RSStatusApplication : 0) |
-                       (edit ? RSStatusEdit : 0) | (capturer ? RSStatusCapturer : 0);
-        if (notify_register_check(RS_CAPTURE_CHECK, &RSCheckToken) != NOTIFY_STATUS_OK) RSCheckToken = -1;
-        if (notify_register_check(RS_CAPTURE_STATUS, &RSStatusToken) != NOTIFY_STATUS_OK) RSStatusToken = -1;
         CFNotificationCenterRef center = CFNotificationCenterGetDarwinNotifyCenter();
         CFNotificationCenterAddObserver(center, NULL, RSPreferenceEvent, CFSTR("com.apple.springboard.lockcomplete"), NULL, CFNotificationSuspensionBehaviorDeliverImmediately);
         CFNotificationCenterAddObserver(center, NULL, RSPreferenceEvent, CFSTR("com.moxuan.regionshot/AIWindow"), NULL, CFNotificationSuspensionBehaviorDeliverImmediately);
@@ -266,9 +246,8 @@ static void RSPreferenceEvent(CFNotificationCenterRef center, void *observer, CF
         }
         CFNotificationCenterAddObserver(center, NULL, RSPreferenceEvent, CFSTR("com.moxuan.regionshot/History"), NULL, CFNotificationSuspensionBehaviorDeliverImmediately);
         CFNotificationCenterAddObserver(center, NULL, RSPreferenceEvent, CFSTR("com.moxuan.regionshot/AISettings"), NULL, CFNotificationSuspensionBehaviorDeliverImmediately);
-        CFNotificationCenterAddObserver(center, NULL, RSPreferenceEvent, CFSTR(RS_CAPTURE_CHECK), NULL, CFNotificationSuspensionBehaviorDeliverImmediately);
         CFNotificationCenterAddObserver(center, NULL, RSPreferenceEvent, CFSTR("com.moxuan.regionshot/ReloadPrefs"), NULL, CFNotificationSuspensionBehaviorDeliverImmediately);
         CFNotificationCenterAddObserver(center, NULL, RSPreferenceEvent, CFSTR("com.moxuan.regionshot/TakeScreenshot"), NULL, CFNotificationSuspensionBehaviorDeliverImmediately);
-        NSLog(@"[RegionShot] installed entries: hardware=%d application=%d edit=%d capturer=%d", keys, direct, edit, capturer);
+
     }
 }

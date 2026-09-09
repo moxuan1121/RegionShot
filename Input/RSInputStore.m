@@ -19,14 +19,15 @@ static NSString *RSInputPath(void) {
 
 NSDictionary *RSInputConfig(void) {
     // Read fresh snapshots; never cache secrets or stale personas in per-app defaults.
+    NSFileHandle *file = nil;
     @try {
-        NSFileHandle *file = [NSFileHandle fileHandleForReadingAtPath:RSInputPath()];
+        file = [NSFileHandle fileHandleForReadingAtPath:RSInputPath()];
         NSData *data = [file readDataOfLength:65537];
-        [file closeFile];
         if (!data.length || data.length > 65536) return @{};
         id config = [NSPropertyListSerialization propertyListWithData:data options:NSPropertyListImmutable format:NULL error:NULL];
         return [config isKindOfClass:NSDictionary.class] ? config : @{};
     } @catch (__unused NSException *exception) { return @{}; }
+    @finally { [file closeAndReturnError:NULL]; }
 }
 NSString *RSInputReadKey(void) {
     id key = RSInputConfig()[@"key"];
@@ -37,8 +38,9 @@ NSArray<NSDictionary *> *RSInputActions(void) {
     return RSInputValidActions(actions) ? actions : RSInputDefaultActions();
 }
 NSArray<NSDictionary *> *RSInputVisibleActions(NSString *scope) {
-    NSArray *actions = RSInputActions();
-    id hidden = RSInputConfig()[scope];
+    NSDictionary *config = RSInputConfig();
+    NSArray *actions = RSInputValidActions(config[@"actions"]) ? config[@"actions"] : RSInputDefaultActions();
+    id hidden = config[scope];
     if (![hidden isKindOfClass:NSArray.class]) return actions;
     NSMutableArray *visible = [NSMutableArray array];
     for (NSDictionary *action in actions)

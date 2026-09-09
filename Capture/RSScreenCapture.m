@@ -9,7 +9,6 @@ typedef UIImage *(*RSScreenImageFunction)(void);
 
 @implementation RSScreenCapture
 
-+ (BOOL)isCaptureAvailable { return RSResolveCaptureSymbol() != NULL; }
 
 + (UIImage *)captureScreen {
     NSAssert([NSThread isMainThread], @"Screen capture must run on the main thread");
@@ -19,12 +18,12 @@ typedef UIImage *(*RSScreenImageFunction)(void);
         captureFunction = (RSScreenImageFunction)RSResolveCaptureSymbol();
     });
     if (!captureFunction) {
-        NSLog(@"[RegionShot] _UICreateScreenUIImage unavailable");
+
         return nil;
     }
     UIImage *image = captureFunction();
     if (!image.CGImage) {
-        NSLog(@"[RegionShot] screen capture returned no CGImage");
+
         return nil;
     }
     image = [self normalizedImage:image];

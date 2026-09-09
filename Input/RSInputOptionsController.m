@@ -18,8 +18,9 @@ extern UIViewController *RSInputCreatePersonaSelection(NSString *scope);
 - (void)viewDidLoad {
     [super viewDidLoad];
     self.title = self.search ? @"搜索引擎" : self.aiSettings ? @"弹出式窗口" : @"分词";
-    self.engines = [RSInputSearchEngines(RSInputConfig()) mutableCopy];
-    self.prompt = [RSInputPromptOptions(RSInputConfig()) mutableCopy];
+    NSDictionary *config = RSInputConfig();
+    self.engines = [RSInputSearchEngines(config) mutableCopy];
+    self.prompt = [RSInputPromptOptions(config) mutableCopy];
     if (self.search) self.navigationItem.rightBarButtonItems = @[
         [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemAdd target:self action:@selector(addEngine)], self.editButtonItem];
 }
@@ -30,8 +31,9 @@ extern UIViewController *RSInputCreatePersonaSelection(NSString *scope);
 }
 - (BOOL)save {
     if (RSInputSaveOptions(self.search ? @"searchEngines" : @"prompt", self.search ? (id)self.engines : self.prompt)) return YES;
-    self.engines = [RSInputSearchEngines(RSInputConfig()) mutableCopy];
-    self.prompt = [RSInputPromptOptions(RSInputConfig()) mutableCopy];
+    NSDictionary *config = RSInputConfig();
+    self.engines = [RSInputSearchEngines(config) mutableCopy];
+    self.prompt = [RSInputPromptOptions(config) mutableCopy];
     [self.tableView reloadData];
     [self error:@"配置未写入，请检查文件权限或缩短配置内容。"];
     return NO;

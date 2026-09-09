@@ -1,0 +1,30 @@
+"""Release-only hygiene; executable feature checks remain in the build workflow."""
+import re
+import subprocess
+from pathlib import Path
+
+root = Path(__file__).resolve().parents[1]
+files = subprocess.check_output(['git', 'ls-files'], cwd=root, text=True).splitlines()
+for name in files:
+    path = root / name
+    if not path.exists() or path.suffix not in {'.m', '.h', '.xm'} or name.startswith('Tests/'):
+        continue
+    source = path.read_text(encoding='utf-8')
+    assert not re.search(r'\b(?:NSLog|printf|os_log)\s*\(', source), name
+    assert 'RS_CAPTURE_CHECK' not in source and 'RS_CAPTURE_STATUS' not in source, name
+
+settings = (root / 'AI/RSAISettingsController.m').read_text(encoding='utf-8')
+assert '[self.modelSession invalidateAndCancel]' in settings
+assert 'controller.modelSession != session' in settings
+assert '[session finishTasksAndInvalidate]' in settings
+assert 'data.length && data.length <=' in settings
+store = (root / 'Input/RSInputStore.m').read_text(encoding='utf-8')
+assert '@finally { [file closeAndReturnError:NULL]; }' in store
+trigger = (root / 'Trigger.xm').read_text(encoding='utf-8')
+assert 'generation == RSNativeScreenshotGeneration' in trigger
+for name in ('Input/RSInputInterface.m', 'KeyboardAI/RSKAInterface.m'):
+    panel = (root / name).read_text(encoding='utf-8')
+    assert '[self observePanelEvents];' in panel
+    close = panel.split('- (void)close {', 1)[1]
+    assert '[NSNotificationCenter.defaultCenter removeObserver:self];' in close
+print('Verified release hygiene, bounded model requests and stale callback guards')

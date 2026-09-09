@@ -46,18 +46,25 @@ id RSValidateOption(NSDictionary *option, id value) {
     if (!option[@"min"]) return @([value boolValue]);
     return @(MIN(MAX([value doubleValue], [option[@"min"] doubleValue]), [option[@"max"] doubleValue]));
 }
+static NSDictionary *RSOptionDefinitions(void) {
+    static NSDictionary *definitions; static dispatch_once_t once;
+    dispatch_once(&once, ^{
+        NSMutableDictionary *items = [NSMutableDictionary dictionary];
+        for (NSDictionary *group in RSOptionGroups()) for (NSDictionary *option in group[@"items"])
+            items[option[@"key"]] = option;
+        definitions = items.copy;
+    });
+    return definitions;
+}
 id RSOption(NSString *key) {
-    for (NSDictionary *group in RSOptionGroups()) for (NSDictionary *option in group[@"items"])
-        if ([option[@"key"] isEqual:key]) return RSValidateOption(option, [RSPrefs() objectForKey:key]);
-    return nil;
+    NSDictionary *option = RSOptionDefinitions()[key];
+    return option ? RSValidateOption(option, [RSPrefs() objectForKey:key]) : nil;
 }
 void RSSetOption(NSString *key, id value) {
-    for (NSDictionary *group in RSOptionGroups()) for (NSDictionary *option in group[@"items"])
-        if ([option[@"key"] isEqual:key]) {
-            [RSPrefs() setObject:RSValidateOption(option, value) forKey:key];
-            [RSPrefs() synchronize];
-            CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(), CFSTR("com.moxuan.regionshot/ReloadPrefs"), NULL, NULL, YES);
-            return;
-        }
+    NSDictionary *option = RSOptionDefinitions()[key];
+    if (!option) return;
+    [RSPrefs() setObject:RSValidateOption(option, value) forKey:key];
+    [RSPrefs() synchronize];
+    CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(), CFSTR("com.moxuan.regionshot/ReloadPrefs"), NULL, NULL, YES);
 }
 void RSReloadOptions(void) { [RSPrefs() synchronize]; }

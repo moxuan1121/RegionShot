@@ -129,9 +129,9 @@ static NSString *RSInputFullText(id<UITextInput> target) {
 @end
 
 @implementation RSInputPanel
-- (instancetype)init {
-    if ((self = [super init])) {
+- (void)observePanelEvents {
         NSNotificationCenter *center = NSNotificationCenter.defaultCenter;
+        [center removeObserver:self];
         [center addObserver:self selector:@selector(close) name:UIApplicationWillResignActiveNotification object:nil];
         [center addObserver:self selector:@selector(close) name:UIApplicationProtectedDataWillBecomeUnavailable object:nil];
         [center addObserver:self selector:@selector(invalidateInput:) name:UIKeyboardWillHideNotification object:nil];
@@ -140,8 +140,6 @@ static NSString *RSInputFullText(id<UITextInput> target) {
         [center addObserver:self selector:@selector(resizePanel) name:UIKeyboardDidChangeFrameNotification object:nil];
         [center addObserver:self selector:@selector(rotated:) name:@"com.moxuan.regionshot.orientation.target" object:nil];
         [center addObserver:self selector:@selector(rotated:) name:UIDeviceOrientationDidChangeNotification object:nil];
-    }
-    return self;
 }
 - (void)rotated:(NSNotification *)note {
     if (!self.overlayWindow) return;
@@ -191,6 +189,7 @@ static NSString *RSInputFullText(id<UITextInput> target) {
     self.windowOptions = RSInputPromptOptions(RSInputConfig());
     UIWindow *window = RSInputWindow();
     if (!window) return NO;
+    [self observePanelEvents];
     UIInterfaceOrientation openingOrientation = RSActiveOrientation(window.windowScene);
     self.previousWindow = window;
     self.overlayWindow = window.windowScene ? [[RSInputPanelWindow alloc] initWithWindowScene:window.windowScene] : [[RSInputPanelWindow alloc] initWithFrame:UIScreen.mainScreen.bounds];
@@ -324,6 +323,7 @@ static NSString *RSInputFullText(id<UITextInput> target) {
     [self resizePanel];
 }
 - (void)close {
+    [NSNotificationCenter.defaultCenter removeObserver:self];
     [self.session invalidateAndCancel];
     self.session = nil;
     self.task = nil;

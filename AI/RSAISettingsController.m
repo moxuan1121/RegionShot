@@ -195,6 +195,7 @@ static BOOL RSPublishInputSettings(NSString *key) {
 @property (nonatomic, copy) NSString *key;
 @property (nonatomic, strong) NSArray<NSString *> *models;
 @property (nonatomic) BOOL fetching;
+@property (nonatomic, strong) NSURLSession *modelSession;
 @property (nonatomic, strong) UITableView *modelTable;
 @end
 @implementation RSAISettingsController
@@ -213,6 +214,12 @@ static BOOL RSPublishInputSettings(NSString *key) {
         self.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithTitle:@"返回对话" style:UIBarButtonItemStylePlain target:self action:@selector(cancel)];
 }
 - (void)viewWillAppear:(BOOL)animated { [super viewWillAppear:animated]; [self.tableView reloadData]; }
+- (void)viewDidDisappear:(BOOL)animated {
+    [super viewDidDisappear:animated];
+    [self.modelSession invalidateAndCancel];
+    self.modelSession = nil; self.fetching = NO;
+}
+- (void)dealloc { [_modelSession invalidateAndCancel]; }
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView { return tableView == self.modelTable ? 1 : 2; }
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
     if (tableView == self.modelTable) return MAX(1, self.models.count);
@@ -284,12 +291,21 @@ static BOOL RSPublishInputSettings(NSString *key) {
     if (self.fetching) return; NSURL *url = [self modelsURL]; if (!url) { [self show:@"请先填写有效的 HTTPS 服务地址。"]; return; }
     NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url]; request.timeoutInterval = 30; if (self.key.length) [request setValue:[@"Bearer " stringByAppendingString:self.key] forHTTPHeaderField:@"Authorization"];
     self.fetching = YES; [self.tableView reloadData];
-    [[[NSURLSession sessionWithConfiguration:NSURLSessionConfiguration.ephemeralSessionConfiguration] dataTaskWithRequest:request completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
-        id json = data.length <= 2 * 1024 * 1024 ? [NSJSONSerialization JSONObjectWithData:data options:0 error:nil] : nil; id rows = [json isKindOfClass:NSDictionary.class] ? json[@"data"] : nil; NSMutableArray *models = [NSMutableArray array];
+    NSURLSession *session = [NSURLSession sessionWithConfiguration:NSURLSessionConfiguration.ephemeralSessionConfiguration];
+    self.modelSession = session;
+    __weak typeof(self) weakSelf = self;
+    [[session dataTaskWithRequest:request completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
+        id json = data.length && data.length <= 2 * 1024 * 1024 ? [NSJSONSerialization JSONObjectWithData:data options:0 error:nil] : nil; id rows = [json isKindOfClass:NSDictionary.class] ? json[@"data"] : nil; NSMutableArray *models = [NSMutableArray array];
         if ([rows isKindOfClass:NSArray.class]) for (id item in rows) { NSString *name = [item isKindOfClass:NSDictionary.class] ? item[@"id"] : nil; if ([name isKindOfClass:NSString.class] && name.length) [models addObject:name]; }
-        dispatch_async(dispatch_get_main_queue(), ^{ self.fetching = NO; if (models.count) { self.models = models.copy; if (!self.model.length) self.model = models.firstObject; [self.tableView reloadData]; } else [self show:error.localizedDescription ?: @"没有获取到可用模型，请检查地址、密钥与网络。"];
+        dispatch_async(dispatch_get_main_queue(), ^{
+            RSAISettingsController *controller = weakSelf;
+            if (!controller || controller.modelSession != session) return;
+            controller.modelSession = nil; controller.fetching = NO;
+            if (models.count) { controller.models = models.copy; if (!controller.model.length) controller.model = models.firstObject; [controller.tableView reloadData]; }
+            else [controller show:error.localizedDescription ?: @"没有获取到可用模型，请检查地址、密钥与网络。"];
         });
     }] resume];
+    [session finishTasksAndInvalidate];
 }
 - (void)show:(NSString *)message { UIAlertController *a = [UIAlertController alertControllerWithTitle:@"AI 问答" message:message preferredStyle:UIAlertControllerStyleAlert]; [a addAction:[UIAlertAction actionWithTitle:@"好" style:UIAlertActionStyleCancel handler:nil]]; [self presentViewController:a animated:YES completion:nil]; }
 - (void)save {

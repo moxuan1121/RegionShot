@@ -41,7 +41,7 @@
         return started;
     }
     if (self.capturing) return YES;
-    NSLog(@"[RegionShot] beginCapture");
+
     self.capturing = YES;
 
     BOOL floatingWasVisible = self.floatingWindow && !self.floatingWindow.hidden;
@@ -58,7 +58,7 @@
         [self cancelCapture];
         return NO;
     }
-    NSLog(@"[RegionShot] frozen image captured");
+
     self.frozenImage = image;
 
     __weak typeof(self) weakSelf = self;
@@ -89,7 +89,7 @@
     self.selectionWindow = nil;
     self.frozenImage = nil;
     if (cropped) {
-        NSLog(@"[RegionShot] selection confirmed");
+
         [self createFloatingSnap:cropped windowScene:scene];
         RSFloatingImageView *snap = self.mutableSnaps.lastObject;
         // Match the reference: the cropped region becomes a floating image in place.
@@ -98,7 +98,7 @@
 
         }
     } else {
-        NSLog(@"[RegionShot] selection crop failed");
+
     }
     self.capturing = NO;
 }
@@ -113,7 +113,7 @@
     self.frozenImage = nil;
     self.internalCapture = NO;
     self.capturing = NO;
-    NSLog(@"[RegionShot] selection cancelled");
+
 }
 
 - (void)createFloatingSnap:(UIImage *)image windowScene:(UIWindowScene *)scene {
@@ -160,7 +160,7 @@
         [RSHistoryController recordImage:image completion:^(NSError *error) { if (error) [weakSelf notice:error.localizedDescription]; }];
     }
     if ([RSOption(@"CaptureHaptic") boolValue]) [[[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleLight] impactOccurred];
-    NSLog(@"[RegionShot] floating snap created");
+
 }
 
 - (void)bringSnapToFront:(RSFloatingImageView *)snap {
@@ -276,8 +276,7 @@
         [PHAssetChangeRequest creationRequestForAssetFromImage:image];
     } completionHandler:^(BOOL success, NSError *error) {
         dispatch_async(dispatch_get_main_queue(), ^{
-            NSLog(@"[RegionShot] photo save %@%@", success ? @"succeeded" : @"failed",
-                  error ? [NSString stringWithFormat:@": %@", error] : @"");
+
             [self notice:success ? @"已保存到相册" : error.localizedDescription ?: @"保存失败，请重试。"];
             if (success && completion) completion();
         });
@@ -285,7 +284,7 @@
 }
 - (void)notice:(NSString *)message {
     UIView *view = self.floatingWindow.rootViewController.view;
-    if (!view) { NSLog(@"[RegionShot] %@", message); return; }
+    if (!view) {  return; }
     UILabel *label = [UILabel new]; label.text = message; label.numberOfLines = 0;
     label.textAlignment = NSTextAlignmentCenter; label.font = [UIFont preferredFontForTextStyle:UIFontTextStyleFootnote];
     label.textColor = UIColor.whiteColor; label.backgroundColor = [UIColor colorWithWhite:0.12 alpha:0.95];
@@ -299,7 +298,7 @@
     UIViewController *presenter = self.floatingWindow.rootViewController;
     while (presenter.presentedViewController) presenter = presenter.presentedViewController;
     if (!presenter.view.window) {
-        NSLog(@"[RegionShot] no valid share presentation context");
+
         return;
     }
     UIActivityViewController *activity = [[UIActivityViewController alloc] initWithActivityItems:@[image]

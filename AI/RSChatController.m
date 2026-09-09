@@ -708,7 +708,9 @@ static NSUserDefaults *RSChatPreferences(void) {
     if (!provider) return;
     if (![provider canLoadObjectOfClass:UIImage.class]) { [self message:@"请选择可读取的图片。"]; return; }
     [provider loadObjectOfClass:UIImage.class completionHandler:^(id<NSItemProviderReading> object, NSError *error) {
-        dispatch_async(dispatch_get_main_queue(), ^{ [self acceptImage:[object isKindOfClass:UIImage.class] ? (UIImage *)object : nil]; });
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if (self.host) [self acceptImage:[object isKindOfClass:UIImage.class] ? (UIImage *)object : nil];
+        });
     }];
 }
 - (void)documentPicker:(UIDocumentPickerViewController *)picker didPickDocumentsAtURLs:(NSArray<NSURL *> *)urls {
