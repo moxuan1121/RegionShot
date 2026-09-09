@@ -138,7 +138,6 @@ static NSUserDefaults *RSChatPreferences(void) {
     RSApplyWindowOrientation(window, RSActiveOrientation(scene));
     [controller loadViewIfNeeded];
     RSOpenWindowSurface(controller.card);
-    [[[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleLight] impactOccurred];
     if (image && [RSOption(@"AIAutoImage") boolValue]) [controller send];
 }
 + (void)showImage:(UIImage *)image scene:(UIWindowScene *)scene persona:(NSDictionary *)persona {
@@ -372,7 +371,6 @@ static NSUserDefaults *RSChatPreferences(void) {
     [self.host makeKeyAndVisible];
     [self focusInput];
     if (wasHidden) RSOpenWindowSurface(self.card);
-    if (wasHidden) [[[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleLight] impactOccurred];
 }
 - (void)panBall:(UIPanGestureRecognizer *)pan {
     CGPoint delta = [pan translationInView:self.view];
