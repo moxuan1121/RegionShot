@@ -13,5 +13,5 @@ static inline void RSOpenWindowSurface(UIView *surface) {
 static inline void RSCloseWindowSurface(UIWindow *window, UIView *surface) {
     if (!window) return;
     window.userInteractionEnabled = NO;
-    [UIView animateWithDuration:0.18 delay:0 options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionCurveEaseIn animations:^{ window.alpha = 0; } completion:^(BOOL finished) { window.hidden = YES; window.rootViewController = nil; }];
+    [UIView animateWithDuration:0.45 delay:0 options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionCurveEaseInOut animations:^{ window.alpha = 0; } completion:^(BOOL finished) { window.hidden = YES; window.rootViewController = nil; }];
 }
