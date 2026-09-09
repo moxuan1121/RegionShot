@@ -225,20 +225,11 @@
 - (void)show {
     Class managerClass = NSClassFromString(@"SBSystemGestureManager");
     SEL mainDisplay = NSSelectorFromString(@"mainDisplayManager");
-    SEL acquire = NSSelectorFromString(@"acquireSystemGestureDisableAssertionForReason:forSystemGestureTypes:");
-    SEL isTouch = NSSelectorFromString(@"_isTouchGestureWithType:");
+    SEL acquire = NSSelectorFromString(@"acquireSystemGestureDisableAssertionForReason:exceptSystemGestureTypes:");
     id manager = [managerClass respondsToSelector:mainDisplay] ? ((id (*)(id, SEL))objc_msgSend)(managerClass, mainDisplay) : nil;
-    NSMutableSet *touchTypes = [NSMutableSet set];
-    Ivar mappingIvar = class_getInstanceVariable(managerClass, "_typeToGesture");
-    id mapping = mappingIvar && manager ? object_getIvar(manager, mappingIvar) : nil;
-    if ([mapping isKindOfClass:NSDictionary.class] && [manager respondsToSelector:isTouch]) {
-        for (id key in mapping) {
-            if ([key isKindOfClass:NSNumber.class] && ((BOOL (*)(id, SEL, unsigned long long))objc_msgSend)(manager, isTouch, [key unsignedLongLongValue])) [touchTypes addObject:key];
-        }
-    }
-    if (touchTypes.count && [manager respondsToSelector:acquire])
-        self.touchGestureAssertion = ((id (*)(id, SEL, id, id))objc_msgSend)(manager, acquire, @"RegionShot touch selection", touchTypes);
-    NSLog(@"[RegionShot] touch gesture isolation types=%@ active=%d", touchTypes, self.touchGestureAssertion != nil);
+    if ([manager respondsToSelector:acquire])
+        self.touchGestureAssertion = ((id (*)(id, SEL, id, id))objc_msgSend)(manager, acquire, @"RegionShot frozen selection", [NSSet set]);
+    NSLog(@"[RegionShot] restored frozen gesture assertion active=%d", self.touchGestureAssertion != nil);
 
     self.previousKeyWindow = [RSSelectionWindow currentKeyWindow];
     RSApplyWindowOrientation(self, self.captureOrientation);

@@ -10,7 +10,7 @@ static inline CGFloat RSPopupContentHeight(UIStackView *stack, UIView *content, 
         [list layoutIfNeeded];
         body = list.collectionViewLayout.collectionViewContentSize.height;
     } else body = [content sizeThatFits:CGSizeMake(width, CGFLOAT_MAX)].height;
-    CGFloat chrome = 60;
+    CGFloat chrome = 22;
     NSUInteger count = 0;
     for (UIView *view in stack.arrangedSubviews) {
         if (view.hidden) continue;

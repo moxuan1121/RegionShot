@@ -23,8 +23,12 @@ assert "if (!record) snap.center" in read("Manager/RSRegionShotManager.m")
 
 assert "addChildViewController:navigation" in read("Selection/RSSelectionWindow.m")
 assert "performSinglePressAction" in read("Trigger.xm")
-assert "_isTouchGestureWithType:" in read("Selection/RSSelectionWindow.m")
-assert "touchTypes.count" in read("Selection/RSSelectionWindow.m")
+assert "exceptSystemGestureTypes:" in read("Selection/RSSelectionWindow.m")
+assert "[NSSet set]" in read("Selection/RSSelectionWindow.m")
 for folder, prefix in [("Input", "RSInput"), ("KeyboardAI", "RSKA")]:
     assert "RSPopupContentHeight(" in read(f"{folder}/{prefix}Interface.m")
     assert "safeAreaInsets.top -" not in read(f"{folder}/{prefix}Interface.m")
+
+assert "CGFloat chrome = 22" in read("Geometry/RSPopupLayout.h")
+assert "point.y <= 32" in read("Geometry/RSPanelController.h")
+assert "height - 28" in read("Geometry/RSPanelController.h")

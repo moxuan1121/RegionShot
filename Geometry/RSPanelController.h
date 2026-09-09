@@ -1,6 +1,6 @@
 // Included with a distinct class name by each of the two injected binaries.
 #import "RSOrientation.h"
-@interface RS_PANEL_CONTROLLER : UIViewController
+@interface RS_PANEL_CONTROLLER : UIViewController <UIGestureRecognizerDelegate>
 @property(strong) UIView *canvas;
 @property UIInterfaceOrientation orientation;
 @property(copy) void (^onLayout)(void);
@@ -11,6 +11,7 @@
 - (void)attachDragHandleToPanel:(UIView *)panel {
     UIView *handle = [UIView new];
     handle.translatesAutoresizingMaskIntoConstraints = NO;
+    handle.userInteractionEnabled = NO;
     handle.accessibilityLabel = @"拖动窗口";
     [panel addSubview:handle];
     [NSLayoutConstraint activateConstraints:@[
@@ -22,10 +23,13 @@
     line.translatesAutoresizingMaskIntoConstraints = NO;
     line.backgroundColor = UIColor.tertiaryLabelColor; line.layer.cornerRadius = 1.5;
     line.userInteractionEnabled = NO; [handle addSubview:line];
-    [NSLayoutConstraint activateConstraints:@[[line.centerXAnchor constraintEqualToAnchor:handle.centerXAnchor], [line.topAnchor constraintEqualToAnchor:handle.topAnchor constant:8], [line.widthAnchor constraintEqualToConstant:32], [line.heightAnchor constraintEqualToConstant:3]]];
-    [handle addGestureRecognizer:[[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(dragPanel:)]];
+    [NSLayoutConstraint activateConstraints:@[[line.centerXAnchor constraintEqualToAnchor:handle.centerXAnchor], [line.topAnchor constraintEqualToAnchor:handle.topAnchor constant:5], [line.widthAnchor constraintEqualToConstant:32], [line.heightAnchor constraintEqualToConstant:3]]];
+    UIPanGestureRecognizer *topDrag = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(dragPanel:)];
+    topDrag.name = @"rs.topDrag"; topDrag.delegate = self;
+    [panel addGestureRecognizer:topDrag];
     UIView *bottom = [UIView new];
     bottom.translatesAutoresizingMaskIntoConstraints = NO;
+    bottom.userInteractionEnabled = NO;
     bottom.accessibilityLabel = @"上下移动窗口";
     [panel addSubview:bottom];
     [NSLayoutConstraint activateConstraints:@[
@@ -33,7 +37,15 @@
         [bottom.leadingAnchor constraintEqualToAnchor:panel.leadingAnchor constant:12],
         [bottom.trailingAnchor constraintEqualToAnchor:panel.trailingAnchor constant:-12],
         [bottom.heightAnchor constraintEqualToConstant:28]]];
-    [bottom addGestureRecognizer:[[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(dragPanelVertically:)]];
+    UIPanGestureRecognizer *bottomDrag = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(dragPanelVertically:)];
+    bottomDrag.name = @"rs.bottomDrag"; bottomDrag.delegate = self;
+    [panel addGestureRecognizer:bottomDrag];
+}
+- (BOOL)gestureRecognizer:(UIGestureRecognizer *)gesture shouldReceiveTouch:(UITouch *)touch {
+    CGPoint point = [touch locationInView:gesture.view];
+    CGFloat width = gesture.view.bounds.size.width, height = gesture.view.bounds.size.height;
+    if (point.x < 12 || point.x > width - 12) return NO;
+    return [gesture.name isEqualToString:@"rs.topDrag"] ? point.y <= 32 : point.y >= height - 28;
 }
 - (void)dragPanelVertically:(UIPanGestureRecognizer *)gesture {
     CGPoint delta = [gesture translationInView:self.canvas];
