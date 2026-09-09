@@ -1,6 +1,6 @@
 from pathlib import Path
 root = Path(__file__).resolve().parents[1]
-read = lambda path: (root / path).read_text()
+read = lambda path: (root / path).read_text(encoding="utf-8")
 canvas = read("Annotation/RSMarkupAnnotationCanvas.m")
 editor = read("Annotation/RSMarkupAnnotationViewController.m")
 assert "self.completion = completion" in read("Selection/RSImageEditor.m")
