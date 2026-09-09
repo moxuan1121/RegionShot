@@ -5,8 +5,8 @@ static inline void RSOpenWindowSurface(UIView *surface) {
     [surface.superview layoutIfNeeded];
     surface.alpha = 1;
     CABasicAnimation *fade = [CABasicAnimation animationWithKeyPath:@"opacity"];
-    fade.fromValue = @0; fade.toValue = @1; fade.duration = 0.32;
-    fade.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseOut];
+    fade.fromValue = @0; fade.toValue = @1; fade.duration = 0.65;
+    fade.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
     [surface.layer addAnimation:fade forKey:@"rs.open.fade"];
 
 }
