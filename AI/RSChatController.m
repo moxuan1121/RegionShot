@@ -371,6 +371,7 @@ static NSUserDefaults *RSChatPreferences(void) {
     [self.host makeKeyAndVisible];
     [self focusInput];
     if (wasHidden) RSOpenWindowSurface(self.card);
+    if (wasHidden) [[[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleLight] impactOccurred];
 }
 - (void)panBall:(UIPanGestureRecognizer *)pan {
     CGPoint delta = [pan translationInView:self.view];
