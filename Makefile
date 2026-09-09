@@ -27,7 +27,7 @@ RegionShot_FILES = Selection/RSFreezeSystemHooks.xm Trigger.xm Preferences/RSURL
 	KeyboardAI/RSKAInterface.m \
 	KeyboardAI/RSKATokenView.m \
 	KeyboardAI/RSKAAnchoredMenuView.m
-RegionShot_FILES += $(wildcard Annotation/*.m)
+RegionShot_FILES += $(wildcard Annotation/*.m) Camera/RSInlineCamera.m
 RegionShot_CFLAGS = -fobjc-arc -Wall -Wextra -Wno-unused-parameter
 RegionShot_FRAMEWORKS = Foundation UIKit Photos QuartzCore Security PhotosUI UniformTypeIdentifiers Vision CoreImage WebKit AVFoundation
 
@@ -38,5 +38,5 @@ RegionShotInput_LIBRARIES = roothide
 RegionShot_LIBRARIES = roothide
 RegionShot_FILES += Input/RSInputStore.m Input/RSInputOptionsController.m
 include $(THEOS_MAKE_PATH)/tweak.mk
-SUBPROJECTS += Preferences Camera
+SUBPROJECTS += Preferences
 include $(THEOS_MAKE_PATH)/aggregate.mk

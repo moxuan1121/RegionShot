@@ -1,179 +1,99 @@
 #import "RSInlineCamera.h"
-#import <AVFoundation/AVFoundation.h>
-#import "../Geometry/RSOrientation.h"
-@interface RSInlineCamera () <AVCapturePhotoCaptureDelegate>
-@property(nonatomic, strong) AVCaptureSession *session;
-@property(nonatomic, strong) AVCapturePhotoOutput *output;
-@property(nonatomic, strong) AVCaptureVideoPreviewLayer *preview;
-@property(nonatomic, strong) UIView *surface;
+
+@interface RSInlineCamera () <UIImagePickerControllerDelegate, UINavigationControllerDelegate>
+@property(nonatomic, strong) UIImagePickerController *picker;
 @property(nonatomic, strong) UILabel *status;
 @property(nonatomic, strong) UIButton *shutter;
 @property(nonatomic, strong) UIButton *flip;
-@property(nonatomic, strong) dispatch_queue_t queue;
 @property(nonatomic) BOOL stopped;
-@property(nonatomic) BOOL hasSessionDiagnostic;
-@property(nonatomic) BOOL configured;
+@property(nonatomic) NSUInteger generation;
 @end
+
 @implementation RSInlineCamera
 - (void)viewDidLoad {
     [super viewDidLoad];
     self.view.backgroundColor = [UIColor colorWithWhite:0 alpha:0.35];
-    self.queue = dispatch_queue_create("com.moxuan.regionshot.inline-camera", DISPATCH_QUEUE_SERIAL);
-    self.session = [AVCaptureSession new]; self.output = [AVCapturePhotoOutput new];
-    self.surface = [UIView new]; self.surface.backgroundColor = UIColor.blackColor;
-    self.surface.layer.cornerRadius = 20; self.surface.clipsToBounds = YES;
-    self.surface.translatesAutoresizingMaskIntoConstraints = NO; [self.view addSubview:self.surface];
-    self.preview = [AVCaptureVideoPreviewLayer layerWithSession:self.session];
-    self.preview.videoGravity = AVLayerVideoGravityResizeAspectFill; [self.surface.layer addSublayer:self.preview];
+    UIView *panel = [UIView new]; panel.backgroundColor = UIColor.blackColor;
+    panel.layer.cornerRadius = 20; panel.clipsToBounds = YES;
+    panel.translatesAutoresizingMaskIntoConstraints = NO; [self.view addSubview:panel];
+    UIView *preview = [UIView new]; preview.translatesAutoresizingMaskIntoConstraints = NO;
+    [panel addSubview:preview];
     UIStackView *bar = [UIStackView new]; bar.distribution = UIStackViewDistributionFillEqually;
-    bar.translatesAutoresizingMaskIntoConstraints = NO; bar.backgroundColor = [UIColor colorWithWhite:0 alpha:0.65];
-    for (NSString *title in @[@"取消", @"拍照", @"切换镜头"]) {
+    bar.translatesAutoresizingMaskIntoConstraints = NO; [panel addSubview:bar];
+    NSArray *selectors = @[@"cancel", @"takePhoto", @"switchCamera"];
+    NSArray *titles = @[@"取消", @"拍照", @"切换镜头"];
+    for (NSUInteger i = 0; i < titles.count; i++) {
         UIButton *button = [UIButton buttonWithType:UIButtonTypeSystem];
-        [button setTitle:title forState:UIControlStateNormal]; button.tintColor = UIColor.whiteColor;
-        button.titleLabel.font = [UIFont systemFontOfSize:17 weight:UIFontWeightMedium];
-        SEL action = [title isEqual:@"取消"] ? @selector(cancel) : [title isEqual:@"拍照"] ? @selector(takePhoto) : @selector(switchCamera);
-        [button addTarget:self action:action forControlEvents:UIControlEventTouchUpInside]; [bar addArrangedSubview:button];
-        if (action == @selector(takePhoto)) self.shutter = button;
-        if (action == @selector(switchCamera)) self.flip = button;
+        [button setTitle:titles[i] forState:UIControlStateNormal]; button.tintColor = UIColor.whiteColor;
+        button.titleLabel.font = [UIFont systemFontOfSize:16 weight:UIFontWeightMedium];
+        [button addTarget:self action:NSSelectorFromString(selectors[i]) forControlEvents:UIControlEventTouchUpInside];
+        [bar addArrangedSubview:button];
+        if (i == 1) self.shutter = button;
+        if (i == 2) self.flip = button;
     }
-    self.shutter.enabled = NO; self.flip.enabled = NO;
-    self.status = [UILabel new]; self.status.textColor = UIColor.whiteColor; self.status.numberOfLines = 0;
-    self.status.textAlignment = NSTextAlignmentCenter; self.status.translatesAutoresizingMaskIntoConstraints = NO;
-    self.status.text = @"正在打开相机…";
-    [self.surface addSubview:self.status]; [self.surface addSubview:bar];
-    NSLayoutConstraint *width = [self.surface.widthAnchor constraintEqualToConstant:360]; width.priority = 750;
-    NSLayoutConstraint *height = [self.surface.heightAnchor constraintEqualToConstant:460]; height.priority = 750;
+    self.status = [UILabel new]; self.status.textColor = UIColor.whiteColor;
+    self.status.numberOfLines = 0; self.status.textAlignment = NSTextAlignmentCenter;
+    self.status.translatesAutoresizingMaskIntoConstraints = NO; [panel addSubview:self.status];
+    NSLayoutConstraint *width = [panel.widthAnchor constraintEqualToConstant:360]; width.priority = 750;
+    NSLayoutConstraint *height = [panel.heightAnchor constraintEqualToConstant:480]; height.priority = 750;
     [NSLayoutConstraint activateConstraints:@[width, height,
-        [self.surface.centerXAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.centerXAnchor],
-        [self.surface.centerYAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.centerYAnchor],
-        [self.surface.widthAnchor constraintLessThanOrEqualToAnchor:self.view.safeAreaLayoutGuide.widthAnchor constant:-24],
-        [self.surface.heightAnchor constraintLessThanOrEqualToAnchor:self.view.safeAreaLayoutGuide.heightAnchor constant:-24],
-        [bar.leadingAnchor constraintEqualToAnchor:self.surface.leadingAnchor], [bar.trailingAnchor constraintEqualToAnchor:self.surface.trailingAnchor],
-        [bar.bottomAnchor constraintEqualToAnchor:self.surface.bottomAnchor], [bar.heightAnchor constraintEqualToConstant:56],
-        [self.status.leadingAnchor constraintEqualToAnchor:self.surface.leadingAnchor constant:16],
-        [self.status.trailingAnchor constraintEqualToAnchor:self.surface.trailingAnchor constant:-16],
-        [self.status.centerYAnchor constraintEqualToAnchor:self.surface.centerYAnchor]]];
-    [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(sessionError:) name:AVCaptureSessionRuntimeErrorNotification object:self.session];
-    [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(interrupted:) name:AVCaptureSessionWasInterruptedNotification object:self.session];
-    [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(resumed:) name:AVCaptureSessionInterruptionEndedNotification object:self.session];
-    [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(applicationBecameActive:) name:UIApplicationDidBecomeActiveNotification object:nil];
-    AVAuthorizationStatus permission = [AVCaptureDevice authorizationStatusForMediaType:AVMediaTypeVideo];
-    if (permission == AVAuthorizationStatusDenied || permission == AVAuthorizationStatusRestricted) { [self showError:@"当前进程没有相机权限，请检查系统相机访问限制。"]; return; }
-    // System hosts may carry camera authorization themselves. Never request TCC without a usage string.
-    if (permission == AVAuthorizationStatusNotDetermined && [NSBundle.mainBundle objectForInfoDictionaryKey:@"NSCameraUsageDescription"]) {
-        __weak typeof(self) weakSelf = self;
-        [AVCaptureDevice requestAccessForMediaType:AVMediaTypeVideo completionHandler:^(BOOL granted) {
-            dispatch_async(dispatch_get_main_queue(), ^{ if (granted) [weakSelf configure]; else [weakSelf showError:@"相机权限未开启。"]; });
-        }];
-    } else if (permission == AVAuthorizationStatusAuthorized) [self configure];
-    else [self showError:@"当前系统进程未获相机授权，无法启动内嵌相机。"];
-}
-- (void)showError:(NSString *)message {
-    if (self.stopped) return;
-    self.status.text = message; self.shutter.enabled = NO; self.flip.enabled = NO;
-}
-- (void)configure {
-    if (self.stopped || self.configured) return;
-    self.configured = YES;
-    dispatch_async(self.queue, ^{
-        // ShellX 3.0.1 0xa790c–0xa7930: camera-only capture must not reconfigure SpringBoard audio.
-        self.session.usesApplicationAudioSession = NO;
-        self.session.automaticallyConfiguresApplicationAudioSession = NO;
-        NSError *error = nil;
-        AVCaptureDevice *device = [AVCaptureDevice defaultDeviceWithMediaType:AVMediaTypeVideo];
-        AVCaptureDeviceInput *input = device ? [AVCaptureDeviceInput deviceInputWithDevice:device error:&error] : nil;
-        if (!input || ![self.session canAddInput:input] || ![self.session canAddOutput:self.output]) {
-            self.configured = NO;
-            dispatch_async(dispatch_get_main_queue(), ^{ [self showError:error.localizedDescription ?: @"当前无法打开相机。"]; }); return;
-        }
-        [self.session beginConfiguration];
-        if ([self.session canSetSessionPreset:AVCaptureSessionPreset1280x720]) self.session.sessionPreset = AVCaptureSessionPreset1280x720;
-        [self.session addInput:input]; [self.session addOutput:self.output]; [self.session commitConfiguration];
-        [self startSession];
-    });
-}
-- (void)startSession {
-    if (self.stopped || !self.configured) return;
-    dispatch_async(self.queue, ^{
-        if (!self.session.isRunning) [self.session startRunning];
-        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 300 * NSEC_PER_MSEC), dispatch_get_main_queue(), ^{
-            if (self.stopped) return;
-            BOOL running = self.session.isRunning;
-            self.status.text = running ? nil : @"正在等待系统允许相机进入前台…";
-            self.shutter.enabled = running; self.flip.enabled = running;
-            if (running) { self.hasSessionDiagnostic = NO; [self.view setNeedsLayout]; }
-        });
-    });
-}
-- (void)viewDidLayoutSubviews {
-    [super viewDidLayoutSubviews];
-    [CATransaction begin]; [CATransaction setDisableActions:YES]; self.preview.frame = self.surface.bounds; [CATransaction commit];
-    UIInterfaceOrientation orientation = RSActiveOrientation(self.view.window.windowScene);
-    if (orientation != UIInterfaceOrientationUnknown && self.preview.connection.isVideoOrientationSupported)
-        self.preview.connection.videoOrientation = (AVCaptureVideoOrientation)orientation;
+        [panel.centerXAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.centerXAnchor],
+        [panel.centerYAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.centerYAnchor],
+        [panel.widthAnchor constraintLessThanOrEqualToAnchor:self.view.safeAreaLayoutGuide.widthAnchor constant:-24],
+        [panel.heightAnchor constraintLessThanOrEqualToAnchor:self.view.safeAreaLayoutGuide.heightAnchor constant:-24],
+        [bar.leadingAnchor constraintEqualToAnchor:panel.leadingAnchor], [bar.trailingAnchor constraintEqualToAnchor:panel.trailingAnchor],
+        [bar.bottomAnchor constraintEqualToAnchor:panel.bottomAnchor], [bar.heightAnchor constraintEqualToConstant:56],
+        [preview.topAnchor constraintEqualToAnchor:panel.topAnchor], [preview.bottomAnchor constraintEqualToAnchor:bar.topAnchor],
+        [preview.leadingAnchor constraintEqualToAnchor:panel.leadingAnchor], [preview.trailingAnchor constraintEqualToAnchor:panel.trailingAnchor],
+        [self.status.centerYAnchor constraintEqualToAnchor:preview.centerYAnchor],
+        [self.status.leadingAnchor constraintEqualToAnchor:panel.leadingAnchor constant:16],
+        [self.status.trailingAnchor constraintEqualToAnchor:panel.trailingAnchor constant:-16]]];
+    if (![UIImagePickerController isSourceTypeAvailable:UIImagePickerControllerSourceTypeCamera]) {
+        self.status.text = @"系统相机当前不可用。";
+        self.shutter.enabled = NO; self.flip.enabled = NO; return;
+    }
+    self.picker = [UIImagePickerController new]; self.picker.delegate = self;
+    self.picker.sourceType = UIImagePickerControllerSourceTypeCamera;
+    self.picker.cameraCaptureMode = UIImagePickerControllerCameraCaptureModePhoto;
+    self.picker.showsCameraControls = NO;
+    [self addChildViewController:self.picker];
+    self.picker.view.frame = preview.bounds;
+    self.picker.view.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+    [preview addSubview:self.picker.view]; [self.picker didMoveToParentViewController:self];
 }
 - (void)takePhoto {
-    if (!self.shutter.enabled || self.stopped) return;
-    self.shutter.enabled = NO; self.flip.enabled = NO;
-    AVCaptureConnection *connection = [self.output connectionWithMediaType:AVMediaTypeVideo];
-    if (connection.isVideoOrientationSupported) connection.videoOrientation = self.preview.connection.videoOrientation;
-    dispatch_async(self.queue, ^{ [self.output capturePhotoWithSettings:[AVCapturePhotoSettings photoSettings] delegate:self]; });
+    if (self.stopped || !self.shutter.enabled || !self.picker) return;
+    self.shutter.enabled = NO; self.flip.enabled = NO; self.status.text = @"正在拍照…";
+    NSUInteger generation = ++self.generation;
+    [self.picker takePicture];
+    __weak typeof(self) weakSelf = self;
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 10 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
+        typeof(self) camera = weakSelf;
+        if (!camera || camera.stopped || camera.generation != generation) return;
+        camera.status.text = @"系统未返回照片，请取消后重试。";
+    });
 }
 - (void)switchCamera {
-    if (!self.flip.enabled || self.stopped) return;
-    self.shutter.enabled = NO; self.flip.enabled = NO;
-    dispatch_async(self.queue, ^{
-        AVCaptureDeviceInput *old = (AVCaptureDeviceInput *)self.session.inputs.firstObject;
-        AVCaptureDevicePosition position = old.device.position == AVCaptureDevicePositionBack ? AVCaptureDevicePositionFront : AVCaptureDevicePositionBack;
-        AVCaptureDevice *device = [AVCaptureDevice defaultDeviceWithDeviceType:AVCaptureDeviceTypeBuiltInWideAngleCamera mediaType:AVMediaTypeVideo position:position];
-        AVCaptureDeviceInput *input = device ? [AVCaptureDeviceInput deviceInputWithDevice:device error:nil] : nil;
-        if (input) {
-            [self.session beginConfiguration]; [self.session removeInput:old];
-            if ([self.session canAddInput:input]) [self.session addInput:input]; else [self.session addInput:old];
-            [self.session commitConfiguration];
-        }
-        dispatch_async(dispatch_get_main_queue(), ^{ if (!self.stopped) { self.shutter.enabled = YES; self.flip.enabled = YES; [self.view setNeedsLayout]; } });
-    });
+    if (self.stopped || !self.flip.enabled || !self.picker) return;
+    UIImagePickerControllerCameraDevice device = self.picker.cameraDevice == UIImagePickerControllerCameraDeviceRear
+        ? UIImagePickerControllerCameraDeviceFront : UIImagePickerControllerCameraDeviceRear;
+    if ([UIImagePickerController isCameraDeviceAvailable:device]) self.picker.cameraDevice = device;
 }
-- (void)photoOutput:(AVCapturePhotoOutput *)output didFinishProcessingPhoto:(AVCapturePhoto *)photo error:(NSError *)error {
-    NSData *data = error ? nil : photo.fileDataRepresentation;
-    UIImage *image = data ? [UIImage imageWithData:data] : nil;
-    dispatch_async(dispatch_get_main_queue(), ^{
-        if (self.stopped) return;
-        if (!image) { self.status.text = @"拍摄失败，请重试。"; self.shutter.enabled = YES; self.flip.enabled = YES; return; }
-        if (self.completion) self.completion(image);
-    });
+- (void)imagePickerController:(UIImagePickerController *)picker didFinishPickingMediaWithInfo:(NSDictionary *)info {
+    if (self.stopped) return;
+    UIImage *image = info[UIImagePickerControllerOriginalImage];
+    ++self.generation;
+    if (!image.CGImage) {
+        self.status.text = @"无法读取照片，请重拍。"; self.shutter.enabled = YES; self.flip.enabled = YES; return;
+    }
+    if (self.completion) self.completion(image);
 }
-- (void)sessionError:(NSNotification *)note {
-    NSError *error = note.userInfo[AVCaptureSessionErrorKey];
-    dispatch_async(dispatch_get_main_queue(), ^{
-        self.hasSessionDiagnostic = YES;
-        NSString *detail = [NSString stringWithFormat:@"相机错误：%@ (%ld)\n%@\n授权状态：%ld", error.domain ?: @"未知", (long)error.code, error.localizedDescription ?: @"无系统说明", (long)[AVCaptureDevice authorizationStatusForMediaType:AVMediaTypeVideo]];
-        NSLog(@"[RegionShot] %@", detail); [self showError:detail];
-    });
-}
-- (void)interrupted:(NSNotification *)note {
-    NSInteger reason = [note.userInfo[AVCaptureSessionInterruptionReasonKey] integerValue];
-    dispatch_async(dispatch_get_main_queue(), ^{
-        self.hasSessionDiagnostic = YES;
-        NSString *message;
-        switch (reason) {
-            case AVCaptureSessionInterruptionReasonVideoDeviceNotAvailableInBackground: message = @"系统暂时将当前进程视为后台，正在等待恢复后自动重试。"; break;
-            case AVCaptureSessionInterruptionReasonVideoDeviceInUseByAnotherClient: message = @"相机正被其他进程占用。"; break;
-            case AVCaptureSessionInterruptionReasonVideoDeviceNotAvailableWithMultipleForegroundApps: message = @"当前多窗口状态不允许使用相机。"; break;
-            case AVCaptureSessionInterruptionReasonVideoDeviceNotAvailableDueToSystemPressure: message = @"设备负载或温度过高，相机被系统暂停。"; break;
-            default: message = @"相机会话被系统暂停。"; break;
-        }
-        NSString *detail = [NSString stringWithFormat:@"%@\n中断原因：%ld；授权状态：%ld", message, (long)reason, (long)[AVCaptureDevice authorizationStatusForMediaType:AVMediaTypeVideo]];
-        NSLog(@"[RegionShot] %@", detail); [self showError:detail];
-    });
-}
-- (void)applicationBecameActive:(NSNotification *)note { [self startSession]; }
-- (void)resumed:(NSNotification *)note { [self startSession]; }
-- (void)cancel { if (self.completion) self.completion(nil); }
+- (void)imagePickerControllerDidCancel:(UIImagePickerController *)picker { [self cancel]; }
+- (void)cancel { if (!self.stopped && self.completion) self.completion(nil); }
 - (void)stop {
-    if (self.stopped) return; self.stopped = YES; self.completion = nil;
-    [NSNotificationCenter.defaultCenter removeObserver:self];
-    AVCaptureSession *session = self.session; dispatch_async(self.queue, ^{ [session stopRunning]; });
+    if (self.stopped) return;
+    self.stopped = YES; ++self.generation; self.completion = nil;
+    self.picker.delegate = nil; [self.picker willMoveToParentViewController:nil];
+    [self.picker.view removeFromSuperview]; [self.picker removeFromParentViewController]; self.picker = nil;
 }
 @end

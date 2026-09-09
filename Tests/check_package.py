@@ -34,7 +34,7 @@ for name, size in [('RegionShotIcon.png', 29), ('RegionShotIcon@2x.png', 58), ('
     assert png[:8] == b'\x89PNG\r\n\x1a\n'
     assert struct.unpack_from('>II', png, 16) == (size, size)
     assert png[25] == 6
-for path in ['Library/MobileSubstrate/DynamicLibraries/' + name + '.dylib' for name in ['RegionShot', 'RegionShotInput']] + [bundle + info['CFBundleExecutable'], 'Applications/RegionShotCamera.app/RegionShotCamera']:
+for path in ['Library/MobileSubstrate/DynamicLibraries/' + name + '.dylib' for name in ['RegionShot', 'RegionShotInput']] + [bundle + info['CFBundleExecutable']]:
     binary = files[path]
     assert struct.unpack_from('<III', binary) == (0xfeedfacf, 0x100000c, 0x80000002), path
     offset, signed = 32, False
@@ -54,9 +54,7 @@ assert not any(p.startswith('Library/PreferenceLoader/Preferences/RegionShotIcon
 assert not any("RegionShotScroll" in p or "RSLongCapture" in p for p in files)
 assert not any(p.startswith('usr/share/doc/com.moxuan.regionshot/') for p in files)
 
-camera_info = plistlib.loads(files['Applications/RegionShotCamera.app/Info.plist'])
-assert camera_info['NSCameraUsageDescription']
-assert 'regionshot-camera' in camera_info['CFBundleURLTypes'][0]['CFBundleURLSchemes']
+assert not any(p.startswith('Applications/RegionShotCamera.app/') for p in files)
 
 assert sorted(p.rsplit('/', 1)[-1] for p in files if p.startswith('Library/MobileSubstrate/DynamicLibraries/') and p.endswith('.dylib')) == ['RegionShot.dylib', 'RegionShotInput.dylib']
 assert not any('RegionShotURLs' in p for p in files)
