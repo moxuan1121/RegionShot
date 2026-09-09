@@ -201,7 +201,8 @@
         if (window.editedImageHandler) window.editedImageHandler(edited);
     }];
     UINavigationController *navigation = [[UINavigationController alloc] initWithRootViewController:editor];
-    navigation.modalPresentationStyle = UIModalPresentationFullScreen;
+    navigation.modalPresentationStyle = UIModalPresentationOverFullScreen;
+    navigation.view.backgroundColor = UIColor.clearColor;
     [self.rootViewController presentViewController:navigation animated:YES completion:nil];
 }
 
