@@ -30,7 +30,7 @@ assert loader['detail'] == info['NSPrincipalClass'] == 'RSPreferences'
 assert info['CFBundleVersion'] == control['Version'].removesuffix('-roothide')
 assert loader['icon'] == 'RegionShotIcon.png'
 for name, size in [('RegionShotIcon.png', 29), ('RegionShotIcon@2x.png', 58), ('RegionShotIcon@3x.png', 87)]:
-    png = files['Library/PreferenceLoader/Preferences/' + name]
+    png = files[bundle + name]
     assert png[:8] == b'\x89PNG\r\n\x1a\n'
     assert struct.unpack_from('>II', png, 16) == (size, size)
     assert png[25] == 6
@@ -50,6 +50,7 @@ for path in ['Library/MobileSubstrate/DynamicLibraries/' + name + '.dylib' for n
 print('Verified PreferenceLoader registration, Settings controller/version, signed modern arm64e binaries')
 
 assert sum(p.startswith("Library/PreferenceLoader/Preferences/") and p.endswith('.plist') for p in files) == 1
+assert not any(p.startswith('Library/PreferenceLoader/Preferences/RegionShotIcon') for p in files)
 assert not any("RegionShotScroll" in p or "RSLongCapture" in p for p in files)
 assert not any(p.startswith('usr/share/doc/com.moxuan.regionshot/') for p in files)
 
