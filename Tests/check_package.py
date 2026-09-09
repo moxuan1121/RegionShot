@@ -49,7 +49,7 @@ for path in ['Library/MobileSubstrate/DynamicLibraries/' + name + '.dylib' for n
     assert signed, path
 print('Verified PreferenceLoader registration, Settings controller/version, signed modern arm64e binaries')
 
-assert sum(p.startswith("Library/PreferenceLoader/Preferences/") for p in files) == 1
+assert sum(p.startswith("Library/PreferenceLoader/Preferences/") and p.endswith('.plist') for p in files) == 1
 assert not any("RegionShotScroll" in p or "RSLongCapture" in p for p in files)
 assert not any(p.startswith('usr/share/doc/com.moxuan.regionshot/') for p in files)
 
