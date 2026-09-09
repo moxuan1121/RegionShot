@@ -307,8 +307,18 @@ static NSUserDefaults *RSChatPreferences(void) {
     [self focusInput];
 }
 - (void)focusInput {
-    if (!self.card.hidden && !self.host.hidden && !self.presentedViewController && !self.keyboardPresentation)
-        [self.input becomeFirstResponder];
+    __weak typeof(self) weakSelf = self;
+    void (^focus)(void) = ^{
+        RSChatController *chat = weakSelf;
+        if (chat && !chat.card.hidden && !chat.host.hidden && chat.host.isKeyWindow &&
+            !chat.presentedViewController && !chat.keyboardPresentation && !chat.cameraRequest)
+            [chat.input becomeFirstResponder];
+    };
+    id<UIViewControllerTransitionCoordinator> transition = self.transitionCoordinator;
+    if (transition && [transition animateAlongsideTransition:nil completion:^(id<UIViewControllerTransitionCoordinatorContext> context) {
+        if (!context.isCancelled) focus();
+    }]) return;
+    dispatch_async(dispatch_get_main_queue(), focus);
 }
 - (void)updateHeading { self.heading.text = self.imageConversation ? @"图片问答" : @"AI 对话"; self.ball.accessibilityLabel = [@"恢复" stringByAppendingString:self.heading.text ?: @"AI 对话"]; }
 - (void)applyAppearance {

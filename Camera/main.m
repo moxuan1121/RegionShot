@@ -7,6 +7,7 @@
 @property(copy) NSString *requestID;
 @property(strong) UIImagePickerController *camera;
 @property BOOL capturing;
+@property BOOL returnPending;
 - (void)start;
 @end
 @implementation RSCameraController
@@ -32,8 +33,7 @@
     if (![result writeToFile:RSCameraRequestPath() atomically:YES]) { [self error:@"无法写回拍照结果，请重新安装 RegionShot 后重试。" completion:^{ [self dismissViewControllerAnimated:YES completion:nil]; }]; return; }
     [self dismissViewControllerAnimated:NO completion:nil];
     // Return to the preceding application before restoring the floating conversation.
-    notify_post(RS_CAMERA_FINISHED);
-    [UIApplication.sharedApplication openURL:[NSURL URLWithString:@"prefs:root=regionshot_camera_return"] options:@{} completionHandler:nil];
+    self.returnPending = YES;
     SEL suspend = NSSelectorFromString(@"suspend");
     if ([UIApplication.sharedApplication respondsToSelector:suspend]) ((void (*)(id, SEL))objc_msgSend)(UIApplication.sharedApplication, suspend);
 }
@@ -96,6 +96,13 @@
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)options {
     self.window = [[UIWindow alloc] initWithFrame:UIScreen.mainScreen.bounds];
     self.window.rootViewController = [RSCameraController new]; [self.window makeKeyAndVisible]; return YES;
+}
+- (void)applicationDidEnterBackground:(UIApplication *)application {
+    RSCameraController *controller = (RSCameraController *)self.window.rootViewController;
+    if (!controller.returnPending) return;
+    controller.returnPending = NO;
+    // The camera must relinquish foreground/keyboard ownership before AI restores focus.
+    notify_post(RS_CAMERA_FINISHED);
 }
 - (BOOL)application:(UIApplication *)application openURL:(NSURL *)url options:(NSDictionary *)options {
     if (![url.scheme isEqual:@"regionshot-camera"]) return NO;

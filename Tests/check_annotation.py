@@ -26,7 +26,11 @@ hooks = read("Selection/RSFreezeSystemHooks.xm")
 assert "acquireSystemGestureDisableAssertion" not in read("Selection/RSSelectionWindow.m")
 assert "lockUIFromSource:" in hooks and "cancelCapture]; %orig;" in hooks
 assert "gestureRecognizerShouldBegin:" in hooks and "canBePresented" in hooks
-assert "regionshot_camera_return" in read("Camera/main.m")
+camera = read("Camera/main.m")
+assert "notify_post(RS_CAMERA_FINISHED)" not in camera.split("- (void)finish:")[1].split("- (void)error:")[0]
+assert "notify_post(RS_CAMERA_FINISHED)" in camera.split("applicationDidEnterBackground:")[1]
+assert "chat.host.isKeyWindow" in read("AI/RSChatController.m")
+assert "!chat.cameraRequest" in read("AI/RSChatController.m")
 assert 'request[@"id"] isEqual:self.requestID' in read("Camera/main.m")
 assert "picker.showsCameraControls = NO" in read("Camera/main.m")
 for folder, prefix in [("Input", "RSInput"), ("KeyboardAI", "RSKA")]:
