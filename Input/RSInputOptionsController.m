@@ -226,7 +226,6 @@ UIViewController *RSInputCreateOptions(BOOL search) {
     }
     [self.tableView reloadData];
 }
-- (void)positionChanged:(UISegmentedControl *)control { self.prompt[@"panelPosition"] = @(control.selectedSegmentIndex); [self save]; }
 - (void)toggle:(UISwitch *)toggle { [self write:@"enabled" value:@(toggle.on)]; }
 - (void)tableView:(UITableView *)table didSelectRowAtIndexPath:(NSIndexPath *)path { [table deselectRowAtIndexPath:path animated:YES]; if (path.section == 1) [self write:@"personaTitle" value:path.row ? RSInputActions()[path.row - 1][@"title"] : @""]; }
 @end
