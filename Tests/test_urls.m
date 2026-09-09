@@ -10,6 +10,9 @@ int main(void) { @autoreleasepool {
     for (id url in @[@"https://root=regionshot_aiwindow", @"prefs:root=General", @"prefs://root=shellx_ai2", @"prefs:root=regionshot_aiwindow_other", @"prefs:root=regionshot_aiwindow&root=General", @42, @"", @"no-scheme"])
         assert(!RSURLNotification(url));
     assert(!RSURLNotification(nil));
+    assert([RSInputPromptOptions(@{@"prompt":@{@"panelTop":@25}})[@"panelTopLandscape"] intValue] == 25);
+    NSDictionary *spacing = RSInputPromptOptions(@{@"prompt":@{@"panelTop":@10, @"panelTopLandscape":@40}});
+    assert([spacing[@"panelTop"] intValue] == 10 && [spacing[@"panelTopLandscape"] intValue] == 40);
     assert([RSInputSearchURL(@"prefs:root=General", @"文字").absoluteString isEqual:@"prefs:root=General"]);
     assert([RSInputSearchURL(@"myapp://search?text=%@", @"a&中").absoluteString isEqual:@"myapp://search?text=a%26%E4%B8%AD"]);
     assert(RSInputSearchURL(@"https://example.org/search?q=fixed", @"文字"));

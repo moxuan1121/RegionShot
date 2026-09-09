@@ -238,7 +238,7 @@ static UIWindowLevel RSKAPanelWindowLevel(NSDictionary *options, NSString *key) 
     BOOL landscape = UIInterfaceOrientationIsLandscape(((RSKAPanelController *)window.rootViewController).orientation);
     RSRectD placement = RSPopupFrame(canvas.bounds.size.width, canvas.bounds.size.height,
         UIScreen.mainScreen.fixedCoordinateSpace.bounds.size.width, landscape ? [self.windowOptions[@"panelPosition"] intValue] : 1,
-        [self.windowOptions[@"panelTop"] doubleValue], [self.windowOptions[@"panelHeight"] doubleValue]);
+        [self.windowOptions[landscape ? @"panelTopLandscape" : @"panelTop"] doubleValue], [self.windowOptions[@"panelHeight"] doubleValue]);
     self.panelTop.constant = placement.y; self.panelLeading.constant = placement.x; self.panelWidth.constant = placement.width;
     [window layoutIfNeeded];
     CGFloat width = MAX(1, self.contentStack.bounds.size.width);

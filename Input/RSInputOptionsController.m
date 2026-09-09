@@ -37,7 +37,7 @@ extern UIViewController *RSInputCreatePersonaSelection(NSString *scope);
 }
 - (NSInteger)numberOfSectionsInTableView:(__unused UITableView *)tableView { return self.search ? 1 : 6; }
 - (NSInteger)tableView:(__unused UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
-    return self.search ? self.engines.count : section == 5 ? 1 : section == 0 ? 1 : section == 1 ? 3 : section == 2 ? 4 : section == 4 ? 7 : 2;
+    return self.search ? self.engines.count : section == 5 ? 1 : section == 0 ? 1 : section == 1 ? 3 : section == 2 ? 4 : section == 4 ? 8 : 2;
 }
 - (NSString *)tableView:(__unused UITableView *)tableView titleForHeaderInSection:(NSInteger)section {
     return self.search ? nil : @[@"复制后显示", @"位置与大小", @"按钮配色", @"按压动画", @"窗口最高高度", @"长按菜单"][section];
@@ -49,7 +49,7 @@ extern UIViewController *RSInputCreatePersonaSelection(NSString *scope);
 }
 - (NSString *)keyForPath:(NSIndexPath *)path {
     return @[@[@"enabled"], @[@"size", @"height", @"duration"], @[@"gradient", @"startColor", @"middleColor", @"endColor"], @[@"animations", @"animationSpeed"],
-        @[@"tokenMaxHeight", @"aiMaxHeight", @"tokenWindowPriority", @"aiWindowPriority", @"panelPosition", @"panelHeight", @"panelTop"]][path.section][path.row];
+        @[@"tokenMaxHeight", @"aiMaxHeight", @"tokenWindowPriority", @"aiWindowPriority", @"panelPosition", @"panelHeight", @"panelTop", @"panelTopLandscape"]][path.section][path.row];
 }
 - (UITableViewCell *)tableView:(__unused UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)path {
     UITableViewCell *cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:nil];
@@ -62,7 +62,7 @@ extern UIViewController *RSInputCreatePersonaSelection(NSString *scope);
     }
     if (path.section == 5) { cell.textLabel.text = @"长按显示的 AI 人设"; cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator; return cell; }
     NSString *key = [self keyForPath:path];
-    NSString *title = @{@"enabled": @"启用分词悬浮按钮", @"size": @"按钮大小", @"height": @"屏幕纵向位置", @"duration": @"显示时长", @"gradient": @"渐变配色", @"startColor": @"起始颜色", @"middleColor": @"中间颜色", @"endColor": @"结束颜色", @"animations": @"启用动画", @"animationSpeed": @"动画速度", @"tokenMaxHeight": @"分词窗口最高高度", @"aiMaxHeight": @"AI 窗口最高高度", @"tokenWindowPriority": @"分词窗口优先级", @"aiWindowPriority": @"AI 窗口优先级", @"panelPosition": @"横屏面板位置", @"panelHeight": @"面板高度（pt，0 为自适应）", @"panelTop": @"距屏幕顶部（pt）"}[key];
+    NSString *title = @{@"enabled": @"启用分词悬浮按钮", @"size": @"按钮大小", @"height": @"屏幕纵向位置", @"duration": @"显示时长", @"gradient": @"渐变配色", @"startColor": @"起始颜色", @"middleColor": @"中间颜色", @"endColor": @"结束颜色", @"animations": @"启用动画", @"animationSpeed": @"动画速度", @"tokenMaxHeight": @"分词窗口最高高度", @"aiMaxHeight": @"AI 窗口最高高度", @"tokenWindowPriority": @"分词窗口优先级", @"aiWindowPriority": @"AI 窗口优先级", @"panelPosition": @"横屏面板位置", @"panelHeight": @"面板高度（pt，0 为自适应）", @"panelTop": @"竖屏距顶部（pt）", @"panelTopLandscape": @"横屏距顶部（pt）"}[key];
     cell.textLabel.text = title;
     if ([key isEqual:@"panelPosition"]) {
         UISegmentedControl *position = [[UISegmentedControl alloc] initWithItems:@[@"左", @"中", @"右"]];
@@ -85,7 +85,7 @@ extern UIViewController *RSInputCreatePersonaSelection(NSString *scope);
         cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
     } else {
         UISlider *slider = [UISlider new];
-        NSArray *range = @{@"size": @[@60, @160], @"height": @[@10, @90], @"duration": @[@0.5, @3], @"animationSpeed": @[@0.5, @2], @"tokenMaxHeight": @[@30, @90], @"aiMaxHeight": @[@30, @90], @"panelHeight": @[@0, @1000], @"panelTop": @[@0, @300]}[key];
+        NSArray *range = @{@"size": @[@60, @160], @"height": @[@10, @90], @"duration": @[@0.5, @3], @"animationSpeed": @[@0.5, @2], @"tokenMaxHeight": @[@30, @90], @"aiMaxHeight": @[@30, @90], @"panelHeight": @[@0, @1000], @"panelTop": @[@0, @300], @"panelTopLandscape": @[@0, @300]}[key];
         slider.minimumValue = [range[0] floatValue];
         slider.maximumValue = [range[1] floatValue];
         slider.value = [self.prompt[key] floatValue];
@@ -94,7 +94,7 @@ extern UIViewController *RSInputCreatePersonaSelection(NSString *scope);
         slider.continuous = NO;
         [slider addTarget:self action:@selector(slide:) forControlEvents:UIControlEventValueChanged];
         UILabel *label = [UILabel new];
-        NSString *unit = [@[@"panelHeight", @"panelTop"] containsObject:key] ? @"pt" : [key isEqualToString:@"duration"] ? @"秒" : [key isEqualToString:@"animationSpeed"] ? @"×" : @"%";
+        NSString *unit = [@[@"panelHeight", @"panelTop", @"panelTopLandscape"] containsObject:key] ? @"pt" : [key isEqualToString:@"duration"] ? @"秒" : [key isEqualToString:@"animationSpeed"] ? @"×" : @"%";
         label.text = [NSString stringWithFormat:@"%@  %.1f%@", title, slider.value, unit];
         label.font = [UIFont preferredFontForTextStyle:UIFontTextStyleBody];
         UIStackView *stack = [[UIStackView alloc] initWithArrangedSubviews:@[label, RSSliderInput(slider, self)]];
