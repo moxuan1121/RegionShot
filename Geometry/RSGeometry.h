@@ -102,3 +102,5 @@ static inline RSRectD RSPromptRect(double width, double height, double scale, do
     double y = fmax(0, fmin(height - h, height * percent / 100 - h / 2));
     return (RSRectD){x, y, w, h};
 }
+
+static inline int RSValidInterfaceOrientation(int value) { return value == 1 || value == 3 || value == 4; }

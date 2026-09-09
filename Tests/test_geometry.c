@@ -66,5 +66,7 @@ int main(void) {
         assert(button.x >= 0 && button.y >= 0 && button.x + button.width <= w && button.y + button.height <= h);
         assert(fabs(button.y + button.height / 2 - h * percent / 100) < 1e-9);
     }
+    assert(RSValidInterfaceOrientation(1) && RSValidInterfaceOrientation(3) && RSValidInterfaceOrientation(4));
+    assert(!RSValidInterfaceOrientation(0) && !RSValidInterfaceOrientation(2) && !RSValidInterfaceOrientation(5));
     puts("RegionShot geometry checks passed");
 }

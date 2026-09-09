@@ -19,7 +19,7 @@ static inline UIInterfaceOrientation RSActiveOrientation(UIWindowScene *scene) {
     UIApplication *application = UIApplication.sharedApplication;
     SEL selector = NSSelectorFromString(@"activeInterfaceOrientation");
     NSInteger value = [application respondsToSelector:selector] ? ((NSInteger (*)(id, SEL))objc_msgSend)(application, selector) : UIInterfaceOrientationUnknown;
-    UIInterfaceOrientation orientation = value >= UIInterfaceOrientationPortrait && value <= UIInterfaceOrientationLandscapeRight ? (UIInterfaceOrientation)value : UIInterfaceOrientationUnknown;
+    UIInterfaceOrientation orientation = RSValidInterfaceOrientation((int)value) ? (UIInterfaceOrientation)value : UIInterfaceOrientationUnknown;
     if (orientation == UIInterfaceOrientationUnknown) orientation = scene.interfaceOrientation;
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"

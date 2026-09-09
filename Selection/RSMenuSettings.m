@@ -43,6 +43,7 @@ NSArray<NSDictionary *> *RSFrozenMenuItems(void) {
     [RSMenuPrefs() synchronize];
     NSMutableArray *defaults = [NSMutableArray array];
     for (NSDictionary *item in RSMenuDefaults(NO)) {
+        if ([item[@"id"] integerValue] == 10) continue;
         NSMutableDictionary *entry = item.mutableCopy;
         if ([entry[@"id"] integerValue] == 0) entry[@"title"] = @"截屏";
         if ([entry[@"id"] integerValue] > 4 && [entry[@"id"] integerValue] != 9) entry[@"enabled"] = @NO;

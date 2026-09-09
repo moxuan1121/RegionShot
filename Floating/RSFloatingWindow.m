@@ -59,7 +59,7 @@
     NSNumber *target = note.userInfo[@"orientation"];
     UIInterfaceOrientation orientation = target ? target.integerValue : RSActiveOrientation(self.windowScene);
     RSFloatingController *controller = (RSFloatingController *)self.rootViewController;
-    if (orientation < UIInterfaceOrientationPortrait || orientation > UIInterfaceOrientationLandscapeRight) return;
+    if (!RSValidInterfaceOrientation((int)orientation)) return;
     controller.targetOrientation = orientation; controller.centerImages = YES;
     RSApplyWindowOrientation(self, orientation);
     [controller.view setNeedsLayout]; [controller.view layoutIfNeeded];

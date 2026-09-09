@@ -196,7 +196,7 @@ void RSInputOpenSearch(NSString *text) { RSInputOpenSearchEngine(RSInputSearchEn
         button.titleLabel.textAlignment = NSTextAlignmentCenter;
         button.tintColor = UIColor.whiteColor;
         [button setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
-        button.titleLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleCallout] scaledFontForFont:[UIFont systemFontOfSize:16 * scale weight:UIFontWeightSemibold]];
+        button.titleLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleCallout] scaledFontForFont:[UIFont systemFontOfSize:20 * scale weight:UIFontWeightSemibold]];
         button.titleLabel.adjustsFontForContentSizeCategory = YES;
         button.titleLabel.adjustsFontSizeToFitWidth = YES;
         button.titleLabel.minimumScaleFactor = 0.5;

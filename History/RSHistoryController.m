@@ -18,6 +18,18 @@ static RSHistoryStore *RSStore(void) {
     });
     return store;
 }
+@interface RSHistoryCell : UITableViewCell @end
+@implementation RSHistoryCell
+- (void)layoutSubviews {
+    [super layoutSubviews];
+    CGFloat height = self.contentView.bounds.size.height;
+    self.imageView.frame = CGRectMake(8, (height - 60) / 2, 60, 60);
+    self.imageView.contentMode = UIViewContentModeScaleAspectFit;
+    CGFloat width = MAX(0, self.contentView.bounds.size.width - 88);
+    self.textLabel.frame = CGRectMake(80, height / 2 - 23, width, 24);
+    self.detailTextLabel.frame = CGRectMake(80, height / 2 + 3, width, 20);
+}
+@end
 @interface RSHistoryPreview : UIViewController <UIScrollViewDelegate>
 @property (nonatomic, strong) UIImage *image;
 @property (nonatomic, strong) UIImageView *picture;
@@ -212,7 +224,7 @@ static RSHistoryController *RSActiveHistory;
 }
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section { return self.filtered.count; }
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)path {
-    UITableViewCell *cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:nil];
+    UITableViewCell *cell = [[RSHistoryCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:nil];
     NSDictionary *entry = self.filtered[path.row]; NSString *identifier = entry[@"id"];
     cell.textLabel.text = entry[@"title"]; cell.detailTextLabel.text = [self dateText:entry]; cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
     cell.imageView.image = [self.thumbnails objectForKey:identifier] ?: [UIImage systemImageNamed:@"photo"];

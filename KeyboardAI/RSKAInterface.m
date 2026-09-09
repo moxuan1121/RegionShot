@@ -75,6 +75,7 @@ static UIWindowLevel RSKAPanelWindowLevel(NSDictionary *options, NSString *key) 
 @property(strong) NSLayoutConstraint *heightConstraint;
 @property(strong) NSDictionary *windowOptions;
 @property BOOL resizing;
+@property(strong) NSLayoutConstraint *panelTop;
 @property(copy) dispatch_block_t onClose;
 - (void)close;
 - (void)enterTokens;
@@ -205,12 +206,13 @@ static UIWindowLevel RSKAPanelWindowLevel(NSDictionary *options, NSString *key) 
     [controller.view setNeedsLayout]; [controller.view layoutIfNeeded];
     UIView *host = controller.canvas;
     [host addSubview:panel];
+    self.panelTop = [panel.topAnchor constraintEqualToAnchor:host.safeAreaLayoutGuide.topAnchor constant:8];
     self.heightConstraint = [panel.heightAnchor constraintEqualToConstant:160];
     self.heightConstraint.priority = UILayoutPriorityDefaultHigh;
     [NSLayoutConstraint activateConstraints:@[
         [panel.leadingAnchor constraintEqualToAnchor:host.safeAreaLayoutGuide.leadingAnchor constant:12],
         [panel.trailingAnchor constraintEqualToAnchor:host.safeAreaLayoutGuide.trailingAnchor constant:-12],
-        [panel.topAnchor constraintEqualToAnchor:host.safeAreaLayoutGuide.topAnchor constant:8],
+        self.panelTop,
         self.heightConstraint,
         [panel.bottomAnchor constraintLessThanOrEqualToAnchor:host.keyboardLayoutGuide.topAnchor constant:-12],
         [stack.leadingAnchor constraintEqualToAnchor:panel.leadingAnchor constant:12],
@@ -220,12 +222,14 @@ static UIWindowLevel RSKAPanelWindowLevel(NSDictionary *options, NSString *key) 
     ]];
     self.replaceButton.enabled = NO;
     self.clipboardButton.enabled = NO;
+    [[[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleLight] impactOccurred];
     return YES;
 }
 - (void)resizePanel {
     UIWindow *window = self.panel.window;
     if (!window || self.resizing) return;
     self.resizing = YES;
+    self.panelTop.constant = UIInterfaceOrientationIsLandscape(((RSKAPanelController *)window.rootViewController).orientation) ? -7 : 8;
     [window layoutIfNeeded];
     CGFloat width = MAX(1, self.contentStack.bounds.size.width);
     CGFloat contentHeight;

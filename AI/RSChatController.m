@@ -131,6 +131,7 @@ static NSUserDefaults *RSChatPreferences(void) {
     [window makeKeyAndVisible];
     RSApplyWindowOrientation(window, RSActiveOrientation(scene));
     [controller loadViewIfNeeded];
+    [[[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleLight] impactOccurred];
     if (image && [RSOption(@"AIAutoImage") boolValue]) [controller send];
 }
 + (void)showImage:(UIImage *)image scene:(UIWindowScene *)scene persona:(NSDictionary *)persona {
@@ -233,6 +234,7 @@ static NSUserDefaults *RSChatPreferences(void) {
     self.chat.translatesAutoresizingMaskIntoConstraints = NO;
     [self.scroll addSubview:self.chat];
     self.input = [UITextView new];
+    self.input.returnKeyType = UIReturnKeySend;
     self.input.font = [UIFont preferredFontForTextStyle:UIFontTextStyleBody];
     self.input.backgroundColor = UIColor.tertiarySystemBackgroundColor;
     self.input.layer.cornerRadius = 20;
@@ -333,6 +335,10 @@ static NSUserDefaults *RSChatPreferences(void) {
     }
     self.modelButton.menu = [UIMenu menuWithTitle:@"切换模型" children:actions];
 }
+- (BOOL)textView:(UITextView *)textView shouldChangeTextInRange:(NSRange)range replacementText:(NSString *)text {
+    if (textView == self.input && [text isEqual:@"\n"] && !textView.markedTextRange) { if (!self.task) [self send]; return NO; }
+    return YES;
+}
 - (void)textViewDidChange:(UITextView *)textView { if (textView == self.input) self.placeholder.hidden = textView.text.length > 0; }
 - (void)hideKeyboard { [self.view endEditing:YES]; }
 - (void)minimize {
@@ -345,6 +351,7 @@ static NSUserDefaults *RSChatPreferences(void) {
     [self.previousKey makeKeyWindow];
 }
 - (void)restore {
+    BOOL wasHidden = self.host.hidden || self.card.hidden;
     [RSChatPreferences() synchronize];
     RSReloadOptions(); [self applyAppearance]; [self updateModelTitle];
     self.host.activeSurface = nil;
@@ -353,6 +360,7 @@ static NSUserDefaults *RSChatPreferences(void) {
     self.view.backgroundColor = [UIColor colorWithWhite:0 alpha:0.28];
     [self.host makeKeyAndVisible];
     [self focusInput];
+    if (wasHidden) [[[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleLight] impactOccurred];
 }
 - (void)panBall:(UIPanGestureRecognizer *)pan {
     CGPoint delta = [pan translationInView:self.view];

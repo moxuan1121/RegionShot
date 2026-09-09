@@ -88,7 +88,7 @@ static BOOL RSPublishInputSettings(NSString *key) {
     self.promptView.backgroundColor = UIColor.secondarySystemGroupedBackgroundColor; self.promptView.layer.cornerRadius = 18;
     self.nameField.translatesAutoresizingMaskIntoConstraints = NO; self.promptView.translatesAutoresizingMaskIntoConstraints = NO;
     [self.view addSubview:self.nameField]; [self.view addSubview:self.promptView];
-    self.presentation = [[UISegmentedControl alloc] initWithItems:@[@"现有对话窗口", @"KeyboardAI 窗口"]];
+    self.presentation = [[UISegmentedControl alloc] initWithItems:@[@"对话式窗口", @"弹出式窗口"]];
     self.presentation.selectedSegmentIndex = [self.persona[@"presentation"] isEqual:@"keyboardai"] ? 1 : 0;
     self.presentation.accessibilityLabel = @"AI 回答展示方式";
     self.presentation.translatesAutoresizingMaskIntoConstraints = NO;
