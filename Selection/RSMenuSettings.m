@@ -1,3 +1,4 @@
+#import "../Preferences/RSSliderInput.h"
 #import "RSMenuSettings.h"
 #import "RSMenuConfiguration.h"
 #import "../AI/RSAISettingsController.h"
@@ -159,7 +160,7 @@ BOOL RSSelectionMenuHideNames(void) { return [RSMenuPrefs() boolForKey:@"HideSel
         UISlider *slider = [[UISlider alloc] initWithFrame:CGRectMake(0, 0, 140, 44)]; slider.tag = icon;
         slider.minimumValue = icon ? 16 : 8; slider.maximumValue = icon ? 80 : 16; slider.value = RSSelectionMenuSize(icon);
         slider.accessibilityLabel = icon ? @"图标大小" : @"文字大小";
-        [slider addTarget:self action:@selector(sizeChanged:) forControlEvents:UIControlEventValueChanged]; cell.accessoryView = slider;
+        [slider addTarget:self action:@selector(sizeChanged:) forControlEvents:UIControlEventValueChanged]; cell.accessoryView = RSSliderInput(slider, self);
     } else { cell.textLabel.text = @"恢复工具条默认设置"; cell.textLabel.textColor = UIColor.systemRedColor; }
     return cell;
 }

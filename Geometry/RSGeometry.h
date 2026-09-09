@@ -104,3 +104,10 @@ static inline RSRectD RSPromptRect(double width, double height, double scale, do
 }
 
 static inline int RSValidInterfaceOrientation(int value) { return value == 1 || value == 3 || value == 4; }
+
+static inline RSRectD RSPopupFrame(double width, double height, double portraitWidth, int position, double top, double requestedHeight) {
+    double panelWidth = fmax(0, fmin(width - 24, portraitWidth - 24));
+    double x = position <= 0 ? 12 : position >= 2 ? width - panelWidth - 12 : (width - panelWidth) / 2;
+    top = fmax(0, fmin(top, fmax(0, height - 148)));
+    return (RSRectD){fmax(0, x), top, panelWidth, fmax(0, fmin(requestedHeight, height - top - 12))};
+}

@@ -76,6 +76,8 @@ static UIWindowLevel RSKAPanelWindowLevel(NSDictionary *options, NSString *key) 
 @property(strong) NSDictionary *windowOptions;
 @property BOOL resizing;
 @property(strong) NSLayoutConstraint *panelTop;
+@property(strong) NSLayoutConstraint *panelLeading;
+@property(strong) NSLayoutConstraint *panelWidth;
 @property(copy) dispatch_block_t onClose;
 - (void)close;
 - (void)enterTokens;
@@ -206,12 +208,13 @@ static UIWindowLevel RSKAPanelWindowLevel(NSDictionary *options, NSString *key) 
     [controller.view setNeedsLayout]; [controller.view layoutIfNeeded];
     UIView *host = controller.canvas;
     [host addSubview:panel];
-    self.panelTop = [panel.topAnchor constraintEqualToAnchor:host.safeAreaLayoutGuide.topAnchor constant:8];
+    self.panelTop = [panel.topAnchor constraintEqualToAnchor:host.topAnchor constant:8];
+    self.panelLeading = [panel.leadingAnchor constraintEqualToAnchor:host.leadingAnchor constant:12];
+    self.panelWidth = [panel.widthAnchor constraintEqualToConstant:300];
     self.heightConstraint = [panel.heightAnchor constraintEqualToConstant:160];
     self.heightConstraint.priority = UILayoutPriorityDefaultHigh;
     [NSLayoutConstraint activateConstraints:@[
-        [panel.leadingAnchor constraintEqualToAnchor:host.safeAreaLayoutGuide.leadingAnchor constant:12],
-        [panel.trailingAnchor constraintEqualToAnchor:host.safeAreaLayoutGuide.trailingAnchor constant:-12],
+        self.panelLeading, self.panelWidth,
         self.panelTop,
         self.heightConstraint,
         [panel.bottomAnchor constraintLessThanOrEqualToAnchor:host.keyboardLayoutGuide.topAnchor constant:-12],
@@ -229,7 +232,12 @@ static UIWindowLevel RSKAPanelWindowLevel(NSDictionary *options, NSString *key) 
     UIWindow *window = self.panel.window;
     if (!window || self.resizing) return;
     self.resizing = YES;
-    self.panelTop.constant = UIInterfaceOrientationIsLandscape(((RSKAPanelController *)window.rootViewController).orientation) ? -7 : 8;
+    UIView *canvas = ((RSKAPanelController *)window.rootViewController).canvas;
+    BOOL landscape = UIInterfaceOrientationIsLandscape(((RSKAPanelController *)window.rootViewController).orientation);
+    RSRectD placement = RSPopupFrame(canvas.bounds.size.width, canvas.bounds.size.height,
+        UIScreen.mainScreen.fixedCoordinateSpace.bounds.size.width, landscape ? [self.windowOptions[@"panelPosition"] intValue] : 1,
+        [self.windowOptions[@"panelTop"] doubleValue], [self.windowOptions[@"panelHeight"] doubleValue]);
+    self.panelTop.constant = placement.y; self.panelLeading.constant = placement.x; self.panelWidth.constant = placement.width;
     [window layoutIfNeeded];
     CGFloat width = MAX(1, self.contentStack.bounds.size.width);
     CGFloat contentHeight;
@@ -244,8 +252,9 @@ static UIWindowLevel RSKAPanelWindowLevel(NSDictionary *options, NSString *key) 
             withHorizontalFittingPriority:UILayoutPriorityRequired verticalFittingPriority:UILayoutPriorityFittingSizeLevel].height;
     }
     CGFloat available = MAX(0, ((RSKAPanelController *)window.rootViewController).canvas.bounds.size.height - ((RSKAPanelController *)window.rootViewController).canvas.safeAreaInsets.top - ((RSKAPanelController *)window.rootViewController).canvas.safeAreaInsets.bottom - 20);
+    available = MAX(0, MIN(available, canvas.bounds.size.height - placement.y - 12));
     CGFloat percent = [self.windowOptions[self.tokenView ? @"tokenMaxHeight" : @"aiMaxHeight"] doubleValue];
-    self.heightConstraint.constant = RSKAFittedPanelHeight(contentHeight, chrome, available, percent);
+    self.heightConstraint.constant = [self.windowOptions[@"panelHeight"] doubleValue] > 0 ? MIN(available, MAX(chrome + 24, placement.height)) : RSKAFittedPanelHeight(contentHeight, chrome, available, percent);
     [window layoutIfNeeded];
     self.resizing = NO;
 }

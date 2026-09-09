@@ -1,3 +1,4 @@
+#import "../Preferences/RSSliderInput.h"
 #import "../Input/RSInputStore.h"
 #import "RSAISettingsController.h"
 #import "../Preferences/RSBehaviorSettings.h"
@@ -161,7 +162,7 @@ static BOOL RSPublishInputSettings(NSString *key) {
     UISlider *slider = [UISlider new]; slider.frame = CGRectMake(0, 0, 180, 32); slider.tag = path.row;
     slider.minimumValue = path.row ? 0.25 : 36; slider.maximumValue = path.row ? 1 : 80;
     slider.value = [RSOption(path.row ? @"AIBallOpacity" : @"AIBallSize") floatValue]; [slider addTarget:self action:@selector(changed:) forControlEvents:UIControlEventValueChanged];
-    cell.accessoryView = slider; return cell;
+    cell.accessoryView = RSSliderInput(slider, self); return cell;
 }
 - (void)changed:(UISlider *)slider { RSSetOption(slider.tag ? @"AIBallOpacity" : @"AIBallSize", @(slider.value)); }
 @end

@@ -116,6 +116,8 @@ static NSString *RSInputFullText(id<UITextInput> target) {
 @property(strong) NSDictionary *windowOptions;
 @property BOOL resizing;
 @property(strong) NSLayoutConstraint *panelTop;
+@property(strong) NSLayoutConstraint *panelLeading;
+@property(strong) NSLayoutConstraint *panelWidth;
 - (void)displayText:(NSString *)text;
 - (void)finishWithResult:(NSString *)result error:(NSString *)error;
 - (void)run:(NSDictionary *)action copiedText:(NSString *)copied search:(void (^)(NSString *))search;
@@ -263,12 +265,13 @@ static NSString *RSInputFullText(id<UITextInput> target) {
     [controller.view setNeedsLayout]; [controller.view layoutIfNeeded];
     UIView *host = controller.canvas;
     [host addSubview:panel];
-    self.panelTop = [panel.topAnchor constraintEqualToAnchor:host.safeAreaLayoutGuide.topAnchor constant:8];
+    self.panelTop = [panel.topAnchor constraintEqualToAnchor:host.topAnchor constant:8];
+    self.panelLeading = [panel.leadingAnchor constraintEqualToAnchor:host.leadingAnchor constant:12];
+    self.panelWidth = [panel.widthAnchor constraintEqualToConstant:300];
     self.heightConstraint = [panel.heightAnchor constraintEqualToConstant:160];
     self.heightConstraint.priority = UILayoutPriorityDefaultHigh;
     [NSLayoutConstraint activateConstraints:@[
-        [panel.leadingAnchor constraintEqualToAnchor:host.safeAreaLayoutGuide.leadingAnchor constant:12],
-        [panel.trailingAnchor constraintEqualToAnchor:host.safeAreaLayoutGuide.trailingAnchor constant:-12],
+        self.panelLeading, self.panelWidth,
         self.panelTop,
         self.heightConstraint,
         [panel.bottomAnchor constraintLessThanOrEqualToAnchor:host.keyboardLayoutGuide.topAnchor constant:-12],
@@ -286,7 +289,12 @@ static NSString *RSInputFullText(id<UITextInput> target) {
     UIWindow *window = self.panel.window;
     if (!window || self.resizing) return;
     self.resizing = YES;
-    self.panelTop.constant = UIInterfaceOrientationIsLandscape(((RSInputPanelController *)window.rootViewController).orientation) ? -7 : 8;
+    UIView *canvas = ((RSInputPanelController *)window.rootViewController).canvas;
+    BOOL landscape = UIInterfaceOrientationIsLandscape(((RSInputPanelController *)window.rootViewController).orientation);
+    RSRectD placement = RSPopupFrame(canvas.bounds.size.width, canvas.bounds.size.height,
+        UIScreen.mainScreen.fixedCoordinateSpace.bounds.size.width, landscape ? [self.windowOptions[@"panelPosition"] intValue] : 1,
+        [self.windowOptions[@"panelTop"] doubleValue], [self.windowOptions[@"panelHeight"] doubleValue]);
+    self.panelTop.constant = placement.y; self.panelLeading.constant = placement.x; self.panelWidth.constant = placement.width;
     [window layoutIfNeeded];
     CGFloat width = MAX(1, self.contentStack.bounds.size.width);
     CGFloat contentHeight;
@@ -302,8 +310,9 @@ static NSString *RSInputFullText(id<UITextInput> target) {
     }
     UIView *host = ((RSInputPanelController *)window.rootViewController).canvas;
     CGFloat available = MAX(0, host.bounds.size.height - host.safeAreaInsets.top - host.safeAreaInsets.bottom - 20);
+    available = MAX(0, MIN(available, canvas.bounds.size.height - placement.y - 12));
     CGFloat percent = [self.windowOptions[self.tokenView ? @"tokenMaxHeight" : @"aiMaxHeight"] doubleValue];
-    self.heightConstraint.constant = RSInputFittedPanelHeight(contentHeight, chrome, available, percent);
+    self.heightConstraint.constant = [self.windowOptions[@"panelHeight"] doubleValue] > 0 ? MIN(available, MAX(chrome + 24, placement.height)) : RSInputFittedPanelHeight(contentHeight, chrome, available, percent);
     [window layoutIfNeeded];
     self.resizing = NO;
 }

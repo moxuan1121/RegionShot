@@ -68,5 +68,11 @@ int main(void) {
     }
     assert(RSValidInterfaceOrientation(1) && RSValidInterfaceOrientation(3) && RSValidInterfaceOrientation(4));
     assert(!RSValidInterfaceOrientation(0) && !RSValidInterfaceOrientation(2) && !RSValidInterfaceOrientation(5));
+    for (int position = 0; position <= 2; position++) {
+        RSRectD popup = RSPopupFrame(844, 390, 390, position, 20, 250);
+        assert(popup.width == 366 && popup.height == 250 && popup.y == 20);
+        assert(popup.x >= 12 && popup.x + popup.width <= 832);
+    }
+    assert(RSPopupFrame(390, 844, 390, 1, 8, 200).width == 366);
     puts("RegionShot geometry checks passed");
 }

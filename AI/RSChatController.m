@@ -204,6 +204,8 @@ static NSUserDefaults *RSChatPreferences(void) {
     [self updateModelTitle];
     UILabel *heading = [UILabel new]; heading.text = @"图片问答"; heading.font = [UIFont boldSystemFontOfSize:17];
     [heading setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
+    [heading setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
+    self.modelButton.contentEdgeInsets = UIEdgeInsetsZero;
     self.modelButton.titleLabel.font = [UIFont systemFontOfSize:12];
     self.modelButton.titleLabel.lineBreakMode = NSLineBreakByTruncatingMiddle;
     UIStackView *top = [[UIStackView alloc] initWithArrangedSubviews:@[heading, self.modelButton,
@@ -212,6 +214,7 @@ static NSUserDefaults *RSChatPreferences(void) {
         [self button:@"xmark" title:@"关闭对话" action:@selector(close)]]];
     top.alignment = UIStackViewAlignmentCenter;
     top.spacing = 8;
+    [top setCustomSpacing:3 afterView:heading];
     for (UIView *item in top.arrangedSubviews) if (item != self.modelButton && [item isKindOfClass:UIButton.class]) {
         item.backgroundColor = [UIColor.systemBlueColor colorWithAlphaComponent:0.08]; item.layer.cornerRadius = 18;
     }

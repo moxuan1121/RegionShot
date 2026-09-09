@@ -23,44 +23,15 @@ static RSHistoryStore *RSStore(void) {
 - (void)layoutSubviews {
     [super layoutSubviews];
     CGFloat height = self.contentView.bounds.size.height;
-    self.imageView.frame = CGRectMake(8, (height - 60) / 2, 60, 60);
+    CGFloat total = self.contentView.bounds.size.width;
+    CGFloat textWidth = MIN(180, total * 0.48), textX = total - textWidth - 12;
+    self.imageView.frame = CGRectMake(8, 4, MAX(0, textX - 20), height - 8);
     self.imageView.contentMode = UIViewContentModeScaleAspectFit;
-    CGFloat width = MAX(0, self.contentView.bounds.size.width - 88);
-    self.textLabel.frame = CGRectMake(80, height / 2 - 23, width, 24);
-    self.detailTextLabel.frame = CGRectMake(80, height / 2 + 3, width, 20);
+    self.textLabel.textAlignment = NSTextAlignmentRight; self.detailTextLabel.textAlignment = NSTextAlignmentRight;
+    self.textLabel.frame = CGRectMake(textX, height / 2 - 23, textWidth, 24);
+    self.detailTextLabel.frame = CGRectMake(textX, height / 2 + 3, textWidth, 20);
 }
 @end
-@interface RSHistoryPreview : UIViewController <UIScrollViewDelegate>
-@property (nonatomic, strong) UIImage *image;
-@property (nonatomic, strong) UIImageView *picture;
-@property (nonatomic, copy) dispatch_block_t restore;
-@property (nonatomic, copy) dispatch_block_t ask;
-@end
-@implementation RSHistoryPreview
-- (void)viewDidLoad {
-    [super viewDidLoad];
-    UIScrollView *scroll = [[UIScrollView alloc] initWithFrame:self.view.bounds];
-    scroll.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-    scroll.backgroundColor = UIColor.systemBackgroundColor; scroll.delegate = self;
-    scroll.minimumZoomScale = 1; scroll.maximumZoomScale = 6; self.view = scroll;
-    self.picture = [[UIImageView alloc] initWithImage:self.image]; self.picture.contentMode = UIViewContentModeScaleAspectFit;
-    self.picture.frame = scroll.bounds; self.picture.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-    [scroll addSubview:self.picture];
-    self.navigationItem.rightBarButtonItems = @[
-        [[UIBarButtonItem alloc] initWithTitle:@"浮图" style:UIBarButtonItemStylePlain target:self action:@selector(restoreImage)],
-        [[UIBarButtonItem alloc] initWithTitle:@"问答" style:UIBarButtonItemStylePlain target:self action:@selector(askAI)],
-        [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemAction target:self action:@selector(share)]];
-}
-- (UIView *)viewForZoomingInScrollView:(UIScrollView *)scroll { return self.picture; }
-- (void)restoreImage { if (self.restore) self.restore(); }
-- (void)askAI { if (self.ask) self.ask(); }
-- (void)share {
-    UIActivityViewController *activity = [[UIActivityViewController alloc] initWithActivityItems:@[self.image] applicationActivities:nil];
-    activity.popoverPresentationController.barButtonItem = self.navigationItem.rightBarButtonItems.lastObject;
-    [self presentViewController:activity animated:YES completion:nil];
-}
-@end
-
 @interface RSHistoryPanel : UIViewController <UIGestureRecognizerDelegate>
 @property (nonatomic, strong) UINavigationController *navigation;
 @property (nonatomic, copy) dispatch_block_t dismissPanel;
@@ -226,7 +197,7 @@ static RSHistoryController *RSActiveHistory;
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)path {
     UITableViewCell *cell = [[RSHistoryCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:nil];
     NSDictionary *entry = self.filtered[path.row]; NSString *identifier = entry[@"id"];
-    cell.textLabel.text = entry[@"title"]; cell.detailTextLabel.text = [self dateText:entry]; cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
+    cell.textLabel.text = entry[@"title"]; cell.detailTextLabel.text = [self dateText:entry]; cell.accessoryType = UITableViewCellAccessoryNone;
     cell.imageView.image = [self.thumbnails objectForKey:identifier] ?: [UIImage systemImageNamed:@"photo"];
     if (![self.thumbnails objectForKey:identifier]) {
         __weak typeof(self) weakSelf = self; __weak UITableViewCell *weakCell = cell;
@@ -249,10 +220,8 @@ static RSHistoryController *RSActiveHistory;
             RSHistoryController *controller = weakSelf; controller.loading = NO;
             if (!controller.host) return;
             if (!image.CGImage) { [controller error:@"无法读取此截图。文件可能已被清理。"]; return; }
-            RSHistoryPreview *preview = [RSHistoryPreview new]; preview.title = entry[@"title"]; preview.image = image;
-            preview.restore = ^{ RSHistoryController *owner = weakSelf; UIWindowScene *scene = owner.host.windowScene; [owner close]; if (owner.restore) owner.restore(image, scene); };
-            preview.ask = ^{ RSHistoryController *owner = weakSelf; UIWindowScene *scene = owner.host.windowScene; [owner close]; [RSChatController showImage:image scene:scene]; };
-            [controller.navigationController pushViewController:preview animated:YES];
+            UIWindowScene *scene = controller.host.windowScene;
+            [controller close]; if (controller.restore) controller.restore(image, scene);
         });
     });
 }
