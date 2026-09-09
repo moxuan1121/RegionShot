@@ -314,7 +314,7 @@
 
 - (void)saveToAlbum {
     UIImage *out = [self compositeImage];
-    [PHPhotoLibrary requestAuthorization:^(PHAuthorizationStatus status) {
+    [PHPhotoLibrary requestAuthorizationForAccessLevel:PHAccessLevelAddOnly handler:^(PHAuthorizationStatus status) {
         dispatch_async(dispatch_get_main_queue(), ^{
             if (status != PHAuthorizationStatusAuthorized && status != PHAuthorizationStatusLimited) {
                 [self showToast:@"无相册权限"]; return;

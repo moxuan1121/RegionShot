@@ -1,0 +1,15 @@
+from pathlib import Path
+root = Path(__file__).resolve().parents[1]
+read = lambda path: (root / path).read_text()
+canvas = read("Annotation/RSMarkupAnnotationCanvas.m")
+editor = read("Annotation/RSMarkupAnnotationViewController.m")
+assert "self.completion = completion" in read("Selection/RSImageEditor.m")
+assert "[self drawRect:self.bounds]" in canvas.split("- (UIImage *)renderedImage")[1]
+assert "case RSMarkupDrawModeText:" in canvas
+assert "item.textAnnotation = a" in editor
+assert "CGImageGetWidth(self.sourceImage.CGImage)" in canvas
+assert "resizeDrawingToSize:disp.size" in editor
+assert "[self layoutToolbarButtons];" in editor.split("- (void)viewDidLayoutSubviews")[1].split("- (CGRect)imageDisplayRect")[0]
+assert "forceDestroyOnRotation" not in editor
+assert "Snapper3.h" not in editor
+print("Annotation entry, text/highlight export, pixel sampling and layout wiring verified")

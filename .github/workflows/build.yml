@@ -21,6 +21,8 @@ jobs:
         run: clang -fobjc-arc -Wall -Wextra -Werror -framework Foundation Tests/test_history.m History/RSHistoryStore.m -o /tmp/regionshot-history && /tmp/regionshot-history
       - name: Check settings structure and unchanged preferences
         run: python3 Tests/check_settings_structure.py
+      - name: Check annotation integration
+        run: python3 Tests/check_annotation.py
       - name: Check settings validation
         run: clang -fobjc-arc -Wall -Wextra -Werror -framework Foundation Tests/test_options.m Preferences/RSOptions.m -o /tmp/regionshot-options && /tmp/regionshot-options
       - name: Check screenshot symbol resolution
