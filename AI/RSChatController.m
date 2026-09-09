@@ -205,7 +205,6 @@ static NSUserDefaults *RSChatPreferences(void) {
     UILabel *heading = [UILabel new]; heading.text = @"图片问答"; heading.font = [UIFont boldSystemFontOfSize:17];
     [heading setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
     [heading setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
-    self.modelButton.contentEdgeInsets = UIEdgeInsetsZero;
     self.modelButton.titleLabel.font = [UIFont systemFontOfSize:12];
     self.modelButton.titleLabel.lineBreakMode = NSLineBreakByTruncatingMiddle;
     UIStackView *top = [[UIStackView alloc] initWithArrangedSubviews:@[heading, self.modelButton,
