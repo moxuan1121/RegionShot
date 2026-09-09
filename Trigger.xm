@@ -96,14 +96,6 @@ static char RSStatusBarGestureKey;
 %end
 %end
 // Block SpringBoard's system touch routing only while the frozen selection is visible.
-%group RSSideButtonLock
-%hook SBLockHardwareButtonActions
-- (void)performSinglePressAction {
-    %orig;
-    [RSRegionShotManager.sharedManager cancelCapture];
-}
-%end
-%end
 %group RSFrozenSystemGestures
 %hook SBSystemGestureManager
 - (BOOL)shouldSystemGestureReceiveTouchWithLocation:(CGPoint)location {
@@ -224,7 +216,7 @@ static void RSPreferenceEvent(CFNotificationCenterRef center, void *observer, CF
     @autoreleasepool {
         if (![NSBundle.mainBundle.bundleIdentifier isEqualToString:@"com.apple.springboard"]) return;
         RSReload();
-        if (RSCompatible(NSClassFromString(@"SBLockHardwareButtonActions"), @"performSinglePressAction", NULL)) { %init(RSSideButtonLock); }
+
         if ([NSClassFromString(@"_UIStatusBar") isSubclassOfClass:UIView.class]) { %init(RSStatusBarEntry); }
         Class gestures = NSClassFromString(@"SBSystemGestureManager");
         Method receiveTouch = class_getInstanceMethod(gestures, NSSelectorFromString(@"shouldSystemGestureReceiveTouchWithLocation:"));

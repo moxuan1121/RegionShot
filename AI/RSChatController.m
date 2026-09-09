@@ -96,6 +96,8 @@ static NSUserDefaults *RSChatPreferences(void) {
     return prefs;
 }
 @implementation RSChatController
++ (void)finishCameraReturn { [RSActiveChat cameraFinished]; }
+
 - (BOOL)shouldAutorotate { return NO; }
 - (UIInterfaceOrientationMask)supportedInterfaceOrientations { return UIInterfaceOrientationMaskAllButUpsideDown; }
 - (UIInterfaceOrientation)preferredInterfaceOrientationForPresentation { return RSActiveOrientation(self.host.windowScene); }

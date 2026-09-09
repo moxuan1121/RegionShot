@@ -22,11 +22,13 @@ assert "lockcomplete" in read("Trigger.xm")
 assert "if (!record) snap.center" in read("Manager/RSRegionShotManager.m")
 
 assert "addChildViewController:navigation" in read("Selection/RSSelectionWindow.m")
-assert "performSinglePressAction" in read("Trigger.xm")
-assert "exceptSystemGestureTypes:" in read("Selection/RSSelectionWindow.m")
-assert "hardware.count" in read("Selection/RSSelectionWindow.m")
-assert "isKindOfClass:NSArray.class" in read("Selection/RSSelectionWindow.m")
-assert "_isDeviceHardwareButtonGestureType:" in read("Selection/RSSelectionWindow.m")
+hooks = read("Selection/RSFreezeSystemHooks.xm")
+assert "acquireSystemGestureDisableAssertion" not in read("Selection/RSSelectionWindow.m")
+assert "lockUIFromSource:" in hooks and "cancelCapture]; %orig;" in hooks
+assert "gestureRecognizerShouldBegin:" in hooks and "canBePresented" in hooks
+assert "regionshot_camera_return" in read("Camera/main.m")
+assert 'request[@"id"] isEqual:self.requestID' in read("Camera/main.m")
+assert "picker.showsCameraControls = NO" in read("Camera/main.m")
 for folder, prefix in [("Input", "RSInput"), ("KeyboardAI", "RSKA")]:
     assert "RSPopupContentHeight(" in read(f"{folder}/{prefix}Interface.m")
     assert "safeAreaInsets.top -" not in read(f"{folder}/{prefix}Interface.m")

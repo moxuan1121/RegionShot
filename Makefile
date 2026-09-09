@@ -6,7 +6,7 @@ INSTALL_TARGET_PROCESSES = SpringBoard
 include $(THEOS)/makefiles/common.mk
 
 TWEAK_NAME = RegionShot RegionShotInput
-RegionShot_FILES = Trigger.xm Preferences/RSURLHooks.xm \
+RegionShot_FILES = Selection/RSFreezeSystemHooks.xm Trigger.xm Preferences/RSURLHooks.xm \
 	Preferences/RSOptions.m \
 	Preferences/RSBehaviorSettings.m \
 	History/RSHistoryStore.m \

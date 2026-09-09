@@ -20,6 +20,7 @@ static inline NSString *RSURLNotification(id value) {
         }
     }
     if (([root isEqual:@"regionshot_aiwindow"] || [root isEqual:@"regionshot_ai2"])) return @"com.moxuan.regionshot/AIWindow";
+    if ([root isEqual:@"regionshot_camera_return"]) return @"com.moxuan.regionshot/CameraReturn";
     if ([root isEqual:@"regionshot_history"]) return @"com.moxuan.regionshot/History";
     return nil;
 }
