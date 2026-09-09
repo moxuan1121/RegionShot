@@ -40,3 +40,6 @@ for folder, prefix in [("Input", "RSInput"), ("KeyboardAI", "RSKA")]:
 assert "CGFloat chrome = 22" in read("Geometry/RSPopupLayout.h")
 assert "point.y <= 32" in read("Geometry/RSPanelController.h")
 assert "height - 28" in read("Geometry/RSPanelController.h")
+
+assert "AVCaptureSessionErrorKey" in camera and "AVCaptureSessionInterruptionReasonKey" in camera
+assert "usesApplicationAudioSession = NO" in camera
