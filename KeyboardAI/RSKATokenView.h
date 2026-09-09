@@ -6,4 +6,5 @@
 @property(readonly) BOOL hasSelection;
 @property(readonly, copy) NSString *selectedText;
 - (instancetype)initWithPieces:(NSArray<NSString *> *)pieces;
+- (void)clearSelection;
 @end

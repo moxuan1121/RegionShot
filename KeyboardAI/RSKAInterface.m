@@ -182,6 +182,10 @@ static UIWindowLevel RSKAPanelWindowLevel(NSDictionary *options, NSString *key) 
     }
     self.clipboardButton = [self button:@"复制" action:@selector(copyResult)];
     UIButton *close = [self button:@"关闭" action:@selector(close)];
+    UILongPressGestureRecognizer *clearSelection = [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(clearTokenSelection:)];
+    clearSelection.minimumPressDuration = 0.5;
+    [close addGestureRecognizer:clearSelection];
+    close.accessibilityHint = @"轻按关闭，分词时长按取消全部选择";
     UIStackView *buttons = [[UIStackView alloc] initWithArrangedSubviews:@[self.replaceButton, self.clipboardButton, close]];
     buttons.distribution = UIStackViewDistributionFillEqually;
     buttons.spacing = 8;
@@ -284,6 +288,10 @@ static UIWindowLevel RSKAPanelWindowLevel(NSDictionary *options, NSString *key) 
     self.statusLabel.text = @"已完成";
     [self updateTokenActions];
     [self resizePanel];
+}
+- (void)clearTokenSelection:(UILongPressGestureRecognizer *)gesture {
+    if (gesture.state == UIGestureRecognizerStateBegan && self.tokenView.hasSelection)
+        [self.tokenView clearSelection];
 }
 - (void)tokenize:(UILongPressGestureRecognizer *)gesture {
     if (gesture.state != UIGestureRecognizerStateBegan || self.generating || !self.completedResult || self.tokenView) return;

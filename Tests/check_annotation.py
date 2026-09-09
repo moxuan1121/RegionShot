@@ -43,3 +43,8 @@ assert "height - 28" in read("Geometry/RSPanelController.h")
 
 assert "AVCaptureSessionErrorKey" in camera and "AVCaptureSessionInterruptionReasonKey" in camera
 assert "usesApplicationAudioSession = NO" in camera
+assert "UIApplicationDidBecomeActiveNotification" in camera and "[self startSession]" in camera
+for token_view in ("Input/RSInputTokenView.m", "KeyboardAI/RSKATokenView.m"):
+    assert "- (void)clearSelection" in read(token_view)
+for panel in ("Input/RSInputInterface.m", "KeyboardAI/RSKAInterface.m"):
+    assert "@selector(clearTokenSelection:)" in read(panel)

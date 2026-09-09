@@ -153,6 +153,12 @@
     RSInputSelectionFeedback();
 }
 - (BOOL)hasSelection { return self.chosen.count > 0; }
+- (void)clearSelection {
+    if (!self.chosen.count) return;
+    [self.chosen removeAllIndexes];
+    [self notifySelection];
+    RSInputSelectionFeedback();
+}
 - (NSString *)selectedText {
     NSMutableString *text = [NSMutableString string];
     [self.chosen enumerateIndexesUsingBlock:^(NSUInteger index, __unused BOOL *stop) { [text appendString:self.pieces[index]]; }];

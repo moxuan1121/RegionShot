@@ -12,6 +12,7 @@
 @property(nonatomic, strong) dispatch_queue_t queue;
 @property(nonatomic) BOOL stopped;
 @property(nonatomic) BOOL hasSessionDiagnostic;
+@property(nonatomic) BOOL configured;
 @end
 @implementation RSInlineCamera
 - (void)viewDidLoad {
@@ -55,6 +56,7 @@
     [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(sessionError:) name:AVCaptureSessionRuntimeErrorNotification object:self.session];
     [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(interrupted:) name:AVCaptureSessionWasInterruptedNotification object:self.session];
     [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(resumed:) name:AVCaptureSessionInterruptionEndedNotification object:self.session];
+    [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(applicationBecameActive:) name:UIApplicationDidBecomeActiveNotification object:nil];
     AVAuthorizationStatus permission = [AVCaptureDevice authorizationStatusForMediaType:AVMediaTypeVideo];
     if (permission == AVAuthorizationStatusDenied || permission == AVAuthorizationStatusRestricted) { [self showError:@"当前进程没有相机权限，请检查系统相机访问限制。"]; return; }
     // System hosts may carry camera authorization themselves. Never request TCC without a usage string.
@@ -71,7 +73,8 @@
     self.status.text = message; self.shutter.enabled = NO; self.flip.enabled = NO;
 }
 - (void)configure {
-    if (self.stopped) return;
+    if (self.stopped || self.configured) return;
+    self.configured = YES;
     dispatch_async(self.queue, ^{
         // ShellX 3.0.1 0xa790c–0xa7930: camera-only capture must not reconfigure SpringBoard audio.
         self.session.usesApplicationAudioSession = NO;
@@ -80,14 +83,26 @@
         AVCaptureDevice *device = [AVCaptureDevice defaultDeviceWithMediaType:AVMediaTypeVideo];
         AVCaptureDeviceInput *input = device ? [AVCaptureDeviceInput deviceInputWithDevice:device error:&error] : nil;
         if (!input || ![self.session canAddInput:input] || ![self.session canAddOutput:self.output]) {
+            self.configured = NO;
             dispatch_async(dispatch_get_main_queue(), ^{ [self showError:error.localizedDescription ?: @"当前无法打开相机。"]; }); return;
         }
         [self.session beginConfiguration];
         if ([self.session canSetSessionPreset:AVCaptureSessionPreset1280x720]) self.session.sessionPreset = AVCaptureSessionPreset1280x720;
         [self.session addInput:input]; [self.session addOutput:self.output]; [self.session commitConfiguration];
-        [self.session startRunning];
-        if (!self.session.isRunning) { dispatch_async(dispatch_get_main_queue(), ^{ if (!self.hasSessionDiagnostic) [self showError:[NSString stringWithFormat:@"相机未运行（授权状态 %ld）。请等待系统错误详情。", (long)[AVCaptureDevice authorizationStatusForMediaType:AVMediaTypeVideo]]]; }); return; }
-        dispatch_async(dispatch_get_main_queue(), ^{ if (!self.stopped) { self.status.text = nil; self.shutter.enabled = YES; self.flip.enabled = YES; [self.view setNeedsLayout]; } });
+        [self startSession];
+    });
+}
+- (void)startSession {
+    if (self.stopped || !self.configured) return;
+    dispatch_async(self.queue, ^{
+        if (!self.session.isRunning) [self.session startRunning];
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 300 * NSEC_PER_MSEC), dispatch_get_main_queue(), ^{
+            if (self.stopped) return;
+            BOOL running = self.session.isRunning;
+            self.status.text = running ? nil : @"正在等待系统允许相机进入前台…";
+            self.shutter.enabled = running; self.flip.enabled = running;
+            if (running) { self.hasSessionDiagnostic = NO; [self.view setNeedsLayout]; }
+        });
     });
 }
 - (void)viewDidLayoutSubviews {
@@ -143,7 +158,7 @@
         self.hasSessionDiagnostic = YES;
         NSString *message;
         switch (reason) {
-            case AVCaptureSessionInterruptionReasonVideoDeviceNotAvailableInBackground: message = @"系统将当前进程视为后台，禁止使用相机。这不是相机授权开关的问题。"; break;
+            case AVCaptureSessionInterruptionReasonVideoDeviceNotAvailableInBackground: message = @"系统暂时将当前进程视为后台，正在等待恢复后自动重试。"; break;
             case AVCaptureSessionInterruptionReasonVideoDeviceInUseByAnotherClient: message = @"相机正被其他进程占用。"; break;
             case AVCaptureSessionInterruptionReasonVideoDeviceNotAvailableWithMultipleForegroundApps: message = @"当前多窗口状态不允许使用相机。"; break;
             case AVCaptureSessionInterruptionReasonVideoDeviceNotAvailableDueToSystemPressure: message = @"设备负载或温度过高，相机被系统暂停。"; break;
@@ -153,7 +168,8 @@
         NSLog(@"[RegionShot] %@", detail); [self showError:detail];
     });
 }
-- (void)resumed:(NSNotification *)note { dispatch_async(dispatch_get_main_queue(), ^{ if (!self.stopped) { self.status.text = nil; self.shutter.enabled = YES; self.flip.enabled = YES; } }); }
+- (void)applicationBecameActive:(NSNotification *)note { [self startSession]; }
+- (void)resumed:(NSNotification *)note { [self startSession]; }
 - (void)cancel { if (self.completion) self.completion(nil); }
 - (void)stop {
     if (self.stopped) return; self.stopped = YES; self.completion = nil;
