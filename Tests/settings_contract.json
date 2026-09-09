@@ -1,0 +1,108 @@
+{
+  "StatusBarSwipe": {
+    "key": "@\"StatusBarSwipe\"",
+    "default": "@YES"
+  },
+  "CaptureHaptic": {
+    "key": "@\"CaptureHaptic\"",
+    "default": "@YES"
+  },
+  "SelectionShade": {
+    "key": "@\"SelectionShade\"",
+    "default": "@0.38",
+    "min": "@0.05",
+    "max": "@0.8"
+  },
+  "MenuBlurOpacity": {
+    "key": "@\"MenuBlurOpacity\"",
+    "default": "@0.88",
+    "min": "@0.15",
+    "max": "@1.0"
+  },
+  "FloatShadow": {
+    "key": "@\"FloatShadow\"",
+    "default": "@YES"
+  },
+  "FloatDoubleClose": {
+    "key": "@\"FloatDoubleClose\"",
+    "default": "@YES"
+  },
+  "FloatOpacity": {
+    "key": "@\"FloatOpacity\"",
+    "default": "@1.0",
+    "min": "@0.25",
+    "max": "@1.0"
+  },
+  "FloatWidth": {
+    "key": "@\"FloatWidth\"",
+    "default": "@260",
+    "min": "@80",
+    "max": "@380"
+  },
+  "HistoryEnabled": {
+    "key": "@\"HistoryEnabled\"",
+    "default": "@YES"
+  },
+  "HistoryCount": {
+    "key": "@\"HistoryCount\"",
+    "default": "@80",
+    "min": "@5",
+    "max": "@200"
+  },
+  "HistoryMB": {
+    "key": "@\"HistoryMB\"",
+    "default": "@64",
+    "min": "@16",
+    "max": "@128"
+  },
+  "AIChatMaxHeight": {
+    "key": "@\"AIChatMaxHeight\"",
+    "default": "@75",
+    "min": "@30",
+    "max": "@95"
+  },
+  "AIFastResponse": {
+    "key": "@\"AIFastResponse\"",
+    "default": "@YES"
+  },
+  "AIStream": {
+    "key": "@\"AIStream\"",
+    "default": "@YES"
+  },
+  "AIAutoImage": {
+    "key": "@\"AIAutoImage\"",
+    "default": "@NO"
+  },
+  "AIAutoText": {
+    "key": "@\"AIAutoText\"",
+    "default": "@NO"
+  },
+  "AIPersona": {
+    "key": "@\"AIPersona\"",
+    "default": "@\"\"",
+    "limit": "@8000"
+  },
+  "AIImagePrompt": {
+    "key": "@\"AIImagePrompt\"",
+    "default": "@\"请提取并解释图片中的内容。\"",
+    "limit": "@4000"
+  },
+  "AITheme": {
+    "key": "@\"AITheme\"",
+    "default": "@0",
+    "min": "@0",
+    "max": "@2"
+  },
+  "AIBallSize": {
+    "key": "@\"AIBallSize\"",
+    "default": "@44",
+    "min": "@44",
+    "max": "@80"
+  },
+  "AIBallOpacity": {
+    "key": "@\"AIBallOpacity\"",
+    "default": "@1.0",
+    "min": "@0.25",
+    "max": "@1.0"
+  }
+}

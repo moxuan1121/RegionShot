@@ -4,6 +4,7 @@
 #import "../Preferences/RSBehaviorSettings.h"
 #import <notify.h>
 extern UIViewController *RSCreateSileoSettings(void);
+extern UIViewController *RSInputCreateAIOptions(void);
 extern UIViewController *RSInputCreatePersonaSelection(NSString *scope);
 #import "../Preferences/RSOptions.h"
 
@@ -151,22 +152,6 @@ static BOOL RSPublishInputSettings(NSString *key) {
 - (void)persist { [RSAIPreferences() setObject:self.personas.copy forKey:@"AIPersonas"]; [RSAIPreferences() synchronize]; self.personas = [RSAIPersonas() mutableCopy]; RSPublishInputSettings(nil); }
 @end
 
-@interface RSAIBallSettingsController : UITableViewController
-@end
-@implementation RSAIBallSettingsController
-- (instancetype)init { if ((self = [super initWithStyle:UITableViewStyleInsetGrouped])) self.title = @"AI 悬浮球设置"; return self; }
-- (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView { return 1; }
-- (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section { return 2; }
-- (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)path {
-    UITableViewCell *cell = [UITableViewCell new]; cell.textLabel.text = path.row ? @"透明度" : @"大小";
-    UISlider *slider = [UISlider new]; slider.frame = CGRectMake(0, 0, 180, 32); slider.tag = path.row;
-    slider.minimumValue = path.row ? 0.25 : 36; slider.maximumValue = path.row ? 1 : 80;
-    slider.value = [RSOption(path.row ? @"AIBallOpacity" : @"AIBallSize") floatValue]; [slider addTarget:self action:@selector(changed:) forControlEvents:UIControlEventValueChanged];
-    cell.accessoryView = RSSliderInput(slider, self); return cell;
-}
-- (void)changed:(UISlider *)slider { RSSetOption(slider.tag ? @"AIBallOpacity" : @"AIBallSize", @(slider.value)); }
-@end
-
 @interface RSAIChoiceController : UITableViewController
 @property (nonatomic, copy) NSArray<NSString *> *choices;
 @property (nonatomic) NSInteger selected;
@@ -228,16 +213,15 @@ static BOOL RSPublishInputSettings(NSString *key) {
         self.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithTitle:@"返回对话" style:UIBarButtonItemStylePlain target:self action:@selector(cancel)];
 }
 - (void)viewWillAppear:(BOOL)animated { [super viewWillAppear:animated]; [self.tableView reloadData]; }
-- (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView { return tableView == self.modelTable ? 1 : 4; }
+- (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView { return tableView == self.modelTable ? 1 : 2; }
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
     if (tableView == self.modelTable) return MAX(1, self.models.count);
-    if (section == 0) return 1; if (section == 1) return 6; if (section == 2) return 1; return 4;
+    return section == 0 ? 1 : 6;
 }
-- (NSString *)tableView:(UITableView *)tableView titleForHeaderInSection:(NSInteger)section { return tableView == self.modelTable ? nil : @[@"AI 引擎", @"服务配置", @"AI 人设", @"显示与输出"][section]; }
+- (NSString *)tableView:(UITableView *)tableView titleForHeaderInSection:(NSInteger)section { return tableView == self.modelTable ? nil : @[@"服务类型", @"连接与模型"][section]; }
 - (NSString *)tableView:(UITableView *)tableView titleForFooterInSection:(NSInteger)section {
     if (tableView == self.modelTable) return nil;
-    if (section == 3) return @"快速响应对兼容的通义模型关闭深度思考，减少首字等待；复杂推理需要时可关闭。流式输出可逐字显示回答。";
-    return section == 1 ? @"模型抓取使用兼容接口的 /v1/models；发送图片和文字时使用当前选中的模型。" : (section == 2 ? @"默认人设可修改配置，自定义人设可以添加或删除。" : nil);
+    return section == 1 ? @"获取模型使用兼容接口的 /v1/models。保存后，图片和文字将发送到此服务。" : nil;
 }
 - (UITableViewCell *)cell:(NSString *)title detail:(NSString *)detail disclosure:(BOOL)disclosure {
     UITableViewCell *cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleValue1 reuseIdentifier:nil]; cell.textLabel.text = title; cell.detailTextLabel.text = detail;
@@ -246,28 +230,24 @@ static BOOL RSPublishInputSettings(NSString *key) {
 - (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)path { return tableView != self.modelTable && path.section == 1 && path.row == 3 ? 180 : 48; }
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)path {
     if (tableView == self.modelTable) {
-        NSString *model = self.models.count ? self.models[path.row] : @"点击下方“模型抓取”加载列表";
+        NSString *model = self.models.count ? self.models[path.row] : @"点击下方“获取模型”加载列表";
         UITableViewCell *cell = [self cell:model detail:nil disclosure:NO]; cell.backgroundColor = UIColor.clearColor;
         cell.accessoryType = [model isEqual:self.model] ? UITableViewCellAccessoryCheckmark : UITableViewCellAccessoryNone; return cell;
     }
-    if (path.section == 0) return [self cell:@"当前使用的引擎" detail:[self.endpoint containsString:@"dashscope"] ? @"通义千问" : @"兼容服务" disclosure:YES];
+    if (path.section == 0) return [self cell:@"服务类型" detail:[self.endpoint containsString:@"dashscope"] ? @"通义千问" : @"兼容服务" disclosure:YES];
     if (path.section == 1) {
         if (path.row == 0) return [self cell:@"API Key" detail:self.key.length ? @"已设置" : @"未设置" disclosure:YES];
         if (path.row == 1) return [self cell:@"服务地址" detail:self.endpoint disclosure:YES];
         if (path.row == 2) return [self cell:@"当前模型" detail:self.model disclosure:YES];
-        if (path.row == 4) return [self cell:self.fetching ? @"正在抓取模型…" : @"模型抓取" detail:nil disclosure:NO];
-        if (path.row == 5) return [self cell:@"打开获取 API 网址" detail:nil disclosure:NO];
+        if (path.row == 4) return [self cell:self.fetching ? @"正在抓取模型…" : @"获取模型" detail:nil disclosure:NO];
+        if (path.row == 5) return [self cell:@"打开服务控制台" detail:nil disclosure:NO];
         UITableViewCell *cell = [self cell:@"" detail:nil disclosure:NO]; cell.selectionStyle = UITableViewCellSelectionStyleNone;
         if (!self.modelTable) { self.modelTable = [[UITableView alloc] initWithFrame:CGRectZero style:UITableViewStylePlain]; self.modelTable.dataSource = self; self.modelTable.delegate = self; self.modelTable.separatorStyle = UITableViewCellSeparatorStyleNone; self.modelTable.backgroundColor = UIColor.tertiarySystemFillColor; self.modelTable.layer.cornerRadius = 18; self.modelTable.clipsToBounds = YES; }
         [self.modelTable removeFromSuperview]; self.modelTable.translatesAutoresizingMaskIntoConstraints = NO; [cell.contentView addSubview:self.modelTable];
         [NSLayoutConstraint activateConstraints:@[[self.modelTable.leadingAnchor constraintEqualToAnchor:cell.contentView.leadingAnchor constant:12], [self.modelTable.trailingAnchor constraintEqualToAnchor:cell.contentView.trailingAnchor constant:-12], [self.modelTable.topAnchor constraintEqualToAnchor:cell.contentView.topAnchor constant:8], [self.modelTable.bottomAnchor constraintEqualToAnchor:cell.contentView.bottomAnchor constant:-8]]];
         [self.modelTable reloadData]; return cell;
     }
-    if (path.section == 2) return [self cell:@"人设" detail:[NSString stringWithFormat:@"%lu 个", (unsigned long)RSAIPersonas().count] disclosure:YES];
-    if (path.row == 0) return [self cell:@"AI 悬浮球设置" detail:nil disclosure:YES];
-    if (path.row == 1) return [self cell:@"AI 窗口主题" detail:@[@"跟随系统", @"浅色", @"深色"][MIN(2, [RSOption(@"AITheme") integerValue])] disclosure:YES];
-    if (path.row == 3) { UITableViewCell *cell = [self cell:@"快速响应" detail:nil disclosure:NO]; UISwitch *toggle = [UISwitch new]; toggle.on = [RSOption(@"AIFastResponse") boolValue]; [toggle addTarget:self action:@selector(fastResponse:) forControlEvents:UIControlEventValueChanged]; cell.accessoryView = toggle; return cell; }
-    UITableViewCell *cell = [self cell:@"流式输出" detail:nil disclosure:NO]; UISwitch *toggle = [UISwitch new]; toggle.on = [RSOption(@"AIStream") boolValue]; [toggle addTarget:self action:@selector(stream:) forControlEvents:UIControlEventValueChanged]; cell.accessoryView = toggle; return cell;
+    return [self cell:@"" detail:nil disclosure:NO];
 }
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)path {
     [tableView deselectRowAtIndexPath:path animated:YES];
@@ -279,9 +259,7 @@ static BOOL RSPublishInputSettings(NSString *key) {
         if (path.row == 5) { [UIApplication.sharedApplication openURL:[NSURL URLWithString:@"https://bailian.console.aliyun.com/"] options:@{} completionHandler:nil]; return; }
         return;
     }
-    if (path.section == 2) { [self.navigationController pushViewController:[RSAIPersonasController new] animated:YES]; return; }
-    if (path.row == 0) { [self.navigationController pushViewController:[RSAIBallSettingsController new] animated:YES]; return; }
-    if (path.row == 1) [self chooseTheme:path];
+
 }
 - (void)chooseEngine:(NSIndexPath *)path {
     RSAIChoiceController *page = [RSAIChoiceController new]; page.title = @"AI 引擎"; page.choices = @[@"通义千问", @"自定义兼容服务"]; page.selected = [self.endpoint containsString:@"dashscope"] ? 0 : 1;
@@ -313,13 +291,6 @@ static BOOL RSPublishInputSettings(NSString *key) {
         });
     }] resume];
 }
-- (void)chooseTheme:(NSIndexPath *)path {
-    RSAIChoiceController *page = [RSAIChoiceController new]; page.title = @"AI 窗口主题"; page.choices = @[@"跟随系统", @"浅色", @"深色"]; page.selected = [RSOption(@"AITheme") integerValue];
-    page.choose = ^(NSInteger value) { RSSetOption(@"AITheme", @(value)); };
-    [self.navigationController pushViewController:page animated:YES];
-}
-- (void)fastResponse:(UISwitch *)toggle { RSSetOption(@"AIFastResponse", @(toggle.on)); }
-- (void)stream:(UISwitch *)toggle { RSSetOption(@"AIStream", @(toggle.on)); }
 - (void)show:(NSString *)message { UIAlertController *a = [UIAlertController alertControllerWithTitle:@"AI 问答" message:message preferredStyle:UIAlertControllerStyleAlert]; [a addAction:[UIAlertAction actionWithTitle:@"好" style:UIAlertActionStyleCancel handler:nil]]; [self presentViewController:a animated:YES completion:nil]; }
 - (void)save {
     NSURL *url = [NSURL URLWithString:self.endpoint]; if (![url.scheme.lowercaseString isEqual:@"https"] || !url.host.length || url.user || url.password || !self.model.length) { [self show:@"请填写有效的 HTTPS 服务地址和模型名称。"]; return; }
@@ -333,13 +304,13 @@ static BOOL RSPublishInputSettings(NSString *key) {
 
 @implementation RSAIMenuController
 - (instancetype)init { return [super initWithStyle:UITableViewStyleInsetGrouped]; }
-- (void)viewDidLoad { [super viewDidLoad]; self.title = @"AI 对话与设置"; }
+- (void)viewDidLoad { [super viewDidLoad]; self.title = @"AI"; }
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)table { return 2; }
-- (NSInteger)tableView:(UITableView *)table numberOfRowsInSection:(NSInteger)section { return 4; }
+- (NSInteger)tableView:(UITableView *)table numberOfRowsInSection:(NSInteger)section { return section == 0 ? 5 : 4; }
 - (NSString *)tableView:(UITableView *)table titleForHeaderInSection:(NSInteger)section { return section == 0 ? @"AI 对话" : @"各入口显示的人设"; }
 - (UITableViewCell *)tableView:(UITableView *)table cellForRowAtIndexPath:(NSIndexPath *)path {
     UITableViewCell *cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:nil];
-    cell.textLabel.text = path.section == 0 ? @[@"打开 AI 对话", @"对话外观与行为", @"AI 服务配置", @"AI 人设"][path.row] : @[@"微信菜单", @"LINE 菜单", @"分词按钮长按菜单", @"Sileo 介绍页翻译"][path.row];
+    cell.textLabel.text = path.section == 0 ? @[@"打开对话", @"对话设置", @"服务配置", @"人设", @"弹出式窗口"][path.row] : @[@"微信菜单", @"LINE 菜单", @"分词按钮长按菜单", @"Sileo 介绍页翻译"][path.row];
     cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator; return cell;
 }
 - (void)tableView:(UITableView *)table didSelectRowAtIndexPath:(NSIndexPath *)path {
@@ -351,6 +322,7 @@ static BOOL RSPublishInputSettings(NSString *key) {
     else if (path.row == 1) { RSBehaviorSettings *options = [RSBehaviorSettings new]; options.groupIndex = RSOptionGroups().count - 1; page = options; }
     else if (path.row == 2) page = [[RSAISettingsController alloc] initWithSaved:nil];
     else if (path.row == 3) page = [RSAIPersonasController new];
+    else if (path.row == 4) page = RSInputCreateAIOptions();
     else page = RSCreateSileoSettings();
     [self.navigationController pushViewController:page animated:YES];
 }

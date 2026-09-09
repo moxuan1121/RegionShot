@@ -1,7 +1,10 @@
 #import <Foundation/Foundation.h>
 
 static inline double RSKAFittedPanelHeight(double content, double chrome, double available, double percent) {
-    return MIN(MAX(0, available) * MAX(30, MIN(90, percent)) / 100, MAX(148, content + chrome));
+    double space = MAX(0, available);
+    double minimum = MAX(0, chrome) + 24;
+    double limit = MIN(space, MAX(minimum, space * MAX(30, MIN(90, percent)) / 100));
+    return MIN(limit, MAX(minimum, content + chrome));
 }
 
 static inline NSURL *RSKASearchURL(id engine, id text) {

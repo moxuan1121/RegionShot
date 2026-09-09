@@ -114,7 +114,7 @@ BOOL RSSelectionMenuHideNames(void) { return [RSMenuPrefs() boolForKey:@"HideSel
 - (instancetype)init { return [super initWithStyle:UITableViewStyleInsetGrouped]; }
 - (void)viewDidLoad {
     [super viewDidLoad];
-    self.title = self.floatingMenu ? @"浮图长按菜单" : self.frozenMenu ? @"冻结菜单（未框选）" : @"选区菜单（已框选）";
+    self.title = self.floatingMenu ? @"悬浮图片菜单" : self.frozenMenu ? @"冻结菜单" : @"选区菜单";
     [self reloadItems];
     self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithTitle:@"手动排序" style:UIBarButtonItemStylePlain target:self action:@selector(toggleSorting)];
 }
@@ -140,7 +140,7 @@ BOOL RSSelectionMenuHideNames(void) { return [RSMenuPrefs() boolForKey:@"HideSel
     return section == 1 && self.floatingMenu ? nil : @[@"图标、名称与排序", @"显示大小", @"恢复"][section];
 }
 - (NSString *)tableView:(UITableView *)tableView titleForFooterInSection:(NSInteger)section {
-    return section == 0 ? @"点行修改名称或图标；点手动排序后拖动右侧把手；开关增减功能。浮图的“关闭当前”保持可用，冻结和选区菜单的“取消”可以关闭。" : nil;
+    return section == 0 ? @"点行修改名称或图标；点手动排序后拖动右侧把手；开关增减功能。悬浮图片的“关闭当前”保持可用，冻结和选区菜单的“取消”可以关闭。" : nil;
 }
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)path {
     UITableViewCell *cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:nil];

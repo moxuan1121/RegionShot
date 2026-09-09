@@ -8,6 +8,7 @@ extern UIViewController *RSInputCreatePersonaSelection(NSString *scope);
 
 @interface RSInputOptionsController : UITableViewController <UIColorPickerViewControllerDelegate>
 @property BOOL search;
+@property BOOL aiSettings;
 @property(strong) NSMutableArray *engines;
 @property(strong) NSMutableDictionary *prompt;
 @property(copy) NSString *colorKey;
@@ -16,7 +17,7 @@ extern UIViewController *RSInputCreatePersonaSelection(NSString *scope);
 @implementation RSInputOptionsController
 - (void)viewDidLoad {
     [super viewDidLoad];
-    self.title = self.search ? @"搜索引擎" : @"悬浮按钮与窗口";
+    self.title = self.search ? @"搜索引擎" : self.aiSettings ? @"弹出式窗口" : @"分词";
     self.engines = [RSInputSearchEngines(RSInputConfig()) mutableCopy];
     self.prompt = [RSInputPromptOptions(RSInputConfig()) mutableCopy];
     if (self.search) self.navigationItem.rightBarButtonItems = @[
@@ -35,21 +36,23 @@ extern UIViewController *RSInputCreatePersonaSelection(NSString *scope);
     [self error:@"配置未写入，请检查文件权限或缩短配置内容。"];
     return NO;
 }
-- (NSInteger)numberOfSectionsInTableView:(__unused UITableView *)tableView { return self.search ? 1 : 6; }
+- (NSInteger)numberOfSectionsInTableView:(__unused UITableView *)tableView { return self.search || self.aiSettings ? 1 : 5; }
 - (NSInteger)tableView:(__unused UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
-    return self.search ? self.engines.count : section == 5 ? 1 : section == 0 ? 1 : section == 1 ? 3 : section == 2 ? 4 : section == 4 ? 8 : 2;
+    if (self.search) return self.engines.count;
+    return self.aiSettings ? 6 : section == 0 ? 1 : section == 1 ? 3 : section == 2 ? 4 : 2;
 }
 - (NSString *)tableView:(__unused UITableView *)tableView titleForHeaderInSection:(NSInteger)section {
-    return self.search ? nil : @[@"复制后显示", @"位置与大小", @"按钮配色", @"按压动画", @"窗口最高高度", @"长按菜单"][section];
+    return self.search ? nil : self.aiSettings ? @"弹出式窗口" : @[@"复制后显示", @"位置与大小", @"按钮配色", @"按压动画", @"分词窗口"][section];
 }
 - (NSString *)tableView:(__unused UITableView *)tableView titleForFooterInSection:(NSInteger)section {
     if (self.search) return @"点击编辑，左滑删除，点“编辑”拖动排序。第一项用于浮窗的搜索按钮。地址使用 %@ 代表搜索文字，支持网页及自定义应用协议。能否打开取决于已安装的应用。更改立即保存。";
+    if (self.aiSettings) return @"面板位置、高度和顶部间隔也适用于分词弹窗。高度为 0 时自适应；数值以 pt 为单位。窗口优先级越高，显示层级越高。下次打开生效。";
     if (section == 4) return @"分别设置最高高度和窗口优先级。可输入 0–1,000,000,000；普通窗口约 1，状态栏上方约 1001，系统弹窗上方约 2001。1,000,000,000 表示系统最高层。相差 1 即可避免同层级排序。下次打开窗口生效。";
     return section == 0 ? @"轻按直接分词；长按显示搜索引擎和 AI 人设。更改立即保存，下次复制生效。" : section == 3 ? @"保留弹簧按压与收起动画，速度 1× 为原始速度。" : nil;
 }
 - (NSString *)keyForPath:(NSIndexPath *)path {
-    return @[@[@"enabled"], @[@"size", @"height", @"duration"], @[@"gradient", @"startColor", @"middleColor", @"endColor"], @[@"animations", @"animationSpeed"],
-        @[@"tokenMaxHeight", @"aiMaxHeight", @"tokenWindowPriority", @"aiWindowPriority", @"panelPosition", @"panelHeight", @"panelTop", @"panelTopLandscape"]][path.section][path.row];
+    if (self.aiSettings) return @[@"aiMaxHeight", @"aiWindowPriority", @"panelPosition", @"panelHeight", @"panelTop", @"panelTopLandscape"][path.row];
+    return @[@[@"enabled"], @[@"size", @"height", @"duration"], @[@"gradient", @"startColor", @"middleColor", @"endColor"], @[@"animations", @"animationSpeed"], @[@"tokenMaxHeight", @"tokenWindowPriority"]][path.section][path.row];
 }
 - (UITableViewCell *)tableView:(__unused UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)path {
     UITableViewCell *cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:nil];
@@ -60,7 +63,6 @@ extern UIViewController *RSInputCreatePersonaSelection(NSString *scope);
         cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
         return cell;
     }
-    if (path.section == 5) { cell.textLabel.text = @"长按显示的 AI 人设"; cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator; return cell; }
     NSString *key = [self keyForPath:path];
     NSString *title = @{@"enabled": @"启用分词悬浮按钮", @"size": @"按钮大小", @"height": @"屏幕纵向位置", @"duration": @"显示时长", @"gradient": @"渐变配色", @"startColor": @"起始颜色", @"middleColor": @"中间颜色", @"endColor": @"结束颜色", @"animations": @"启用动画", @"animationSpeed": @"动画速度", @"tokenMaxHeight": @"分词窗口最高高度", @"aiMaxHeight": @"AI 窗口最高高度", @"tokenWindowPriority": @"分词窗口优先级", @"aiWindowPriority": @"AI 窗口优先级", @"panelPosition": @"横屏面板位置", @"panelHeight": @"面板高度（pt，0 为自适应）", @"panelTop": @"竖屏距顶部（pt）", @"panelTopLandscape": @"横屏距顶部（pt）"}[key];
     cell.textLabel.text = title;
@@ -142,7 +144,6 @@ extern UIViewController *RSInputCreatePersonaSelection(NSString *scope);
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)path {
     [tableView deselectRowAtIndexPath:path animated:YES];
     if (self.search) { [self editEngine:path.row]; return; }
-    if (path.section == 5) { [self.navigationController pushViewController:RSInputCreatePersonaSelection(@"clipboardHiddenPersonas") animated:YES]; return; }
     NSString *key = [self keyForPath:path];
     if ([key hasSuffix:@"WindowPriority"]) {
         UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"设置窗口优先级"
@@ -265,4 +266,8 @@ UIViewController *RSCreateSileoSettings(void) { return [[RSSileoSettings alloc] 
 @end
 UIViewController *RSInputCreatePersonaSelection(NSString *scope) {
     RSInputPersonaSelection *page = [[RSInputPersonaSelection alloc] initWithStyle:UITableViewStyleInsetGrouped]; page.scope = scope; return page;
+}
+
+UIViewController *RSInputCreateAIOptions(void) {
+    RSInputOptionsController *page = [[RSInputOptionsController alloc] initWithStyle:UITableViewStyleInsetGrouped]; page.aiSettings = YES; return page;
 }
