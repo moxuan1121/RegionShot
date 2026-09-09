@@ -28,11 +28,11 @@ assert "lockUIFromSource:" in hooks and "cancelCapture]; %orig;" in hooks
 assert "gestureRecognizerShouldBegin:" in hooks and "canBePresented" in hooks
 camera = read("Camera/RSInlineCamera.m")
 chat = read("AI/RSChatController.m")
-assert "regionshot-camera://" not in chat and "cameraRequest" not in chat
+assert "regionshot-camera://capture" in chat and "cameraRequest" in chat
 assert "AVCapturePhotoOutput" in camera and "capturePhotoWithSettings:" in camera
-assert "addChildViewController:camera" in chat and "[chat acceptImage:image]" in chat
-assert "[camera stop]" in chat and "[session stopRunning]" in camera
-assert "chat.host.isKeyWindow" in chat and "!chat.inlineCamera" in chat
+assert "notify_register_dispatch(RS_CAMERA_FINISHED" in chat and "[self acceptImage:image]" in chat
+assert "[session stopRunning]" in camera
+assert "chat.host.isKeyWindow" in chat and "!chat.cameraRequest" in chat
 for folder, prefix in [("Input", "RSInput"), ("KeyboardAI", "RSKA")]:
     assert "RSPopupContentHeight(" in read(f"{folder}/{prefix}Interface.m")
     assert "safeAreaInsets.top -" not in read(f"{folder}/{prefix}Interface.m")
@@ -44,6 +44,9 @@ assert "height - 28" in read("Geometry/RSPanelController.h")
 assert "AVCaptureSessionErrorKey" in camera and "AVCaptureSessionInterruptionReasonKey" in camera
 assert "usesApplicationAudioSession = NO" in camera
 assert "UIApplicationDidBecomeActiveNotification" in camera and "[self startSession]" in camera
+camera_host = read("Camera/main.m")
+assert "notify_post(RS_CAMERA_FINISHED)" in camera_host and 'NSSelectorFromString(@"suspend")' in camera_host
+assert "chmod(RSCameraImagePath().fileSystemRepresentation, 0644)" in camera_host
 for token_view in ("Input/RSInputTokenView.m", "KeyboardAI/RSKATokenView.m"):
     assert "- (void)clearSelection" in read(token_view)
 for panel in ("Input/RSInputInterface.m", "KeyboardAI/RSKAInterface.m"):
