@@ -4,6 +4,7 @@
 <key>bundle</key><string>RegionShotPreferences</string>
 <key>cell</key><string>PSLinkCell</string>
 <key>detail</key><string>RSPreferences</string>
+<key>icon</key><string>RegionShotIcon.png</string>
 <key>isController</key><true/>
 <key>label</key><string>RegionShot</string>
 </dict></dict></plist>

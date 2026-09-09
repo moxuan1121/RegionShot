@@ -28,6 +28,12 @@ bundle = 'Library/PreferenceBundles/' + loader['bundle'] + '.bundle/'
 info = plistlib.loads(files[bundle + 'Info.plist'])
 assert loader['detail'] == info['NSPrincipalClass'] == 'RSPreferences'
 assert info['CFBundleVersion'] == control['Version'].removesuffix('-roothide')
+assert loader['icon'] == 'RegionShotIcon.png'
+for name, size in [('RegionShotIcon.png', 29), ('RegionShotIcon@2x.png', 58), ('RegionShotIcon@3x.png', 87)]:
+    png = files['Library/PreferenceLoader/Preferences/' + name]
+    assert png[:8] == b'\x89PNG\r\n\x1a\n'
+    assert struct.unpack_from('>II', png, 16) == (size, size)
+    assert png[25] == 6
 for path in ['Library/MobileSubstrate/DynamicLibraries/' + name + '.dylib' for name in ['RegionShot', 'RegionShotInput']] + [bundle + info['CFBundleExecutable'], 'Applications/RegionShotCamera.app/RegionShotCamera']:
     binary = files[path]
     assert struct.unpack_from('<III', binary) == (0xfeedfacf, 0x100000c, 0x80000002), path
