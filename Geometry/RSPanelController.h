@@ -22,6 +22,22 @@
     line.backgroundColor = UIColor.tertiaryLabelColor; line.layer.cornerRadius = 1.5;
     line.userInteractionEnabled = NO; [handle addSubview:line];
     [handle addGestureRecognizer:[[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(dragPanel:)]];
+    UIView *bottom = [UIView new];
+    bottom.translatesAutoresizingMaskIntoConstraints = NO;
+    bottom.accessibilityLabel = @"上下移动窗口";
+    [panel addSubview:bottom];
+    [NSLayoutConstraint activateConstraints:@[
+        [bottom.bottomAnchor constraintEqualToAnchor:panel.bottomAnchor],
+        [bottom.leadingAnchor constraintEqualToAnchor:panel.leadingAnchor constant:12],
+        [bottom.trailingAnchor constraintEqualToAnchor:panel.trailingAnchor constant:-12],
+        [bottom.heightAnchor constraintEqualToConstant:10]]];
+    [bottom addGestureRecognizer:[[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(dragPanelVertically:)]];
+}
+- (void)dragPanelVertically:(UIPanGestureRecognizer *)gesture {
+    CGPoint delta = [gesture translationInView:self.canvas];
+    self.temporaryOffset = CGPointMake(self.temporaryOffset.x, self.temporaryOffset.y + delta.y);
+    [gesture setTranslation:CGPointZero inView:self.canvas];
+    if (self.onLayout) self.onLayout();
 }
 - (void)dragPanel:(UIPanGestureRecognizer *)gesture {
     CGPoint delta = [gesture translationInView:self.canvas];
