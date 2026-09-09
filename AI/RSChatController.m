@@ -1,7 +1,6 @@
 #import "../Geometry/RSWindowAnimation.h"
 #import "RSChatController.h"
 #import "RSSSEDecoder.h"
-#import "../Camera/RSInlineCamera.h"
 #import "../Geometry/RSOrientation.h"
 #import "RSAISettingsController.h"
 #import "../Input/RSInputStore.h"
@@ -49,7 +48,7 @@
 @end
 
 @interface RSChatController () <NSURLSessionDataDelegate, PHPickerViewControllerDelegate,
-    UIDocumentPickerDelegate, UIImagePickerControllerDelegate, UINavigationControllerDelegate, UITextViewDelegate, UIGestureRecognizerDelegate>
+    UIDocumentPickerDelegate, UITextViewDelegate, UIGestureRecognizerDelegate>
 @property (nonatomic, strong) RSChatWindow *host;
 @property (nonatomic, weak) UIWindow *previousKey;
 @property (nonatomic, strong) UIView *card;
@@ -83,7 +82,9 @@
 @property (nonatomic) BOOL stopped;
 @property (nonatomic) NSUInteger received;
 @property (nonatomic) BOOL refreshScheduled;
-@property (nonatomic, strong) RSInlineCamera *camera;
+@property (nonatomic, strong) NSData *fileAttachment;
+@property (nonatomic, copy) NSString *fileName;
+@property (nonatomic, copy) NSString *fileMIME;
 @end
 
 static RSChatController *RSActiveChat;
@@ -114,6 +115,7 @@ static NSUserDefaults *RSChatPreferences(void) {
         RSActiveChat.imageConversation = image != nil;
         [RSActiveChat updateHeading];
         [RSActiveChat restore];
+        [RSActiveChat clearAttachment];
         RSActiveChat.attachment = image;
         RSActiveChat.chip.image = image;
         RSActiveChat.chip.hidden = image == nil;
@@ -156,6 +158,7 @@ static NSUserDefaults *RSChatPreferences(void) {
     }
     RSActiveChat.input.text = @"";
     RSActiveChat.imageConversation = YES; [RSActiveChat updateHeading];
+    [RSActiveChat clearAttachment];
     RSActiveChat.attachment = image; RSActiveChat.chip.image = image; RSActiveChat.chip.hidden = NO;
     if (!RSActiveChat.task) [RSActiveChat send];
     else [RSActiveChat message:@"图片已放入当前对话，待本次回答结束后点击发送。"];
@@ -260,7 +263,7 @@ static NSUserDefaults *RSChatPreferences(void) {
     [self.sendButton.widthAnchor constraintEqualToConstant:56].active = YES;
     [self.sendButton.heightAnchor constraintEqualToConstant:40].active = YES;
     [self.sendButton addTarget:self action:@selector(send) forControlEvents:UIControlEventTouchUpInside];
-    UIButton *attach = [self button:@"plus" title:@"添加图片" action:@selector(attachments)];
+    UIButton *attach = [self button:@"plus" title:@"添加附件" action:@selector(attachments)];
     attach.backgroundColor = UIColor.systemBlueColor; attach.tintColor = UIColor.whiteColor; attach.layer.cornerRadius = 18;
     UIStackView *bottom = [[UIStackView alloc] initWithArrangedSubviews:@[self.input, attach, self.sendButton]];
     bottom.alignment = UIStackViewAlignmentCenter;
@@ -297,7 +300,7 @@ static NSUserDefaults *RSChatPreferences(void) {
     [self applyAppearance];
 }
 - (BOOL)gestureRecognizer:(UIGestureRecognizer *)gesture shouldReceiveTouch:(UITouch *)touch {
-    return !self.card.hidden && !self.camera && !self.presentedViewController && touch.view == self.view;
+    return !self.card.hidden && !self.presentedViewController && touch.view == self.view;
 }
 - (void)viewDidAppear:(BOOL)animated {
     [super viewDidAppear:animated];
@@ -308,7 +311,7 @@ static NSUserDefaults *RSChatPreferences(void) {
     void (^focus)(void) = ^{
         RSChatController *chat = weakSelf;
         if (chat && !chat.card.hidden && !chat.host.hidden && chat.host.isKeyWindow &&
-            !chat.presentedViewController && !chat.keyboardPresentation && !chat.camera)
+            !chat.presentedViewController && !chat.keyboardPresentation)
             [chat.input becomeFirstResponder];
     };
     id<UIViewControllerTransitionCoordinator> transition = self.transitionCoordinator;
@@ -401,7 +404,6 @@ static NSUserDefaults *RSChatPreferences(void) {
     [pan setTranslation:CGPointZero inView:self.view];
 }
 - (void)close {
-    [self dismissCamera];
     [self.session invalidateAndCancel];
     self.task = nil;
     self.session = nil;
@@ -521,9 +523,10 @@ static NSUserDefaults *RSChatPreferences(void) {
     if (self.task) { self.stopped = YES; [self.task cancel]; return; }
     if (![RSChatPreferences() stringForKey:@"AIEndpoint"].length) { [self settings]; return; }
     NSString *text = [self.input.text stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
-    if (!text.length && !self.attachment) return;
+    if (!text.length && !self.attachment && !self.fileAttachment) return;
     if (text.length > 24000) { [self message:@"单次问题最多 24,000 字符。"]; return; }
     NSString *displayText = (self.attachment && ([text isEqual:@"请按当前人设处理这张图片"] || [text isEqual:@"轻按当前人设处理这张图片"])) ? @"" : text;
+    if (!text.length && self.fileAttachment) text = @"请处理附件中的内容。";
     if (!text.length) text = [RSOption(@"AIImagePrompt") length] ? RSOption(@"AIImagePrompt") : @"请描述图片内容。";
     NSMutableArray *content = [NSMutableArray arrayWithObject:@{@"type":@"text", @"text":text}];
     if (self.attachment) {
@@ -531,6 +534,12 @@ static NSUserDefaults *RSChatPreferences(void) {
         if (!jpeg || jpeg.length > 12 * 1024 * 1024) { [self message:@"图片过大或无法读取，请使用小于 12 MB 的图片。"]; return; }
         NSString *url = [@"data:image/jpeg;base64," stringByAppendingString:[jpeg base64EncodedStringWithOptions:0]];
         [content addObject:@{@"type":@"image_url", @"image_url":@{@"url":url}}];
+    }
+    if (self.fileAttachment) {
+        NSString *dataURI = [NSString stringWithFormat:@"data:%@;base64,%@", self.fileMIME ?: @"application/octet-stream",
+            [self.fileAttachment base64EncodedStringWithOptions:0]];
+        [content addObject:@{@"type":@"file", @"file":@{@"filename":self.fileName, @"file_data":dataURI}}];
+        displayText = [NSString stringWithFormat:@"%@%@附件：%@", displayText, displayText.length ? @"\n" : @"", self.fileName];
     }
     [self addRow:displayText image:self.attachment assistant:NO index:self.history.count];
     [self.history addObject:[@{@"role":@"user", @"content":content} mutableCopy]];
@@ -670,58 +679,26 @@ static NSUserDefaults *RSChatPreferences(void) {
     [self.sendButton setTitle:@"发送" forState:UIControlStateNormal];
     self.sendButton.accessibilityLabel = @"发送";
 }
-- (void)clearAttachment { self.attachment = nil; self.chip.image = nil; self.chip.hidden = YES; }
+- (void)clearAttachment { self.attachment = nil; self.fileAttachment = nil; self.fileName = nil; self.fileMIME = nil; self.chip.accessibilityLabel = nil; self.chip.image = nil; self.chip.hidden = YES; }
 - (void)attachments {
-    UIAlertController *sheet = [UIAlertController alertControllerWithTitle:@"添加图片" message:nil preferredStyle:UIAlertControllerStyleActionSheet];
+    UIAlertController *sheet = [UIAlertController alertControllerWithTitle:@"添加附件" message:nil preferredStyle:UIAlertControllerStyleActionSheet];
     [sheet addAction:[UIAlertAction actionWithTitle:@"相册" style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
         PHPickerConfiguration *config = [PHPickerConfiguration new]; config.filter = PHPickerFilter.imagesFilter; config.selectionLimit = 1;
         PHPickerViewController *picker = [[PHPickerViewController alloc] initWithConfiguration:config]; picker.delegate = self;
         [self presentViewController:picker animated:YES completion:nil];
     }]];
-    [sheet addAction:[UIAlertAction actionWithTitle:@"图片文件" style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
-        UIDocumentPickerViewController *picker = [[UIDocumentPickerViewController alloc] initForOpeningContentTypes:@[UTTypeImage] asCopy:YES];
+    [sheet addAction:[UIAlertAction actionWithTitle:@"文件" style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
+        UIDocumentPickerViewController *picker = [[UIDocumentPickerViewController alloc] initForOpeningContentTypes:@[UTTypeItem] asCopy:YES];
         picker.delegate = self; [self presentViewController:picker animated:YES completion:nil];
-    }]];
-    [sheet addAction:[UIAlertAction actionWithTitle:@"拍照" style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
-        [self openCamera];
     }]];
     [sheet addAction:[UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:nil]];
     sheet.popoverPresentationController.sourceView = self.input;
     sheet.popoverPresentationController.sourceRect = self.input.bounds;
     [self presentViewController:sheet animated:YES completion:nil];
 }
-- (void)openCamera {
-    if (self.camera) return;
-    if (self.presentedViewController) {
-        [self dismissViewControllerAnimated:YES completion:^{ [self openCamera]; }]; return;
-    }
-    if (![UIImagePickerController isSourceTypeAvailable:UIImagePickerControllerSourceTypeCamera]) {
-        [self message:@"系统相机当前不可用。"]; return;
-    }
-    [self hideKeyboard];
-    RSInlineCamera *camera = [RSInlineCamera new]; self.camera = camera;
-    __weak typeof(self) weakSelf = self;
-    camera.completion = ^(UIImage *image) {
-        RSChatController *chat = weakSelf;
-        if (!chat || !chat.camera) return;
-        [chat.camera stop];
-        [chat dismissViewControllerAnimated:YES completion:^{
-            chat.camera = nil;
-            if (image) [chat acceptImage:image];
-            [chat focusInput];
-        }];
-    };
-    self.host.activeSurface = nil;
-    [self presentViewController:camera animated:YES completion:nil];
-}
-- (void)dismissCamera {
-    if (!self.camera) return;
-    [self.camera stop];
-    [self dismissViewControllerAnimated:NO completion:nil];
-    self.camera = nil;
-}
 - (void)acceptImage:(UIImage *)image {
     if (!image.CGImage) { [self message:@"无法读取这张图片。"]; return; }
+    [self clearAttachment];
     self.imageConversation = YES; [self updateHeading];
     self.attachment = image; self.chip.image = image; self.chip.hidden = NO;
 }
@@ -737,15 +714,31 @@ static NSUserDefaults *RSChatPreferences(void) {
 - (void)documentPicker:(UIDocumentPickerViewController *)picker didPickDocumentsAtURLs:(NSArray<NSURL *> *)urls {
     NSURL *url = urls.firstObject;
     if (!url) return;
-    BOOL access = [url startAccessingSecurityScopedResource];
-    NSNumber *size = nil; [url getResourceValue:&size forKey:NSURLFileSizeKey error:nil];
-    UIImage *image = size.unsignedLongLongValue <= 12 * 1024 * 1024 ? [UIImage imageWithContentsOfFile:url.path] : nil;
-    if (access) [url stopAccessingSecurityScopedResource];
-    [self acceptImage:image];
+    dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
+        BOOL access = [url startAccessingSecurityScopedResource];
+        NSNumber *size = nil, *regular = nil;
+        [url getResourceValue:&size forKey:NSURLFileSizeKey error:nil];
+        [url getResourceValue:&regular forKey:NSURLIsRegularFileKey error:nil];
+        NSError *error = nil;
+        NSData *data = regular.boolValue && size && size.unsignedLongLongValue <= 12 * 1024 * 1024
+            ? [NSData dataWithContentsOfURL:url options:NSDataReadingMappedIfSafe error:&error] : nil;
+        if (access) [url stopAccessingSecurityScopedResource];
+        NSString *name = url.lastPathComponent;
+        UTType *type = [UTType typeWithFilenameExtension:url.pathExtension];
+        UIImage *image = [type conformsToType:UTTypeImage] && data ? [UIImage imageWithData:data] : nil;
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if (!self.host) return;
+            if (!data || data.length > 12 * 1024 * 1024) {
+                [self message:error.localizedDescription ?: @"无法读取文件，请选择不超过 12 MB 的普通文件。"]; return;
+            }
+            if (image) { [self acceptImage:image]; return; }
+            [self clearAttachment];
+            self.fileAttachment = data; self.fileName = name.length ? name : @"attachment";
+            self.fileMIME = type.preferredMIMEType ?: @"application/octet-stream";
+            self.chip.image = [UIImage systemImageNamed:@"doc.fill"];
+            self.chip.hidden = NO; self.chip.accessibilityLabel = self.fileName;
+            [self message:[NSString stringWithFormat:@"已添加：%@\n能否解析此文件取决于当前 AI 服务和模型。", self.fileName]];
+        });
+    });
 }
-- (void)imagePickerController:(UIImagePickerController *)picker didFinishPickingMediaWithInfo:(NSDictionary *)info {
-    UIImage *image = info[UIImagePickerControllerOriginalImage];
-    [picker dismissViewControllerAnimated:YES completion:^{ [self acceptImage:image]; }];
-}
-- (void)imagePickerControllerDidCancel:(UIImagePickerController *)picker { [picker dismissViewControllerAnimated:YES completion:nil]; }
 @end

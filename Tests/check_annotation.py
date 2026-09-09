@@ -26,9 +26,7 @@ hooks = read("Selection/RSFreezeSystemHooks.xm")
 assert "acquireSystemGestureDisableAssertion" not in read("Selection/RSSelectionWindow.m")
 assert "lockUIFromSource:" in hooks and "cancelCapture]; %orig;" in hooks
 assert "gestureRecognizerShouldBegin:" in hooks and "canBePresented" in hooks
-camera = read("Camera/RSInlineCamera.m")
 chat = read("AI/RSChatController.m")
-assert "chat.host.isKeyWindow" in chat and "!chat.camera" in chat
 for folder, prefix in [("Input", "RSInput"), ("KeyboardAI", "RSKA")]:
     assert "RSPopupContentHeight(" in read(f"{folder}/{prefix}Interface.m")
     assert "safeAreaInsets.top -" not in read(f"{folder}/{prefix}Interface.m")
@@ -41,11 +39,6 @@ for token_view in ("Input/RSInputTokenView.m", "KeyboardAI/RSKATokenView.m"):
     assert "- (void)clearSelection" in read(token_view)
 for panel in ("Input/RSInputInterface.m", "KeyboardAI/RSKAInterface.m"):
     assert "@selector(clearTokenSelection:)" in read(panel)
-assert "regionshot-camera://capture" not in chat
-assert "[self presentViewController:camera animated:YES completion:nil]" in chat
-assert "addChildViewController" not in camera
-assert "UIModalPresentationCustom" in camera
-assert "[chat acceptImage:image]" in chat
-assert "[self takePicture]" in camera
-assert "[AVCaptureSession new]" not in camera
-assert "AVCaptureSessionInterruptionReasonVideoDeviceNotAvailableInBackground" in camera
+assert "chat.host.isKeyWindow" in chat
+assert "UTTypeItem" in chat
+assert '@"file_data"' in chat and '@"filename"' in chat
