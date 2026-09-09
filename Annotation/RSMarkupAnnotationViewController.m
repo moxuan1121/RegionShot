@@ -49,16 +49,23 @@
 - (void)viewDidLoad {
     [super viewDidLoad];
     self.view.backgroundColor = UIColor.clearColor;
-    UIVisualEffectView *glass = [[UIVisualEffectView alloc] initWithEffect:[UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemMaterial]];
+    UIVisualEffectView *glass = [[UIVisualEffectView alloc] initWithEffect:[UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemMaterialDark]];
     glass.frame = self.view.bounds;
     glass.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
     [self.view addSubview:glass];
+    UIView *shade = [[UIView alloc] initWithFrame:self.view.bounds];
+    shade.backgroundColor = [UIColor colorWithWhite:0 alpha:0.18];
+    shade.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+    shade.userInteractionEnabled = NO;
+    [self.view addSubview:shade];
     self.title = @"标记截图";
     self.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithTitle:@"取消" style:UIBarButtonItemStylePlain target:self action:@selector(closeAnimated)];
     self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithTitle:@"完成" style:UIBarButtonItemStyleDone target:self action:@selector(finish)];
 
     self.imageView = [[UIImageView alloc] initWithImage:self.sourceImage];
     self.imageView.contentMode = UIViewContentModeScaleAspectFit;
+    self.imageView.layer.borderColor = [UIColor colorWithWhite:1 alpha:0.4].CGColor;
+    self.imageView.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
     [self.view addSubview:self.imageView];
 
     self.canvas = [[RSMarkupAnnotationCanvas alloc] initWithFrame:self.view.bounds];
@@ -92,6 +99,7 @@
                                       b.size.height - toolH - self.view.safeAreaInsets.top);
     // canvas matches the image's *displayed* rect so marks line up with pixels
     CGRect disp = [self imageDisplayRect];
+    self.imageView.frame = disp;
     [self.canvas resizeDrawingToSize:disp.size];
     self.canvas.frame = disp;
     self.canvas.imageDisplayRect = CGRectMake(0,0,disp.size.width,disp.size.height);
