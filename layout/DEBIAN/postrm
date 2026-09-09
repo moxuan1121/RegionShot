@@ -1,3 +1,0 @@
-#!/bin/sh
-uicache -u /Applications/RegionShotCamera.app || true
-exit 0

@@ -47,7 +47,9 @@ assert sum(p.startswith("Library/PreferenceLoader/Preferences/") for p in files)
 assert not any("RegionShotScroll" in p or "RSLongCapture" in p for p in files)
 
 assert not any('RegionShotCamera.app' in p for p in files)
-assert 'uicache' in files['postinst'].decode()
+# The package no longer owns an app; let the package manager's icon-cache trigger run.
+for script in ('preinst', 'postinst', 'prerm', 'postrm'):
+    assert b'RegionShotCamera.app' not in files.get(script, b''), script
 
 assert sorted(p.rsplit('/', 1)[-1] for p in files if p.startswith('Library/MobileSubstrate/DynamicLibraries/') and p.endswith('.dylib')) == ['RegionShot.dylib', 'RegionShotInput.dylib']
 assert not any('RegionShotURLs' in p for p in files)
