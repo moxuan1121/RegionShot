@@ -5,6 +5,7 @@
 // collapsible colour/width picker. Handles undo/clear/save/copy/share/about.
 @interface RSMarkupAnnotationViewController : UIViewController
 - (instancetype)initWithImage:(UIImage *)image;
+@property (nonatomic, copy) void (^dismissEditor)(void);
 @property (nonatomic, copy) void (^completion)(UIImage *);
 - (void)closeAnimated;   // dismiss + tear down window
 @end

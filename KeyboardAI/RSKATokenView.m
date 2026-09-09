@@ -96,6 +96,20 @@
         });
     }
 }
+- (CGFloat)contentHeightForWidth:(CGFloat)width {
+    UILabel *label = ((RSKATokenCell *)[[RSKATokenCell alloc] initWithFrame:CGRectZero]).label;
+    UICollectionViewFlowLayout *layout = (UICollectionViewFlowLayout *)self.collectionViewLayout;
+    CGFloat limit = MAX(1, width - layout.sectionInset.left - layout.sectionInset.right);
+    CGFloat x = 0, row = 0, height = layout.sectionInset.top;
+    for (NSString *piece in self.pieces) {
+        label.text = [self displayPiece:piece];
+        CGSize size = [label sizeThatFits:CGSizeMake(MAX(1,limit-10), CGFLOAT_MAX)];
+        CGFloat w = MIN(limit, MAX(24,ceil(size.width)+10)), h = MAX(24,ceil(size.height)+8);
+        if (x > 0 && x + w > limit) { height += row + layout.minimumLineSpacing; x = 0; row = 0; }
+        row = MAX(row,h); x += w + layout.minimumInteritemSpacing;
+    }
+    return height + row + layout.sectionInset.bottom;
+}
 - (void)measurePieces {
     CGFloat limit = MAX(28, floor(self.bounds.size.width));
     UILabel *label = ((RSKATokenCell *)[[RSKATokenCell alloc] initWithFrame:CGRectZero]).label;

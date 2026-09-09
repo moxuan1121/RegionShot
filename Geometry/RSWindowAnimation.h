@@ -1,9 +1,14 @@
 #import <UIKit/UIKit.h>
+#import <QuartzCore/QuartzCore.h>
 static inline void RSOpenWindowSurface(UIView *surface) {
     if (!surface) return;
     [surface.superview layoutIfNeeded];
-    surface.alpha = 0;
-    [UIView animateWithDuration:0.22 delay:0 options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionCurveEaseOut animations:^{ surface.alpha = 1; } completion:nil];
+    surface.alpha = 1;
+    CABasicAnimation *fade = [CABasicAnimation animationWithKeyPath:@"opacity"];
+    fade.fromValue = @0; fade.toValue = @1; fade.duration = 0.32;
+    fade.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseOut];
+    [surface.layer addAnimation:fade forKey:@"rs.open.fade"];
+
 }
 static inline void RSCloseWindowSurface(UIWindow *window, UIView *surface) {
     if (!window) return;

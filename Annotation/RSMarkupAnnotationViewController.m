@@ -33,14 +33,15 @@
 
 #pragma mark - Window lifecycle
 
-- (void)closeAnimated { [self dismissViewControllerAnimated:YES completion:nil]; }
+- (void)closeAnimated { if (self.dismissEditor) self.dismissEditor(); else [self dismissViewControllerAnimated:YES completion:nil]; }
 - (void)finish {
     UIImage *image = [self compositeImage];
     if (!image) return;
     UIPasteboard.generalPasteboard.image = image;
     void (^callback)(UIImage *) = self.completion;
     self.completion = nil;
-    [self dismissViewControllerAnimated:YES completion:^{ if (callback) callback(image); }];
+    [self closeAnimated];
+    if (callback) callback(image);
 }
 
 #pragma mark - View setup

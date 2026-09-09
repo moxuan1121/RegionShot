@@ -298,11 +298,11 @@ static NSString *RSInputFullText(id<UITextInput> target) {
         [self.windowOptions[landscape ? @"panelTopLandscape" : @"panelTop"] doubleValue], [self.windowOptions[@"panelHeight"] doubleValue]);
     self.panelTop.constant = placement.y; self.panelLeading.constant = placement.x; self.panelWidth.constant = placement.width;
     [window layoutIfNeeded];
-    CGFloat width = MAX(1, self.contentStack.bounds.size.width);
+    CGFloat width = MAX(1, placement.width - 24);
     CGFloat contentHeight;
     if (self.tokenView) {
         [self.tokenView layoutIfNeeded];
-        contentHeight = self.tokenView.collectionViewLayout.collectionViewContentSize.height;
+        contentHeight = [self.tokenView contentHeightForWidth:width];
     } else contentHeight = [self.textView sizeThatFits:CGSizeMake(width, CGFLOAT_MAX)].height;
     CGFloat chrome = 20 + self.contentStack.spacing * 2;
     for (UIView *view in self.contentStack.arrangedSubviews) {
@@ -310,9 +310,7 @@ static NSString *RSInputFullText(id<UITextInput> target) {
         chrome += [view systemLayoutSizeFittingSize:CGSizeMake(width, UILayoutFittingCompressedSize.height)
             withHorizontalFittingPriority:UILayoutPriorityRequired verticalFittingPriority:UILayoutPriorityFittingSizeLevel].height;
     }
-    UIView *host = ((RSInputPanelController *)window.rootViewController).canvas;
-    CGFloat available = MAX(0, host.bounds.size.height - host.safeAreaInsets.top - host.safeAreaInsets.bottom - 20);
-    available = MAX(0, MIN(available, canvas.bounds.size.height - placement.y - 12));
+    CGFloat available = MAX(0, canvas.bounds.size.height - placement.y - 12);
     CGFloat percent = [self.windowOptions[self.tokenView ? @"tokenMaxHeight" : @"aiMaxHeight"] doubleValue];
     self.heightConstraint.constant = [self.windowOptions[@"panelHeight"] doubleValue] > 0 ? MIN(available, MAX(chrome + 24, placement.height)) : RSInputFittedPanelHeight(contentHeight, chrome, available, percent);
     [window layoutIfNeeded];

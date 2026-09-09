@@ -191,7 +191,7 @@
 }
 
 - (void)editSelection {
-    if (self.rootViewController.presentedViewController) return;
+    if (self.rootViewController.presentedViewController || self.rootViewController.children.count) return;
     if (!self.selectionView.hasValidSelection) [self.selectionView selectAll];
     UIImage *image = [RSScreenCapture cropImage:self.imageView.image toRect:self.selectionRect displaySize:self.displaySize];
     if (!image) return;
@@ -201,9 +201,20 @@
         if (window.editedImageHandler) window.editedImageHandler(edited);
     }];
     UINavigationController *navigation = [[UINavigationController alloc] initWithRootViewController:editor];
-    navigation.modalPresentationStyle = UIModalPresentationOverFullScreen;
+    UIViewController *host = self.rootViewController;
+    [host addChildViewController:navigation];
+    navigation.view.frame = host.view.bounds;
+    navigation.view.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
     navigation.view.backgroundColor = UIColor.clearColor;
-    [self.rootViewController presentViewController:navigation animated:YES completion:nil];
+    [host.view addSubview:navigation.view];
+    [navigation didMoveToParentViewController:host];
+    __weak UINavigationController *weakNavigation = navigation;
+    editor.dismissEditor = ^{
+        UINavigationController *page = weakNavigation;
+        [page willMoveToParentViewController:nil];
+        [page.view removeFromSuperview];
+        [page removeFromParentViewController];
+    };
 }
 
 - (void)show {

@@ -96,6 +96,14 @@ static char RSStatusBarGestureKey;
 %end
 %end
 // Block SpringBoard's system touch routing only while the frozen selection is visible.
+%group RSLockExit
+%hook SBLockScreenManager
+- (void)lockUIFromSource:(int)source withOptions:(id)options {
+    [RSRegionShotManager.sharedManager cancelCapture];
+    %orig;
+}
+%end
+%end
 %group RSFrozenSystemGestures
 %hook SBSystemGestureManager
 - (BOOL)shouldSystemGestureReceiveTouchWithLocation:(CGPoint)location {
@@ -216,6 +224,15 @@ static void RSPreferenceEvent(CFNotificationCenterRef center, void *observer, CF
     @autoreleasepool {
         if (![NSBundle.mainBundle.bundleIdentifier isEqualToString:@"com.apple.springboard"]) return;
         RSReload();
+        Method lockMethod = class_getInstanceMethod(NSClassFromString(@"SBLockScreenManager"), NSSelectorFromString(@"lockUIFromSource:withOptions:"));
+        if (lockMethod && method_getNumberOfArguments(lockMethod) == 4) {
+            char result[16] = {0}, source[16] = {0}, options[16] = {0};
+            method_getReturnType(lockMethod,result,sizeof(result));
+            method_getArgumentType(lockMethod,2,source,sizeof(source));
+            method_getArgumentType(lockMethod,3,options,sizeof(options));
+            if (result[0] == 'v' && source[0] == 'i' && options[0] == '@') { %init(RSLockExit); }
+        }
+
         if ([NSClassFromString(@"_UIStatusBar") isSubclassOfClass:UIView.class]) { %init(RSStatusBarEntry); }
         Class gestures = NSClassFromString(@"SBSystemGestureManager");
         Method receiveTouch = class_getInstanceMethod(gestures, NSSelectorFromString(@"shouldSystemGestureReceiveTouchWithLocation:"));
