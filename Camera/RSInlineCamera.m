@@ -73,7 +73,8 @@
     if (self.stopped) return;
     dispatch_async(self.queue, ^{
         NSError *error = nil;
-        AVCaptureDeviceInput *input = [AVCaptureDeviceInput deviceInputWithDevice:[AVCaptureDevice defaultDeviceWithMediaType:AVMediaTypeVideo] error:&error];
+        AVCaptureDevice *device = [AVCaptureDevice defaultDeviceWithMediaType:AVMediaTypeVideo];
+        AVCaptureDeviceInput *input = device ? [AVCaptureDeviceInput deviceInputWithDevice:device error:&error] : nil;
         if (!input || ![self.session canAddInput:input] || ![self.session canAddOutput:self.output]) {
             dispatch_async(dispatch_get_main_queue(), ^{ [self showError:error.localizedDescription ?: @"当前无法打开相机。"]; }); return;
         }
@@ -81,6 +82,7 @@
         if ([self.session canSetSessionPreset:AVCaptureSessionPreset1280x720]) self.session.sessionPreset = AVCaptureSessionPreset1280x720;
         [self.session addInput:input]; [self.session addOutput:self.output]; [self.session commitConfiguration];
         [self.session startRunning];
+        if (!self.session.isRunning) { dispatch_async(dispatch_get_main_queue(), ^{ [self showError:@"相机启动失败，请取消后重试。"]; }); return; }
         dispatch_async(dispatch_get_main_queue(), ^{ if (!self.stopped) { self.status.text = nil; self.shutter.enabled = YES; self.flip.enabled = YES; [self.view setNeedsLayout]; } });
     });
 }
