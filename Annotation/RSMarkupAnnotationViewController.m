@@ -185,7 +185,7 @@
 }
 
 - (void)updateModeButtons {
-    NSArray *modes = @[@0,@1,@2,@3,@4,@5,@7,@6];
+    NSArray<NSNumber *> *modes = @[@0,@1,@2,@3,@4,@5,@7,@6];
     for (NSUInteger i = 0; i < self.modeButtons.count; i++)
         self.modeButtons[i].tintColor = modes[i].integerValue == self.canvas.drawMode ? UIColor.systemYellowColor : UIColor.whiteColor;
 }
