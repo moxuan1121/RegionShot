@@ -112,7 +112,8 @@
     return height + row + layout.sectionInset.bottom;
 }
 - (void)measurePieces {
-    CGFloat limit = MAX(28, floor(self.bounds.size.width));
+    UICollectionViewFlowLayout *layout = (UICollectionViewFlowLayout *)self.collectionViewLayout;
+    CGFloat limit = MAX(1, floor(self.bounds.size.width) - layout.sectionInset.left - layout.sectionInset.right);
     UILabel *label = ((RSInputTokenCell *)[[RSInputTokenCell alloc] initWithFrame:CGRectZero]).label;
     NSMutableArray *sizes = [NSMutableArray arrayWithCapacity:self.pieces.count];
     for (NSString *piece in self.pieces) {

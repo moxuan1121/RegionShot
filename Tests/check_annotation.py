@@ -20,3 +20,9 @@ for path in ["Input/RSInputInterface.m", "KeyboardAI/RSKAInterface.m"]:
     assert "insertArrangedSubview:self.tokenView atIndex:1" in popup
 assert "lockcomplete" in read("Trigger.xm")
 assert "if (!record) snap.center" in read("Manager/RSRegionShotManager.m")
+
+assert "addChildViewController:navigation" in read("Selection/RSSelectionWindow.m")
+assert "SBLockScreenManager" in read("Trigger.xm")
+for folder, prefix in [("Input", "RSInput"), ("KeyboardAI", "RSKA")]:
+    assert "contentHeightForWidth:width" in read(f"{folder}/{prefix}Interface.m")
+    assert "safeAreaInsets.top -" not in read(f"{folder}/{prefix}Interface.m")

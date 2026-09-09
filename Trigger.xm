@@ -104,6 +104,14 @@ static char RSStatusBarGestureKey;
 }
 %end
 %end
+%group RSLockExitWide
+%hook SBLockScreenManager
+- (void)lockUIFromSource:(long long)source withOptions:(id)options {
+    [RSRegionShotManager.sharedManager cancelCapture];
+    %orig;
+}
+%end
+%end
 %group RSFrozenSystemGestures
 %hook SBSystemGestureManager
 - (BOOL)shouldSystemGestureReceiveTouchWithLocation:(CGPoint)location {
@@ -230,7 +238,10 @@ static void RSPreferenceEvent(CFNotificationCenterRef center, void *observer, CF
             method_getReturnType(lockMethod,result,sizeof(result));
             method_getArgumentType(lockMethod,2,source,sizeof(source));
             method_getArgumentType(lockMethod,3,options,sizeof(options));
-            if (result[0] == 'v' && source[0] == 'i' && options[0] == '@') { %init(RSLockExit); }
+            if (result[0] == 'v' && options[0] == '@') {
+                if (source[0] == 'i') { %init(RSLockExit); }
+                else if (source[0] == 'q') { %init(RSLockExitWide); }
+            }
         }
 
         if ([NSClassFromString(@"_UIStatusBar") isSubclassOfClass:UIView.class]) { %init(RSStatusBarEntry); }
