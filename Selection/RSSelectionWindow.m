@@ -1,3 +1,4 @@
+#import <objc/runtime.h>
 #import "../History/RSHistoryController.h"
 #import "RSSelectionWindow.h"
 #import "RSSelectionToolbar.h"
