@@ -17,7 +17,7 @@
     if ((self = [super init])) {
         _text = @"";
         _textColor = [UIColor whiteColor];
-        _fontSize = 24.0;
+        _fontSize = 16.0;
         _opacity = 1.0;
         _showBackground = YES;
     }

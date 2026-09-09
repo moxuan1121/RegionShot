@@ -275,7 +275,7 @@ static NSString *RSInputFullText(id<UITextInput> target) {
         self.panelLeading, self.panelWidth,
         self.panelTop,
         self.heightConstraint,
-        [panel.bottomAnchor constraintLessThanOrEqualToAnchor:host.keyboardLayoutGuide.topAnchor constant:-12],
+        [panel.bottomAnchor constraintLessThanOrEqualToAnchor:host.bottomAnchor constant:-12],
         [stack.leadingAnchor constraintEqualToAnchor:panel.leadingAnchor constant:12],
         [stack.trailingAnchor constraintEqualToAnchor:panel.trailingAnchor constant:-12],
         [stack.topAnchor constraintEqualToAnchor:panel.topAnchor constant:12],
@@ -555,7 +555,7 @@ static NSString *RSInputFullText(id<UITextInput> target) {
     self.tokenView.onSelectionChanged = ^{ [weakSelf updateTokenActions]; };
     self.tokenView.onLayoutChanged = ^{ [weakSelf resizePanel]; };
     self.tokenView.onGutterLongPress = ^{ [weakSelf leaveTokens]; };
-    [self.contentStack insertArrangedSubview:self.tokenView atIndex:2];
+    [self.contentStack insertArrangedSubview:self.tokenView atIndex:1];
     self.textView.hidden = YES;
     self.header.hidden = YES;
     [self updateTokenActions];

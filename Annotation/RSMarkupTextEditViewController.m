@@ -43,7 +43,7 @@
     self.sizeSlider = [[UISlider alloc] init];
     self.sizeSlider.minimumValue = 10;
     self.sizeSlider.maximumValue = 80;
-    self.sizeSlider.value = self.initialFontSize > 0 ? self.initialFontSize : 24;
+    self.sizeSlider.value = self.initialFontSize > 0 ? self.initialFontSize : 16;
     [self.sizeSlider addTarget:self action:@selector(sliderChanged:) forControlEvents:UIControlEventValueChanged];
     [panel addSubview:self.sizeSlider];
 

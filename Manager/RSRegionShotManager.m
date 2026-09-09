@@ -69,9 +69,8 @@
     }];
     self.selectionWindow.editedImageHandler = ^(UIImage *edited) {
         RSRegionShotManager *manager = weakSelf;
-        UIWindowScene *scene = manager.selectionWindow.windowScene;
+        UIPasteboard.generalPasteboard.image = edited;
         [manager cancelCapture];
-        [manager createFloatingSnap:edited windowScene:scene];
     };
     [self.selectionWindow show];
     return YES;
@@ -140,6 +139,7 @@
     CGFloat offset = (self.mutableSnaps.count % 5) * 18.0;
     snap.center = CGPointMake(screen.width - size.width / 2.0 - 16 - offset,
                               self.floatingWindow.safeAreaInsets.top + size.height / 2.0 + 70 + offset);
+    if (!record) snap.center = CGPointMake(screen.width / 2, screen.height / 2);
     snap.actionDelegate = self;
     [self.floatingWindow.rootViewController.view addSubview:snap];
     [self.mutableSnaps addObject:snap];

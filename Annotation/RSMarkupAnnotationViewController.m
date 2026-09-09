@@ -37,6 +37,7 @@
 - (void)finish {
     UIImage *image = [self compositeImage];
     if (!image) return;
+    UIPasteboard.generalPasteboard.image = image;
     void (^callback)(UIImage *) = self.completion;
     self.completion = nil;
     [self dismissViewControllerAnimated:YES completion:^{ if (callback) callback(image); }];
@@ -285,7 +286,7 @@
     RSMarkupTextEditViewController *vc = [RSMarkupTextEditViewController new];
     vc.initialText = text;
     vc.initialColor = self.canvas.strokeColor;
-    vc.initialFontSize = 24;
+    vc.initialFontSize = 16;
     vc.modalPresentationStyle = UIModalPresentationOverFullScreen;
     __weak typeof(self) ws = self;
     vc.completion = ^(RSMarkupTextAnnotation *a) {
@@ -331,8 +332,7 @@
 }
 
 - (void)copyToClipboard {
-    [UIPasteboard generalPasteboard].image = [self compositeImage];
-    [self showToast:@"已拷贝到剪贴板"];
+    [self finish];
 }
 
 - (void)airDropTapped {
