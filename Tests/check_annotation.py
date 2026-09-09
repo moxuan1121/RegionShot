@@ -42,7 +42,10 @@ for token_view in ("Input/RSInputTokenView.m", "KeyboardAI/RSKATokenView.m"):
 for panel in ("Input/RSInputInterface.m", "KeyboardAI/RSKAInterface.m"):
     assert "@selector(clearTokenSelection:)" in read(panel)
 assert "regionshot-camera://capture" not in chat
-assert "[self addChildViewController:camera]" in chat
+assert "[self presentViewController:camera animated:YES completion:nil]" in chat
+assert "addChildViewController" not in camera
+assert "UIModalPresentationCustom" in camera
 assert "[chat acceptImage:image]" in chat
-assert "[self.picker takePicture]" in camera
-assert "AVCaptureSession" not in camera
+assert "[self takePicture]" in camera
+assert "[AVCaptureSession new]" not in camera
+assert "AVCaptureSessionInterruptionReasonVideoDeviceNotAvailableInBackground" in camera

@@ -695,29 +695,29 @@ static NSUserDefaults *RSChatPreferences(void) {
     if (self.presentedViewController) {
         [self dismissViewControllerAnimated:YES completion:^{ [self openCamera]; }]; return;
     }
+    if (![UIImagePickerController isSourceTypeAvailable:UIImagePickerControllerSourceTypeCamera]) {
+        [self message:@"系统相机当前不可用。"]; return;
+    }
     [self hideKeyboard];
     RSInlineCamera *camera = [RSInlineCamera new]; self.camera = camera;
     __weak typeof(self) weakSelf = self;
     camera.completion = ^(UIImage *image) {
         RSChatController *chat = weakSelf;
         if (!chat || !chat.camera) return;
-        [chat dismissCamera];
-        if (image) [chat acceptImage:image];
-        [chat focusInput];
+        [chat.camera stop];
+        [chat dismissViewControllerAnimated:YES completion:^{
+            chat.camera = nil;
+            if (image) [chat acceptImage:image];
+            [chat focusInput];
+        }];
     };
     self.host.activeSurface = nil;
-    [self addChildViewController:camera];
-    camera.view.frame = self.view.bounds;
-    camera.view.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-    camera.view.alpha = 0;
-    [self.view addSubview:camera.view]; [camera didMoveToParentViewController:self];
-    [UIView animateWithDuration:0.3 animations:^{ camera.view.alpha = 1; }];
+    [self presentViewController:camera animated:YES completion:nil];
 }
 - (void)dismissCamera {
-    RSInlineCamera *camera = self.camera;
-    if (!camera) return;
-    [camera stop]; [camera willMoveToParentViewController:nil];
-    [camera.view removeFromSuperview]; [camera removeFromParentViewController];
+    if (!self.camera) return;
+    [self.camera stop];
+    [self dismissViewControllerAnimated:NO completion:nil];
     self.camera = nil;
 }
 - (void)acceptImage:(UIImage *)image {
