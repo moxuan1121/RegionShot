@@ -1,5 +1,4 @@
-#import <UIKit/UIKit.h>
-
-@interface RSImageEditor : UIViewController
+#import "../Annotation/RSMarkupAnnotationViewController.h"
+@interface RSImageEditor : RSMarkupAnnotationViewController
 - (instancetype)initWithImage:(UIImage *)image completion:(void (^)(UIImage *))completion;
 @end

@@ -1,0 +1,1 @@
+Adapted from https://github.com/moxuan1121/BiaojiClone at afd37be9758f4146f75f403a6430f6f798fe148e, at the repository owner/user request. Upstream contains no license file. Imported editor sources only; Snapper3 hooks and plugin registration are not included. Classes are prefixed RSMarkup to avoid runtime collisions.

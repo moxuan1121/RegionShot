@@ -27,8 +27,9 @@ RegionShot_FILES = Trigger.xm Preferences/RSURLHooks.xm \
 	KeyboardAI/RSKAInterface.m \
 	KeyboardAI/RSKATokenView.m \
 	KeyboardAI/RSKAAnchoredMenuView.m
+RegionShot_FILES += $(wildcard Annotation/*.m)
 RegionShot_CFLAGS = -fobjc-arc -Wall -Wextra -Wno-unused-parameter
-RegionShot_FRAMEWORKS = Foundation UIKit Photos QuartzCore Security PhotosUI UniformTypeIdentifiers Vision CoreImage PencilKit WebKit
+RegionShot_FRAMEWORKS = Foundation UIKit Photos QuartzCore Security PhotosUI UniformTypeIdentifiers Vision CoreImage WebKit
 
 RegionShotInput_FILES = Input/Tweak.xm Input/RSSileo.xm Input/RSInputInterface.m Input/RSInputStream.m Input/RSInputStore.m Input/RSInputTokenView.m Input/RSInputClipboard.m Input/RSInputAnchoredMenuView.m
 RegionShotInput_CFLAGS = -fobjc-arc -Wall -Wextra -Wno-unused-parameter
