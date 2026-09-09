@@ -1,3 +1,4 @@
+#import "../Geometry/RSWindowAnimation.h"
 #import "RSHistoryController.h"
 #import "RSHistoryStore.h"
 #import <objc/message.h>
@@ -122,6 +123,7 @@ static RSHistoryController *RSActiveHistory;
     controller.host.backgroundColor = UIColor.clearColor;
     controller.host.rootViewController = panel;
     RSActiveHistory = controller; RSApplyWindowOrientation(controller.host, RSActiveOrientation(scene)); [controller.host makeKeyAndVisible]; RSApplyWindowOrientation(controller.host, RSActiveOrientation(scene));
+    RSOpenWindowSurface(panel.navigation.view);
 }
 - (void)viewDidLoad {
     [super viewDidLoad]; self.title = @"截图历史";
@@ -138,8 +140,9 @@ static RSHistoryController *RSActiveHistory;
     [self reloadHistory];
 }
 - (void)close {
-    [self.view endEditing:YES]; self.host.hidden = YES;
-    [self.previous makeKeyWindow]; self.host.rootViewController = nil; self.host = nil; RSActiveHistory = nil;
+    [self.view endEditing:YES];
+    RSCloseWindowSurface(self.host, self.navigationController.view);
+    [self.previous makeKeyWindow]; self.host = nil; RSActiveHistory = nil;
 }
 - (void)error:(NSString *)message {
     if (self.presentedViewController) return;

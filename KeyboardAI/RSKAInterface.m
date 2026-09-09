@@ -1,3 +1,4 @@
+#import "../Geometry/RSWindowAnimation.h"
 #define RS_PANEL_CONTROLLER RSKAPanelController
 #import "../Geometry/RSPanelController.h"
 // Adapted from KeyboardAI-RootHide 23c761e, GPL-3.0; see THIRD_PARTY.md.
@@ -225,6 +226,7 @@ static UIWindowLevel RSKAPanelWindowLevel(NSDictionary *options, NSString *key) 
     ]];
     self.replaceButton.enabled = NO;
     self.clipboardButton.enabled = NO;
+    RSOpenWindowSurface(self.panel);
     [[[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleLight] impactOccurred];
     return YES;
 }
@@ -265,8 +267,7 @@ static UIWindowLevel RSKAPanelWindowLevel(NSDictionary *options, NSString *key) 
 - (void)close {
     dispatch_block_t callback = self.onClose; self.onClose = nil;
     [self.searchMenu dismiss]; self.searchMenu = nil;
-    [self.panel removeFromSuperview]; self.panel = nil;
-    self.overlayWindow.hidden = YES;
+    RSCloseWindowSurface(self.overlayWindow, self.panel); self.panel = nil;
     [self.previousWindow makeKeyWindow]; self.overlayWindow = nil;
     self.tokenView = nil; self.generating = NO;
     if (callback) callback();

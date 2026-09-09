@@ -1,3 +1,4 @@
+#import "../Geometry/RSWindowAnimation.h"
 #import "RSChatController.h"
 #import "RSSSEDecoder.h"
 #import "../Camera/RSCameraBridge.h"
@@ -60,6 +61,8 @@
 @property (nonatomic, strong) UIImageView *chip;
 @property (nonatomic, strong) UIButton *sendButton;
 @property (nonatomic, strong) UIButton *modelButton;
+@property (nonatomic, strong) UILabel *heading;
+@property (nonatomic) BOOL imageConversation;
 @property (nonatomic, strong) UIButton *ball;
 @property (nonatomic, strong) UIImage *attachment;
 @property (nonatomic, strong) NSMutableArray<NSMutableDictionary *> *history;
@@ -107,6 +110,8 @@ static NSUserDefaults *RSChatPreferences(void) {
     if (!scene) for (UIScene *candidate in UIApplication.sharedApplication.connectedScenes)
         if ([candidate isKindOfClass:UIWindowScene.class] && candidate.activationState == UISceneActivationStateForegroundActive) { scene = (UIWindowScene *)candidate; break; }
     if (RSActiveChat) {
+        RSActiveChat.imageConversation = image != nil;
+        [RSActiveChat updateHeading];
         [RSActiveChat restore];
         RSActiveChat.attachment = image;
         RSActiveChat.chip.image = image;
@@ -115,6 +120,7 @@ static NSUserDefaults *RSChatPreferences(void) {
         return;
     }
     RSChatController *controller = [self new];
+    controller.imageConversation = image != nil;
     controller.attachment = image;
     controller.history = [NSMutableArray array];
     controller.rows = [NSMutableArray array];
@@ -131,6 +137,7 @@ static NSUserDefaults *RSChatPreferences(void) {
     [window makeKeyAndVisible];
     RSApplyWindowOrientation(window, RSActiveOrientation(scene));
     [controller loadViewIfNeeded];
+    RSOpenWindowSurface(controller.card);
     [[[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleLight] impactOccurred];
     if (image && [RSOption(@"AIAutoImage") boolValue]) [controller send];
 }
@@ -148,6 +155,7 @@ static NSUserDefaults *RSChatPreferences(void) {
         if (!chat.keyboardPresentation) [chat.host makeKeyAndVisible];
     }
     RSActiveChat.input.text = @"";
+    RSActiveChat.imageConversation = YES; [RSActiveChat updateHeading];
     RSActiveChat.attachment = image; RSActiveChat.chip.image = image; RSActiveChat.chip.hidden = NO;
     if (!RSActiveChat.task) [RSActiveChat send];
     else [RSActiveChat message:@"图片已放入当前对话，待本次回答结束后点击发送。"];
@@ -202,7 +210,7 @@ static NSUserDefaults *RSChatPreferences(void) {
     self.modelButton.titleLabel.textAlignment = NSTextAlignmentLeft;
     self.modelButton.showsMenuAsPrimaryAction = YES;
     [self updateModelTitle];
-    UILabel *heading = [UILabel new]; heading.text = @"图片问答"; heading.font = [UIFont boldSystemFontOfSize:17];
+    UILabel *heading = [UILabel new]; self.heading = heading; [self updateHeading]; heading.font = [UIFont boldSystemFontOfSize:17];
     [heading setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
     [heading setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
     self.modelButton.titleLabel.font = [UIFont systemFontOfSize:12];
@@ -300,6 +308,7 @@ static NSUserDefaults *RSChatPreferences(void) {
     if (!self.card.hidden && !self.host.hidden && !self.presentedViewController && !self.keyboardPresentation)
         [self.input becomeFirstResponder];
 }
+- (void)updateHeading { self.heading.text = self.imageConversation ? @"图片问答" : @"AI 对话"; self.ball.accessibilityLabel = [@"恢复" stringByAppendingString:self.heading.text ?: @"AI 对话"]; }
 - (void)applyAppearance {
     self.overrideUserInterfaceStyle = (UIUserInterfaceStyle)[RSOption(@"AITheme") integerValue];
     CGFloat size = [RSOption(@"AIBallSize") doubleValue];
@@ -362,6 +371,7 @@ static NSUserDefaults *RSChatPreferences(void) {
     self.view.backgroundColor = [UIColor colorWithWhite:0 alpha:0.28];
     [self.host makeKeyAndVisible];
     [self focusInput];
+    if (wasHidden) RSOpenWindowSurface(self.card);
     if (wasHidden) [[[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleLight] impactOccurred];
 }
 - (void)panBall:(UIPanGestureRecognizer *)pan {
@@ -386,9 +396,8 @@ static NSUserDefaults *RSChatPreferences(void) {
     self.task = nil;
     self.session = nil;
     [self hideKeyboard];
-    self.host.hidden = YES;
+    RSCloseWindowSurface(self.host, self.card.hidden ? self.ball : self.card);
     [self.previousKey makeKeyWindow];
-    self.host.rootViewController = nil;
     self.host = nil;
     if (RSActiveChat == self) RSActiveChat = nil;
 }
@@ -713,6 +722,7 @@ static NSUserDefaults *RSChatPreferences(void) {
 }
 - (void)acceptImage:(UIImage *)image {
     if (!image.CGImage) { [self message:@"无法读取这张图片。"]; return; }
+    self.imageConversation = YES; [self updateHeading];
     self.attachment = image; self.chip.image = image; self.chip.hidden = NO;
 }
 - (void)picker:(PHPickerViewController *)picker didFinishPicking:(NSArray<PHPickerResult *> *)results {

@@ -1,3 +1,4 @@
+#import "../Geometry/RSWindowAnimation.h"
 #define RS_PANEL_CONTROLLER RSInputPanelController
 #import "../Geometry/RSPanelController.h"
 // Adapted from KeyboardAI-RootHide 23c761e, GPL-3.0; see THIRD_PARTY.md.
@@ -282,6 +283,7 @@ static NSString *RSInputFullText(id<UITextInput> target) {
     ]];
     self.replaceButton.enabled = NO;
     self.clipboardButton.enabled = NO;
+    RSOpenWindowSurface(self.panel);
     [[[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleLight] impactOccurred];
     return YES;
 }
@@ -334,7 +336,7 @@ static NSString *RSInputFullText(id<UITextInput> target) {
     self.completedResult = NO;
     [self.timer invalidate];
     self.timer = nil;
-    [self.panel removeFromSuperview];
+    RSCloseWindowSurface(self.overlayWindow, self.panel);
     self.panel = nil;
     self.target = nil;
     self.original = nil;
@@ -352,7 +354,6 @@ static NSString *RSInputFullText(id<UITextInput> target) {
     self.tokenView = nil;
     self.backButton = nil;
     if (self.overlayWindow) {
-        self.overlayWindow.hidden = YES;
         [self.previousWindow makeKeyWindow];
         self.overlayWindow = nil;
         self.previousWindow = nil;
