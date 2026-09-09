@@ -191,7 +191,7 @@
 }
 
 - (void)editSelection {
-    if (self.rootViewController.presentedViewController || self.rootViewController.children.count) return;
+    if (self.rootViewController.presentedViewController || self.rootViewController.childViewControllers.count) return;
     if (!self.selectionView.hasValidSelection) [self.selectionView selectAll];
     UIImage *image = [RSScreenCapture cropImage:self.imageView.image toRect:self.selectionRect displaySize:self.displaySize];
     if (!image) return;
