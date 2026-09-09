@@ -227,9 +227,26 @@
     SEL mainDisplay = NSSelectorFromString(@"mainDisplayManager");
     SEL acquire = NSSelectorFromString(@"acquireSystemGestureDisableAssertionForReason:exceptSystemGestureTypes:");
     id manager = [managerClass respondsToSelector:mainDisplay] ? ((id (*)(id, SEL))objc_msgSend)(managerClass, mainDisplay) : nil;
-    if ([manager respondsToSelector:acquire])
-        self.touchGestureAssertion = ((id (*)(id, SEL, id, id))objc_msgSend)(manager, acquire, @"RegionShot frozen selection", [NSSet set]);
-    NSLog(@"[RegionShot] restored frozen gesture assertion active=%d", self.touchGestureAssertion != nil);
+    NSMutableSet<NSNumber *> *hardware = [NSMutableSet set];
+    SEL hardwareTypes = NSSelectorFromString(@"deviceHardwareButtonGestureTypes");
+    if ([managerClass respondsToSelector:hardwareTypes]) {
+        id types = ((id (*)(id, SEL))objc_msgSend)(managerClass, hardwareTypes);
+        // iOS builds expose this collection as either an array or a set.
+        if ([types isKindOfClass:NSArray.class] || [types isKindOfClass:NSSet.class]) {
+            for (id type in types) if ([type isKindOfClass:NSNumber.class]) [hardware addObject:type];
+        } else if ([types isKindOfClass:NSIndexSet.class])
+            [types enumerateIndexesUsingBlock:^(NSUInteger index, BOOL *stop) { [hardware addObject:@(index)]; }];
+    }
+    SEL isHardware = NSSelectorFromString(@"_isDeviceHardwareButtonGestureType:");
+    Ivar mappingIvar = class_getInstanceVariable(managerClass, "_typeToGesture");
+    id mapping = mappingIvar && manager ? object_getIvar(manager, mappingIvar) : nil;
+    if ([mapping isKindOfClass:NSDictionary.class] && [managerClass respondsToSelector:isHardware]) {
+        for (id type in mapping)
+            if ([type isKindOfClass:NSNumber.class] && ((BOOL (*)(id, SEL, unsigned long long))objc_msgSend)(managerClass, isHardware, [type unsignedLongLongValue])) [hardware addObject:type];
+    }
+    if (hardware.count && [manager respondsToSelector:acquire])
+        self.touchGestureAssertion = ((id (*)(id, SEL, id, id))objc_msgSend)(manager, acquire, @"RegionShot frozen selection", hardware);
+    NSLog(@"[RegionShot] frozen gesture assertion active=%d hardware exceptions=%@", self.touchGestureAssertion != nil, hardware);
 
     self.previousKeyWindow = [RSSelectionWindow currentKeyWindow];
     RSApplyWindowOrientation(self, self.captureOrientation);
