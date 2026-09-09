@@ -28,7 +28,7 @@ bundle = 'Library/PreferenceBundles/' + loader['bundle'] + '.bundle/'
 info = plistlib.loads(files[bundle + 'Info.plist'])
 assert loader['detail'] == info['NSPrincipalClass'] == 'RSPreferences'
 assert info['CFBundleVersion'] == control['Version'].removesuffix('-roothide')
-for path in ['Library/MobileSubstrate/DynamicLibraries/' + name + '.dylib' for name in ['RegionShot', 'RegionShotInput']] + [bundle + info['CFBundleExecutable'], 'Applications/RegionShotCamera.app/RegionShotCamera']:
+for path in ['Library/MobileSubstrate/DynamicLibraries/' + name + '.dylib' for name in ['RegionShot', 'RegionShotInput']] + [bundle + info['CFBundleExecutable']]:
     binary = files[path]
     assert struct.unpack_from('<III', binary) == (0xfeedfacf, 0x100000c, 0x80000002), path
     offset, signed = 32, False
@@ -46,9 +46,7 @@ print('Verified PreferenceLoader registration, Settings controller/version, sign
 assert sum(p.startswith("Library/PreferenceLoader/Preferences/") for p in files) == 1
 assert not any("RegionShotScroll" in p or "RSLongCapture" in p for p in files)
 
-camera = plistlib.loads(files['Applications/RegionShotCamera.app/Info.plist'])
-assert camera['NSCameraUsageDescription']
-assert 'regionshot-camera' in camera['CFBundleURLTypes'][0]['CFBundleURLSchemes']
+assert not any('RegionShotCamera.app' in p for p in files)
 assert 'uicache' in files['postinst'].decode()
 
 assert sorted(p.rsplit('/', 1)[-1] for p in files if p.startswith('Library/MobileSubstrate/DynamicLibraries/') and p.endswith('.dylib')) == ['RegionShot.dylib', 'RegionShotInput.dylib']

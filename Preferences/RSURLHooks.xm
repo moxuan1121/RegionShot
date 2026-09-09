@@ -11,11 +11,6 @@ static BOOL RSHandleURL(id url) {
     dispatch_async(dispatch_get_main_queue(), ^{
         // In SpringBoard dispatch directly; do not depend on a second injected URL dylib.
         Class chat = NSClassFromString(@"RSChatController");
-        SEL cameraReturn = NSSelectorFromString(@"finishCameraReturn");
-        if ([notification hasSuffix:@"/CameraReturn"]) {
-            if ([chat respondsToSelector:cameraReturn]) ((void (*)(id, SEL))objc_msgSend)(chat, cameraReturn);
-            return;
-        }
         SEL show = NSSelectorFromString(@"showImage:scene:");
         if ([notification hasSuffix:@"/AIWindow"] && [chat respondsToSelector:show])
             ((void (*)(id, SEL, id, id))objc_msgSend)(chat, show, nil, nil);

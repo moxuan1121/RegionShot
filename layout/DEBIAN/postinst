@@ -1,4 +1,4 @@
 #!/bin/sh
-set -e
-uicache -p /Applications/RegionShotCamera.app
+# Remove the obsolete camera helper registration when upgrading.
+uicache -u /Applications/RegionShotCamera.app || true
 exit 0

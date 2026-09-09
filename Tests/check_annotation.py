@@ -26,13 +26,13 @@ hooks = read("Selection/RSFreezeSystemHooks.xm")
 assert "acquireSystemGestureDisableAssertion" not in read("Selection/RSSelectionWindow.m")
 assert "lockUIFromSource:" in hooks and "cancelCapture]; %orig;" in hooks
 assert "gestureRecognizerShouldBegin:" in hooks and "canBePresented" in hooks
-camera = read("Camera/main.m")
-assert "notify_post(RS_CAMERA_FINISHED)" not in camera.split("- (void)finish:")[1].split("- (void)error:")[0]
-assert "notify_post(RS_CAMERA_FINISHED)" in camera.split("applicationDidEnterBackground:")[1]
-assert "chat.host.isKeyWindow" in read("AI/RSChatController.m")
-assert "!chat.cameraRequest" in read("AI/RSChatController.m")
-assert 'request[@"id"] isEqual:self.requestID' in read("Camera/main.m")
-assert "picker.showsCameraControls = NO" in read("Camera/main.m")
+camera = read("Camera/RSInlineCamera.m")
+chat = read("AI/RSChatController.m")
+assert "regionshot-camera://" not in chat and "cameraRequest" not in chat
+assert "AVCapturePhotoOutput" in camera and "capturePhotoWithSettings:" in camera
+assert "addChildViewController:camera" in chat and "[chat acceptImage:image]" in chat
+assert "[camera stop]" in chat and "[session stopRunning]" in camera
+assert "chat.host.isKeyWindow" in chat and "!chat.inlineCamera" in chat
 for folder, prefix in [("Input", "RSInput"), ("KeyboardAI", "RSKA")]:
     assert "RSPopupContentHeight(" in read(f"{folder}/{prefix}Interface.m")
     assert "safeAreaInsets.top -" not in read(f"{folder}/{prefix}Interface.m")

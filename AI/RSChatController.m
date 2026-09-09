@@ -1,8 +1,7 @@
 #import "../Geometry/RSWindowAnimation.h"
 #import "RSChatController.h"
 #import "RSSSEDecoder.h"
-#import "../Camera/RSCameraBridge.h"
-#import <notify.h>
+#import "../Camera/RSInlineCamera.h"
 #import "../Geometry/RSOrientation.h"
 #import "RSAISettingsController.h"
 #import "../Input/RSInputStore.h"
@@ -84,8 +83,7 @@
 @property (nonatomic) BOOL stopped;
 @property (nonatomic) NSUInteger received;
 @property (nonatomic) BOOL refreshScheduled;
-@property (nonatomic, copy) NSString *cameraRequest;
-@property (nonatomic) int cameraToken;
+@property (nonatomic, strong) RSInlineCamera *inlineCamera;
 @end
 
 static RSChatController *RSActiveChat;
@@ -96,7 +94,7 @@ static NSUserDefaults *RSChatPreferences(void) {
     return prefs;
 }
 @implementation RSChatController
-+ (void)finishCameraReturn { [RSActiveChat cameraFinished]; }
+
 
 - (BOOL)shouldAutorotate { return NO; }
 - (UIInterfaceOrientationMask)supportedInterfaceOrientations { return UIInterfaceOrientationMaskAllButUpsideDown; }
@@ -187,7 +185,6 @@ static NSUserDefaults *RSChatPreferences(void) {
 }
 - (void)viewDidLoad {
     [super viewDidLoad];
-    self.cameraToken = -1;
     [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(screenRotated:) name:@"com.moxuan.regionshot.orientation.target" object:nil];
     self.view.backgroundColor = [UIColor colorWithWhite:0 alpha:0.28];
     UITapGestureRecognizer *single = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(minimize)];
@@ -300,7 +297,7 @@ static NSUserDefaults *RSChatPreferences(void) {
     [self applyAppearance];
 }
 - (BOOL)gestureRecognizer:(UIGestureRecognizer *)gesture shouldReceiveTouch:(UITouch *)touch {
-    return !self.card.hidden && !self.presentedViewController && touch.view == self.view;
+    return !self.card.hidden && !self.inlineCamera && !self.presentedViewController && touch.view == self.view;
 }
 - (void)viewDidAppear:(BOOL)animated {
     [super viewDidAppear:animated];
@@ -311,7 +308,7 @@ static NSUserDefaults *RSChatPreferences(void) {
     void (^focus)(void) = ^{
         RSChatController *chat = weakSelf;
         if (chat && !chat.card.hidden && !chat.host.hidden && chat.host.isKeyWindow &&
-            !chat.presentedViewController && !chat.keyboardPresentation && !chat.cameraRequest)
+            !chat.presentedViewController && !chat.keyboardPresentation && !chat.inlineCamera)
             [chat.input becomeFirstResponder];
     };
     id<UIViewControllerTransitionCoordinator> transition = self.transitionCoordinator;
@@ -404,12 +401,7 @@ static NSUserDefaults *RSChatPreferences(void) {
     [pan setTranslation:CGPointZero inView:self.view];
 }
 - (void)close {
-    if (self.cameraToken >= 0) { notify_cancel(self.cameraToken); self.cameraToken = -1; }
-    if (self.cameraRequest) {
-        [NSFileManager.defaultManager removeItemAtPath:RSCameraRequestPath() error:nil];
-        [NSFileManager.defaultManager removeItemAtPath:RSCameraImagePath() error:nil];
-        self.cameraRequest = nil;
-    }
+    [self dismissInlineCamera];
     [self.session invalidateAndCancel];
     self.task = nil;
     self.session = nil;
@@ -699,44 +691,31 @@ static NSUserDefaults *RSChatPreferences(void) {
     [self presentViewController:sheet animated:YES completion:nil];
 }
 - (void)openCamera {
-    NSFileManager *files = NSFileManager.defaultManager;
-    if (![files createDirectoryAtPath:RSCameraDirectory() withIntermediateDirectories:YES attributes:@{NSFilePosixPermissions:@0700} error:nil]) {
-        [self message:@"无法创建拍照临时目录。"]; return;
+    if (self.inlineCamera) return;
+    // Wait for the attachment menu to finish dismissal before changing input focus.
+    if (self.presentedViewController) {
+        [self dismissViewControllerAnimated:YES completion:^{ [self openCamera]; }]; return;
     }
-    [files removeItemAtPath:RSCameraImagePath() error:nil];
-    self.cameraRequest = NSUUID.UUID.UUIDString;
-    NSDictionary *request = @{@"id":self.cameraRequest, @"status":@"waiting"};
-    if (![request writeToFile:RSCameraRequestPath() atomically:YES]) { self.cameraRequest = nil; [self message:@"无法创建拍照请求。"]; return; }
+    [self hideKeyboard];
+    RSInlineCamera *camera = [RSInlineCamera new]; self.inlineCamera = camera;
     __weak typeof(self) weakSelf = self;
-    if (self.cameraToken >= 0) notify_cancel(self.cameraToken);
-    int token = -1;
-    if (notify_register_dispatch(RS_CAMERA_FINISHED, &token, dispatch_get_main_queue(), ^(int value) { dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 300 * NSEC_PER_MSEC), dispatch_get_main_queue(), ^{ [weakSelf cameraFinished]; }); }) != NOTIFY_STATUS_OK) {
-        self.cameraRequest = nil; [self message:@"无法接收拍照结果。"]; return;
-    }
-    self.cameraToken = token;
-    [self hideKeyboard]; self.host.hidden = YES;
-    [UIApplication.sharedApplication openURL:[NSURL URLWithString:@"regionshot-camera://capture"] options:@{} completionHandler:^(BOOL success) {
-        if (!success) {
-            if (weakSelf.cameraToken >= 0) { notify_cancel(weakSelf.cameraToken); weakSelf.cameraToken = -1; }
-            weakSelf.cameraRequest = nil;
-            [NSFileManager.defaultManager removeItemAtPath:RSCameraRequestPath() error:nil];
-            [weakSelf restore]; [weakSelf message:@"无法启动拍照页面，请重新安装完整安装包并重启 SpringBoard。"]; }
-    }];
+    camera.completion = ^(UIImage *image) {
+        RSChatController *chat = weakSelf;
+        if (!chat) return;
+        [chat dismissInlineCamera];
+        if (image) [chat acceptImage:image];
+        [chat focusInput];
+    };
+    [self addChildViewController:camera];
+    camera.view.frame = self.view.bounds;
+    camera.view.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+    [self.view addSubview:camera.view]; [camera didMoveToParentViewController:self];
 }
-- (void)cameraFinished {
-    NSDictionary *result = [NSDictionary dictionaryWithContentsOfFile:RSCameraRequestPath()];
-    if (!self.cameraRequest || ![result[@"id"] isEqual:self.cameraRequest] || [result[@"status"] isEqual:@"waiting"]) return;
-    if (self.cameraToken >= 0) { notify_cancel(self.cameraToken); self.cameraToken = -1; }
-    self.cameraRequest = nil;
-    UIImage *image = nil;
-    if ([result[@"status"] isEqual:@"image"]) {
-        NSNumber *size = [NSFileManager.defaultManager attributesOfItemAtPath:RSCameraImagePath() error:nil][NSFileSize];
-        if (size.unsignedLongLongValue <= 12 * 1024 * 1024) image = [UIImage imageWithContentsOfFile:RSCameraImagePath()];
-    }
-    [NSFileManager.defaultManager removeItemAtPath:RSCameraImagePath() error:nil];
-    [NSFileManager.defaultManager removeItemAtPath:RSCameraRequestPath() error:nil];
-    [self restore];
-    if ([result[@"status"] isEqual:@"image"]) [self acceptImage:image];
+- (void)dismissInlineCamera {
+    RSInlineCamera *camera = self.inlineCamera;
+    if (!camera) return;
+    [camera stop]; [camera willMoveToParentViewController:nil];
+    [camera.view removeFromSuperview]; [camera removeFromParentViewController]; self.inlineCamera = nil;
 }
 - (void)acceptImage:(UIImage *)image {
     if (!image.CGImage) { [self message:@"无法读取这张图片。"]; return; }
