@@ -1,3 +1,4 @@
+#import "../Input/RSInputOptions.h"
 #import "../Input/RSInputStore.h"
 #import "../Input/RSInputCore.h"
 #include <assert.h>
