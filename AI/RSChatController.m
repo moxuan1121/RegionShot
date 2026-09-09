@@ -722,7 +722,7 @@ static NSUserDefaults *RSChatPreferences(void) {
         [url getResourceValue:&size forKey:NSURLFileSizeKey error:nil];
         [url getResourceValue:&regular forKey:NSURLIsRegularFileKey error:nil];
         NSError *error = nil;
-        NSData *data = regular.boolValue && size && size.unsignedLongLongValue <= 12 * 1024 * 1024
+        NSData *data = regular.boolValue && size && size.unsignedLongLongValue <= 64 * 1024 * 1024
             ? [NSData dataWithContentsOfURL:url options:NSDataReadingMappedIfSafe error:&error] : nil;
         if (access) [url stopAccessingSecurityScopedResource];
         NSString *name = url.lastPathComponent;
@@ -730,8 +730,8 @@ static NSUserDefaults *RSChatPreferences(void) {
         UIImage *image = [type conformsToType:UTTypeImage] && data ? [UIImage imageWithData:data] : nil;
         dispatch_async(dispatch_get_main_queue(), ^{
             if (!self.host) return;
-            if (!data || data.length > 12 * 1024 * 1024) {
-                [self message:error.localizedDescription ?: @"无法读取文件，请选择不超过 12 MB 的普通文件。"]; return;
+            if (!data || data.length > 64 * 1024 * 1024) {
+                [self message:error.localizedDescription ?: @"无法读取文件，请选择不超过 64 MB 的普通文件。"]; return;
             }
             if (image) { [self acceptImage:image]; return; }
             [self clearAttachment];
@@ -739,7 +739,6 @@ static NSUserDefaults *RSChatPreferences(void) {
             self.fileMIME = type.preferredMIMEType ?: @"application/octet-stream";
             self.chip.image = [UIImage systemImageNamed:@"doc.fill"];
             self.chip.hidden = NO; self.chip.accessibilityLabel = self.fileName;
-            [self message:[NSString stringWithFormat:@"已添加：%@\n能否解析此文件取决于当前 AI 服务和模型。", self.fileName]];
         });
     });
 }
