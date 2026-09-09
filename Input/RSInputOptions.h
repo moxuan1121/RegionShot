@@ -1,13 +1,6 @@
 // Adapted from KeyboardAI-RootHide 23c761e, GPL-3.0; see THIRD_PARTY.md.
 #import <Foundation/Foundation.h>
 
-static inline double RSInputFittedPanelHeight(double content, double chrome, double available, double percent) {
-    double space = MAX(0, available);
-    double minimum = MAX(0, chrome) + 24;
-    double limit = MIN(space, MAX(minimum, space * MAX(30, MIN(90, percent)) / 100));
-    return MIN(limit, MAX(minimum, content + chrome));
-}
-
 static inline NSURL *RSInputSearchURL(id engine, id text) {
     if (![engine isKindOfClass:NSString.class] || [engine length] > 2048 ||
         ![engine length] || ![text isKindOfClass:NSString.class] || ![text length] || [text length] > 24000) return nil;

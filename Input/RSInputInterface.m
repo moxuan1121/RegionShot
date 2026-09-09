@@ -1,3 +1,4 @@
+#import "../Geometry/RSPopupLayout.h"
 #import "../Geometry/RSWindowAnimation.h"
 #define RS_PANEL_CONTROLLER RSInputPanelController
 #import "../Geometry/RSPanelController.h"
@@ -298,21 +299,9 @@ static NSString *RSInputFullText(id<UITextInput> target) {
         [self.windowOptions[landscape ? @"panelTopLandscape" : @"panelTop"] doubleValue], [self.windowOptions[@"panelHeight"] doubleValue]);
     self.panelTop.constant = placement.y; self.panelLeading.constant = placement.x; self.panelWidth.constant = placement.width;
     [window layoutIfNeeded];
-    CGFloat width = MAX(1, placement.width - 24);
-    CGFloat contentHeight;
-    if (self.tokenView) {
-        [self.tokenView layoutIfNeeded];
-        contentHeight = [self.tokenView contentHeightForWidth:width];
-    } else contentHeight = [self.textView sizeThatFits:CGSizeMake(width, CGFLOAT_MAX)].height;
-    CGFloat chrome = 20 + self.contentStack.spacing * 2;
-    for (UIView *view in self.contentStack.arrangedSubviews) {
-        if (view.hidden || view == self.textView || view == self.tokenView) continue;
-        chrome += [view systemLayoutSizeFittingSize:CGSizeMake(width, UILayoutFittingCompressedSize.height)
-            withHorizontalFittingPriority:UILayoutPriorityRequired verticalFittingPriority:UILayoutPriorityFittingSizeLevel].height;
-    }
     CGFloat available = MAX(0, canvas.bounds.size.height - placement.y - 12);
-    CGFloat percent = [self.windowOptions[self.tokenView ? @"tokenMaxHeight" : @"aiMaxHeight"] doubleValue];
-    self.heightConstraint.constant = [self.windowOptions[@"panelHeight"] doubleValue] > 0 ? MIN(available, MAX(chrome + 24, placement.height)) : RSInputFittedPanelHeight(contentHeight, chrome, available, percent);
+    self.heightConstraint.constant = RSPopupContentHeight(self.contentStack, self.tokenView ?: self.textView,
+        MAX(1, placement.width - 24), available, [self.windowOptions[@"panelHeight"] doubleValue], [self.windowOptions[@"aiMaxHeight"] doubleValue]);
     [window layoutIfNeeded];
     self.resizing = NO;
 }

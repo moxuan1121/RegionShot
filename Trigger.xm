@@ -96,17 +96,9 @@ static char RSStatusBarGestureKey;
 %end
 %end
 // Block SpringBoard's system touch routing only while the frozen selection is visible.
-%group RSLockExit
-%hook SBLockScreenManager
-- (void)lockUIFromSource:(int)source withOptions:(id)options {
-    [RSRegionShotManager.sharedManager cancelCapture];
-    %orig;
-}
-%end
-%end
-%group RSLockExitWide
-%hook SBLockScreenManager
-- (void)lockUIFromSource:(long long)source withOptions:(id)options {
+%group RSSideButtonLock
+%hook SBLockHardwareButtonActions
+- (void)performSinglePressAction {
     [RSRegionShotManager.sharedManager cancelCapture];
     %orig;
 }
@@ -232,18 +224,7 @@ static void RSPreferenceEvent(CFNotificationCenterRef center, void *observer, CF
     @autoreleasepool {
         if (![NSBundle.mainBundle.bundleIdentifier isEqualToString:@"com.apple.springboard"]) return;
         RSReload();
-        Method lockMethod = class_getInstanceMethod(NSClassFromString(@"SBLockScreenManager"), NSSelectorFromString(@"lockUIFromSource:withOptions:"));
-        if (lockMethod && method_getNumberOfArguments(lockMethod) == 4) {
-            char result[16] = {0}, source[16] = {0}, options[16] = {0};
-            method_getReturnType(lockMethod,result,sizeof(result));
-            method_getArgumentType(lockMethod,2,source,sizeof(source));
-            method_getArgumentType(lockMethod,3,options,sizeof(options));
-            if (result[0] == 'v' && options[0] == '@') {
-                if (source[0] == 'i') { %init(RSLockExit); }
-                else if (source[0] == 'q') { %init(RSLockExitWide); }
-            }
-        }
-
+        if (RSCompatible(NSClassFromString(@"SBLockHardwareButtonActions"), @"performSinglePressAction", NULL)) { %init(RSSideButtonLock); }
         if ([NSClassFromString(@"_UIStatusBar") isSubclassOfClass:UIView.class]) { %init(RSStatusBarEntry); }
         Class gestures = NSClassFromString(@"SBSystemGestureManager");
         Method receiveTouch = class_getInstanceMethod(gestures, NSSelectorFromString(@"shouldSystemGestureReceiveTouchWithLocation:"));

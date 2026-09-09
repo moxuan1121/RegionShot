@@ -6,5 +6,4 @@
 @property(readonly) BOOL hasSelection;
 @property(readonly, copy) NSString *selectedText;
 - (instancetype)initWithPieces:(NSArray<NSString *> *)pieces;
-- (CGFloat)contentHeightForWidth:(CGFloat)width;
 @end

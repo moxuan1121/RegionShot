@@ -74,5 +74,10 @@ int main(void) {
         assert(popup.x >= 12 && popup.x + popup.width <= 832);
     }
     assert(RSPopupFrame(390, 844, 390, 1, 8, 200).width == 366);
+    assert(RSSharedPopupHeight(20, 60, 360, 0, 48) == 104);
+    assert(RSSharedPopupHeight(100, 60, 360, 0, 48) == 160);
+    assert(RSSharedPopupHeight(2000, 60, 360, 0, 48) == 172.8);
+    assert(RSSharedPopupHeight(2000, 180, 100, 0, 48) == 100);
+    assert(RSSharedPopupHeight(20, 60, 360, 250, 48) == 250);
     puts("RegionShot geometry checks passed");
 }

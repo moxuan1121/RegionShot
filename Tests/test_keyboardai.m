@@ -2,10 +2,10 @@
 #import "../KeyboardAI/RSKAOptions.h"
 #include <assert.h>
 int main(void) {
-    assert(RSKAFittedPanelHeight(30, 80, 360, 48) == 110);
-    assert(RSKAFittedPanelHeight(70, 80, 360, 48) == 150);
-    assert(RSKAFittedPanelHeight(2000, 180, 360, 48) == 204);
-    assert(RSKAFittedPanelHeight(2000, 180, 100, 48) == 100); @autoreleasepool {
+
+
+
+ @autoreleasepool {
     assert(RSKASupportsFastResponse(@"https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions", @"qwen3.8-max"));
     assert(!RSKASupportsFastResponse(@"https://example.com/v1/chat/completions", @"qwen3.8-max"));
     assert(!RSKASupportsFastResponse(@"https://dashscope.aliyuncs.com/v1/chat/completions", @"qwen3-max-thinking"));
@@ -21,6 +21,6 @@ int main(void) {
     [selected removeAllIndexes]; [selected addIndex:0];
     assert(RSKASplitPiece(words, selected, 0));
     assert([[words componentsJoinedByString:@""] isEqual:@"截图"]);
-    assert(RSKAFittedPanelHeight(2000, 80, 800, 60) == 480);
+
     return 0;
 } }

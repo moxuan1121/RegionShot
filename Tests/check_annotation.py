@@ -22,7 +22,8 @@ assert "lockcomplete" in read("Trigger.xm")
 assert "if (!record) snap.center" in read("Manager/RSRegionShotManager.m")
 
 assert "addChildViewController:navigation" in read("Selection/RSSelectionWindow.m")
-assert "SBLockScreenManager" in read("Trigger.xm")
+assert "performSinglePressAction" in read("Trigger.xm")
+assert "acquireSystemGestureDisableAssertion" not in read("Selection/RSSelectionWindow.m")
 for folder, prefix in [("Input", "RSInput"), ("KeyboardAI", "RSKA")]:
-    assert "contentHeightForWidth:width" in read(f"{folder}/{prefix}Interface.m")
+    assert "RSPopupContentHeight(" in read(f"{folder}/{prefix}Interface.m")
     assert "safeAreaInsets.top -" not in read(f"{folder}/{prefix}Interface.m")

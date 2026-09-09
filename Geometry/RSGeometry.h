@@ -111,3 +111,12 @@ static inline RSRectD RSPopupFrame(double width, double height, double portraitW
     top = fmax(0, fmin(top, fmax(0, height - 148)));
     return (RSRectD){fmax(0, x), top, panelWidth, fmax(0, fmin(requestedHeight, height - top - 12))};
 }
+
+// Shared by AI text and segmentation panels in either orientation.
+static inline double RSSharedPopupHeight(double content, double chrome, double available, double requested, double percent) {
+    double space = fmax(0, available);
+    double minimum = fmax(0, chrome) + 44;
+    if (requested > 0) return fmin(space, fmax(minimum, requested));
+    double limit = fmin(space, fmax(minimum, space * fmax(30, fmin(90, percent)) / 100));
+    return fmin(limit, fmax(minimum, content + chrome));
+}

@@ -1,12 +1,5 @@
 #import <Foundation/Foundation.h>
 
-static inline double RSKAFittedPanelHeight(double content, double chrome, double available, double percent) {
-    double space = MAX(0, available);
-    double minimum = MAX(0, chrome) + 24;
-    double limit = MIN(space, MAX(minimum, space * MAX(30, MIN(90, percent)) / 100));
-    return MIN(limit, MAX(minimum, content + chrome));
-}
-
 static inline NSURL *RSKASearchURL(id engine, id text) {
     if (![engine isKindOfClass:NSString.class] || [engine length] > 2048 ||
         ![engine containsString:@"%@"] || ![text isKindOfClass:NSString.class] || ![text length] || [text length] > 24000) return nil;

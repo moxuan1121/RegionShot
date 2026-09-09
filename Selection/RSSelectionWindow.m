@@ -35,7 +35,6 @@
 @property (nonatomic, strong) UIVisualEffectView *toolbarBlur;
 @property (nonatomic, weak) UIWindow *previousKeyWindow;
 @property (nonatomic, strong) UIScrollView *toolbarScroll;
-@property (nonatomic, strong) id systemGestureAssertion;
 @property (nonatomic) UIInterfaceOrientation captureOrientation;
 @end
 
@@ -87,7 +86,7 @@
             if (window.toolbar.selectionActive != selected) {
                 window.toolbar.selectionActive = selected; [window.toolbar reloadButtons];
             }
-            window.toolbarScroll.hidden = dragging;
+            window.toolbarScroll.hidden = dragging || window.rootViewController.childViewControllers.count > 0;
             [window setNeedsLayout];
         };
         _toolbar.captureHandler = ^{
@@ -175,7 +174,7 @@
     self.toolbar.frame = CGRectMake(0, 0, contentWidth, height);
     self.toolbarScroll.contentSize = self.toolbar.bounds.size;
     [self bringSubviewToFront:self.rootViewController.view];
-    [self.rootViewController.view bringSubviewToFront:self.toolbarScroll];
+    if (!self.rootViewController.childViewControllers.count) [self.rootViewController.view bringSubviewToFront:self.toolbarScroll];
 }
 
 - (void)recognizeSelection {
@@ -201,6 +200,9 @@
         if (window.editedImageHandler) window.editedImageHandler(edited);
     }];
     UINavigationController *navigation = [[UINavigationController alloc] initWithRootViewController:editor];
+    [RSRegionShotManager.sharedManager closeAllSnaps];
+    self.toolbarScroll.hidden = YES;
+    self.selectionView.hidden = YES;
     UIViewController *host = self.rootViewController;
     [host addChildViewController:navigation];
     navigation.view.frame = host.view.bounds;
@@ -214,24 +216,19 @@
         [page willMoveToParentViewController:nil];
         [page.view removeFromSuperview];
         [page removeFromParentViewController];
+        [RSRegionShotManager.sharedManager cancelCapture];
     };
 }
 
 - (void)show {
     self.previousKeyWindow = [RSSelectionWindow currentKeyWindow];
-    Class managerClass = NSClassFromString(@"SBSystemGestureManager");
-    SEL mainDisplay = NSSelectorFromString(@"mainDisplayManager");
-    SEL acquire = NSSelectorFromString(@"acquireSystemGestureDisableAssertionForReason:exceptSystemGestureTypes:");
-    id manager = [managerClass respondsToSelector:mainDisplay] ? ((id (*)(id, SEL))objc_msgSend)(managerClass, mainDisplay) : nil;
-    if ([manager respondsToSelector:acquire])
-        self.systemGestureAssertion = ((id (*)(id, SEL, id, id))objc_msgSend)(manager, acquire, @"RegionShot frozen selection", [NSSet set]);
     RSApplyWindowOrientation(self, self.captureOrientation);
     self.hidden = NO;
     [self makeKeyAndVisible];
     RSApplyWindowOrientation(self, self.captureOrientation);
     [self setNeedsLayout];
     [self layoutIfNeeded];
-    NSLog(@"[RegionShot] freeze orientation=%ld window=%@ canvas=%@ systemGestureAssertion=%@", (long)self.captureOrientation, NSStringFromCGRect(self.bounds), NSStringFromCGRect(self.selectionView.bounds), self.systemGestureAssertion ? @"active" : @"unavailable");
+    NSLog(@"[RegionShot] freeze orientation=%ld window=%@ canvas=%@", (long)self.captureOrientation, NSStringFromCGRect(self.bounds), NSStringFromCGRect(self.selectionView.bounds));
     [self.rootViewController setNeedsUpdateOfScreenEdgesDeferringSystemGestures];
 }
 
@@ -239,18 +236,8 @@
 - (BOOL)_containedGestureRecognizersShouldRespectGestureServerInstructions { return NO; }
 - (BOOL)_shouldDelayTouchForSystemGestures:(UITouch *)touch { return NO; }
 
-- (void)releaseSystemGestures {
-    SEL invalidate = NSSelectorFromString(@"invalidate");
-    if ([self.systemGestureAssertion respondsToSelector:invalidate])
-        ((void (*)(id, SEL))objc_msgSend)(self.systemGestureAssertion, invalidate);
-    self.systemGestureAssertion = nil;
-}
-
-- (void)dealloc { [self releaseSystemGestures]; }
-
 - (void)dismiss {
     self.hidden = YES;
-    [self releaseSystemGestures];
     [self resignKeyWindow];
     [self.previousKeyWindow makeKeyWindow];
     self.toolbar.captureHandler = nil;
