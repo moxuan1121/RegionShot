@@ -148,7 +148,7 @@ static UIColor *RSInputHexColor(NSString *hex) {
         self.menu = menu;
         self.window.interactiveView = menu;
         [menu presentFromView:self.button inView:((RSInputPromptController *)self.window.rootViewController).canvas];
-        RSInputSelectionFeedback();
+        RSKASelectionFeedback();
     }
     [self.menu trackGestureRecognizer:gesture];
 }
