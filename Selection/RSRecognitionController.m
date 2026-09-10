@@ -50,6 +50,16 @@
             dispatch_async(dispatch_get_main_queue(), ^{
                 RSRecognitionController *controller = weakSelf;
                 if (!controller || controller->_closed) return;
+                NSURL *webURL = nil;
+                for (NSString *string in strings) if ((webURL = RSBarcodeWebURL(string))) break;
+                if (webURL) {
+                    controller->_closed = YES;
+                    [controller dismissViewControllerAnimated:NO completion:^{
+                        if (controller.onForward) controller.onForward();
+                        [UIApplication.sharedApplication openURL:webURL options:@{} completionHandler:nil];
+                    }];
+                    return;
+                }
                 controller->_text.text = error ? error.localizedDescription : strings.count ?
                     [strings componentsJoinedByString:@"\n\n"] : @"没有识别到内容，请调整选区后重试。";
                 controller.navigationItem.rightBarButtonItem.enabled = strings.count > 0 && !error;

@@ -1,6 +1,16 @@
 #import <Vision/Vision.h>
 #import <CoreImage/CoreImage.h>
 
+static inline NSURL *RSBarcodeWebURL(NSString *text) {
+    NSString *value = [text stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+    if (!value.length) return nil;
+    NSDataDetector *detector = [NSDataDetector dataDetectorWithTypes:NSTextCheckingTypeLink error:nil];
+    NSTextCheckingResult *match = [detector firstMatchInString:value options:0 range:NSMakeRange(0, value.length)];
+    if (!match || !NSEqualRanges(match.range, NSMakeRange(0, value.length))) return nil;
+    NSString *scheme = match.URL.scheme.lowercaseString;
+    return ([scheme isEqualToString:@"http"] || [scheme isEqualToString:@"https"]) ? match.URL : nil;
+}
+
 static inline VNDetectBarcodesRequest *RSBarcodeRequest(void) {
     VNDetectBarcodesRequest *request = [VNDetectBarcodesRequest new];
     // Exercise the same revision as the target iOS 15 device.

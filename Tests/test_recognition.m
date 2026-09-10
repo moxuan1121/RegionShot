@@ -23,6 +23,9 @@ int main(void) {
 
         assert([RSBarcodeStrings(cg, request.results) containsObject:payload]);
         assert([RSBarcodeStrings(cg, @[]) containsObject:payload]);
+        assert([RSBarcodeWebURL(@"https://example.com/path?q=1").host isEqualToString:@"example.com"]);
+        assert([RSBarcodeWebURL(@"www.example.com.cn/path").host isEqualToString:@"www.example.com.cn"]);
+        assert(RSBarcodeWebURL(@"普通二维码文本") == nil);
         CGImageRelease(cg);
         puts("RegionShot real QR generation/recognition check passed");
     }
