@@ -12,6 +12,19 @@
 #import "../Geometry/RSGeometry.h"
 #import "../Geometry/RSOrientation.h"
 #import "../Preferences/RSOptions.h"
+#import <roothide.h>
+
+static NSString *RSWeChatScanImagePath(void) {
+    return jbroot(@"/var/mobile/Library/Caches/com.moxuan.regionshot.wechat-scan.png");
+}
+
+static BOOL RSStageWeChatScanImage(UIImage *image) {
+    NSData *data = UIImagePNGRepresentation(image);
+    NSString *path = RSWeChatScanImagePath();
+    if (!data.length || ![data writeToFile:path options:NSDataWritingAtomic error:nil]) return NO;
+    [[NSFileManager defaultManager] setAttributes:@{NSFilePosixPermissions:@0600} ofItemAtPath:path error:nil];
+    return YES;
+}
 
 @interface RSSelectionController : UIViewController
 @property (nonatomic) UIInterfaceOrientation captureOrientation;
@@ -140,6 +153,16 @@
             }
         };
         _toolbar.recognitionHandler = ^{ [weakSelf recognizeSelection]; };
+        _toolbar.wechatScanHandler = ^{
+            RSSelectionWindow *window = weakSelf;
+            if (!window.selectionView.hasValidSelection) return;
+            UIImage *image = [RSScreenCapture cropImage:window.imageView.image toRect:window.selectionRect displaySize:window.displaySize];
+            if (!image) return;
+            RSStageWeChatScanImage(image);
+            [RSRegionShotManager.sharedManager saveImage:image];
+            if (window.toolbar.cancelHandler) window.toolbar.cancelHandler();
+            [UIApplication.sharedApplication openURL:[NSURL URLWithString:@"weixin://scanqrcode"] options:@{} completionHandler:nil];
+        };
         _toolbar.editHandler = ^{ [weakSelf editSelection]; };
     }
     return self;
@@ -244,6 +267,7 @@
     self.toolbar.captureHandler = nil;
     self.toolbar.cancelHandler = nil;
     self.toolbar.recognitionHandler = nil;
+    self.toolbar.wechatScanHandler = nil;
     self.toolbar.editHandler = nil;
     self.toolbar.personaHandler = nil;
     self.toolbar.aiHandler = nil; self.toolbar.copyHandler = nil; self.toolbar.saveHandler = nil; self.toolbar.fullscreenHandler = nil;

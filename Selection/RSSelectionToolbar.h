@@ -6,6 +6,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, copy, nullable) dispatch_block_t captureHandler;
 @property (nonatomic, copy, nullable) dispatch_block_t cancelHandler;
 @property (nonatomic, copy, nullable) dispatch_block_t recognitionHandler;
+@property (nonatomic, copy, nullable) dispatch_block_t wechatScanHandler;
 @property (nonatomic, copy, nullable) dispatch_block_t editHandler;
 @property (nonatomic, copy, nullable) dispatch_block_t aiHandler;
 @property (nonatomic, copy, nullable) dispatch_block_t copyHandler;

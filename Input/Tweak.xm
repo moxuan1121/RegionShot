@@ -1,6 +1,35 @@
 #import "RSInputInterface.h"
 #import "RSInputStore.h"
 #import <objc/runtime.h>
+#import <roothide.h>
+
+@interface CameraScanViewController : UIViewController
+- (void)setIsPickingImageFromAlbum:(BOOL)value;
+- (void)scanPickedImage:(UIImage *)image;
+@end
+
+static UIImage *RSConsumeWeChatScanImage(void) {
+    NSString *path = jbroot(@"/var/mobile/Library/Caches/com.moxuan.regionshot.wechat-scan.png");
+    NSDictionary *attributes = [[NSFileManager defaultManager] attributesOfItemAtPath:path error:nil];
+    unsigned long long size = [attributes fileSize];
+    NSData *data = size && size <= 64ull * 1024 * 1024 ? [NSData dataWithContentsOfFile:path] : nil;
+    [[NSFileManager defaultManager] removeItemAtPath:path error:nil];
+    return data.length ? [UIImage imageWithData:data] : nil;
+}
+
+%group RSWeChatScanner
+%hook CameraScanViewController
+- (void)viewDidAppear:(BOOL)animated {
+    %orig;
+    UIImage *image = RSConsumeWeChatScanImage();
+    if (!image) return;
+    @try {
+        if ([self respondsToSelector:@selector(setIsPickingImageFromAlbum:)]) [self setIsPickingImageFromAlbum:YES];
+        [self scanPickedImage:image];
+    } @catch (__unused NSException *exception) {}
+}
+%end
+%end
 @interface UIInputSwitcherItem : NSObject
 - (instancetype)initWithIdentifier:(NSString *)identifier;
 @property(copy, nonatomic) NSString *localizedTitle;
@@ -144,6 +173,11 @@ static NSDictionary *RSInputActionAt(id view, NSUInteger index) {
     @autoreleasepool {
         NSString *bundle = NSBundle.mainBundle.bundleIdentifier;
         if (![@[@"com.tencent.xin", @"jp.naver.line"] containsObject:bundle]) return;
+        if ([bundle isEqual:@"com.tencent.xin"]) {
+            Class scanner = NSClassFromString(@"CameraScanViewController");
+            if ([scanner instancesRespondToSelector:@selector(viewDidAppear:)] &&
+                [scanner instancesRespondToSelector:@selector(scanPickedImage:)]) %init(RSWeChatScanner);
+        }
         Class view = NSClassFromString(@"UIInputSwitcherView");
         Class item = NSClassFromString(@"UIInputSwitcherItem");
         if (!view || !item || !class_getInstanceVariable(view, "m_inputSwitcherItems") ||

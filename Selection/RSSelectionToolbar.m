@@ -66,6 +66,8 @@
         if (self.editHandler) self.editHandler();
     } else if (button.tag == 3) {
         if (self.recognitionHandler) self.recognitionHandler();
+    } else if (button.tag == 11) {
+        if (self.wechatScanHandler) self.wechatScanHandler();
     } else if (button.tag == 4) {
         if (self.cancelHandler) self.cancelHandler();
     } else if (button.tag == 5) {

@@ -29,7 +29,8 @@ static NSArray *RSMenuDefaults(BOOL floating) {
              @{@"id":@7, @"title":@"全屏", @"symbol":@"arrow.up.left.and.arrow.down.right", @"enabled":@YES},
              @{@"id":@8, @"title":@"历史", @"symbol":@"clock.arrow.circlepath", @"enabled":@YES},
              @{@"id":@9, @"title":@"复制", @"symbol":@"doc.on.clipboard", @"enabled":@YES},
-             @{@"id":@10, @"title":@"保存", @"symbol":@"square.and.arrow.down", @"enabled":@YES}];
+             @{@"id":@10, @"title":@"保存", @"symbol":@"square.and.arrow.down", @"enabled":@YES},
+             @{@"id":@11, @"title":@"微信扫码", @"symbol":@"qrcode", @"enabled":@YES}];
 }
 static NSArray *RSMenuItems(BOOL floating) {
     [RSMenuPrefs() synchronize];
@@ -44,7 +45,7 @@ NSArray<NSDictionary *> *RSFrozenMenuItems(void) {
     [RSMenuPrefs() synchronize];
     NSMutableArray *defaults = [NSMutableArray array];
     for (NSDictionary *item in RSMenuDefaults(NO)) {
-        if ([item[@"id"] integerValue] == 10) continue;
+        if ([@[@10, @11] containsObject:item[@"id"]]) continue;
         NSMutableDictionary *entry = item.mutableCopy;
         if ([entry[@"id"] integerValue] == 0) entry[@"title"] = @"截屏";
         if ([entry[@"id"] integerValue] > 4 && [entry[@"id"] integerValue] != 9) entry[@"enabled"] = @NO;
