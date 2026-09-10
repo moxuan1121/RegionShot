@@ -6,6 +6,8 @@
 #import "Manager/RSRegionShotManager.h"
 #import "Preferences/RSOptions.h"
 #import "AI/RSChatController.h"
+#import "Input/RSInputClipboard.h"
+#import "KeyboardAI/RSKAInterface.h"
 #import "Geometry/RSGeometry.h"
 #import "Geometry/RSOrientation.h"
 @interface _UIStatusBar : UIView
@@ -200,6 +202,16 @@ static void RSPreferenceEvent(CFNotificationCenterRef center, void *observer, CF
     @autoreleasepool {
         if (![NSBundle.mainBundle.bundleIdentifier isEqualToString:@"com.apple.springboard"]) return;
         RSReload();
+        RSInputStartClipboardPrompt();
+        [NSNotificationCenter.defaultCenter addObserverForName:@"com.moxuan.regionshot.input.close" object:nil queue:NSOperationQueue.mainQueue usingBlock:^(__unused NSNotification *note) { RSKAClosePanel(); }];
+        [NSNotificationCenter.defaultCenter addObserverForName:@"com.moxuan.regionshot.input.tokens" object:nil queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification *note) {
+            NSDictionary *request = note.object;
+            NSString *text = [request isKindOfClass:NSDictionary.class] ? request[@"text"] : nil;
+            if ([text isKindOfClass:NSString.class] && text.length <= 24000) {
+                if ([request isKindOfClass:NSMutableDictionary.class]) ((NSMutableDictionary *)request)[@"handled"] = @YES;
+                RSKAOpenTokens(text);
+            }
+        }];
 
         if ([NSClassFromString(@"_UIStatusBar") isSubclassOfClass:UIView.class]) { %init(RSStatusBarEntry); }
         Class gestures = NSClassFromString(@"SBSystemGestureManager");

@@ -13,6 +13,12 @@
 #import "RSInputAnchoredMenuView.h"
 #import "../Geometry/RSOrientation.h"
 
+void RSInputOpenSearchEngine(NSDictionary *engine, NSString *text) {
+    NSURL *url = RSInputSearchURL(engine[@"engine"], text);
+    if (url) [UIApplication.sharedApplication openURL:url options:@{} completionHandler:nil];
+}
+void RSInputOpenSearch(NSString *text) { RSInputOpenSearchEngine(RSInputSearchEngines(RSInputConfig()).firstObject, text); }
+
 void RSInputSelectionFeedback(void) {
     static UISelectionFeedbackGenerator *feedback;
     static dispatch_once_t once;

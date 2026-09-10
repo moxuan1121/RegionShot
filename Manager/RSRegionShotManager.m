@@ -132,8 +132,9 @@
     }
     RSApplyWindowOrientation(self.floatingWindow, RSActiveOrientation(scene));
     CGSize screen = self.floatingWindow.rootViewController.view.bounds.size;
-    CGFloat factor = MIN(MIN([RSOption(@"FloatWidth") doubleValue] / image.size.width, 320.0 / image.size.height), 1.0);
-    CGSize size = CGSizeMake(MAX(80, image.size.width * factor), MAX(80, image.size.height * factor));
+    RSRectD fitted = RSFloatingSize(image.size.width, image.size.height, [RSOption(@"FloatWidth") doubleValue], 320);
+    if (fitted.width <= 0 || fitted.height <= 0) return;
+    CGSize size = CGSizeMake(fitted.width, fitted.height);
     RSFloatingImageView *snap = [[RSFloatingImageView alloc] initWithCroppedImage:image];
     snap.bounds = (CGRect){CGPointZero, size};
     CGFloat offset = (self.mutableSnaps.count % 5) * 18.0;

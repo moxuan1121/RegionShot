@@ -4,6 +4,10 @@
 #include <stdlib.h>
 
 int main(void) {
+    RSRectD wideFloat = RSFloatingSize(1800, 100, 360, 320);
+    assert(wideFloat.width == 360 && wideFloat.height == 20);
+    RSRectD tinyFloat = RSFloatingSize(20, 10, 360, 320);
+    assert(tinyFloat.width == 80 && tinyFloat.height == 40);
     RSRectD nearEdge = RSSnapSelection((RSRectD){5, 5, 420, 916}, 428, 926, 0);
     assert(nearEdge.x == 0 && nearEdge.y == 0 && nearEdge.width == 428 && nearEdge.height == 926);
     RSRectD moving = RSSnapSelection((RSRectD){325, 821, 100, 100}, 428, 926, 1);

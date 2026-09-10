@@ -169,6 +169,23 @@ static NSUserDefaults *RSChatPreferences(void) {
     RSActiveChat.input.text = text; [RSActiveChat textViewDidChange:RSActiveChat.input];
     if (send && !RSActiveChat.task) [RSActiveChat send];
 }
++ (void)showText:(NSString *)text scene:(UIWindowScene *)scene persona:(NSDictionary *)persona {
+    if (!text.length || !persona) return;
+    if (RSActiveChat) [RSActiveChat close];
+    [self showImage:nil scene:scene];
+    RSActiveChat.personaPrompt = persona[@"prompt"] ?: @"";
+    if ([RSChatPreferences() stringForKey:@"AIEndpoint"].length) {
+        RSChatController *chat = RSActiveChat;
+        chat.host.hidden = YES; [chat.previousKey makeKeyWindow];
+        __weak RSChatController *weakChat = chat;
+        chat.keyboardPresentation = RSKABeginAnswer(persona[@"title"] ?: persona[@"name"] ?: @"AI 助手", ^{ [weakChat close]; });
+        if (!chat.keyboardPresentation) [chat.host makeKeyAndVisible];
+    }
+    RSActiveChat.input.text = text; [RSActiveChat textViewDidChange:RSActiveChat.input];
+    RSActiveChat.imageConversation = NO; [RSActiveChat updateHeading];
+    [RSActiveChat clearAttachment];
+    if (!RSActiveChat.task) [RSActiveChat send];
+}
 + (void)showServiceSettings {
     UIWindowScene *scene = nil;
     for (UIScene *candidate in UIApplication.sharedApplication.connectedScenes)

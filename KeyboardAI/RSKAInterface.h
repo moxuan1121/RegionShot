@@ -5,3 +5,4 @@ void RSKAUpdateAnswer(NSString *text, BOOL finished, NSString *error);
 void RSKAOpenTokens(NSString *text);
 
 void RSKAClosePanel(void);
+BOOL RSKAIsPanelVisible(void);

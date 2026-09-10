@@ -2,6 +2,8 @@
 #import "../Selection/RSMenuSettings.h"
 #import "../Preferences/RSOptions.h"
 
+static const CGFloat RSFloatingCornerRadius = 7;
+
 @interface RSFloatingImageView () <UIGestureRecognizerDelegate, UIContextMenuInteractionDelegate>
 @property (nonatomic) CGFloat currentScale;
 @property (nonatomic, strong) UIImageView *roundedImage;
@@ -17,12 +19,12 @@
         self.userInteractionEnabled = YES;
         self.contentMode = UIViewContentModeScaleAspectFit;
         self.backgroundColor = UIColor.clearColor;
-        self.layer.cornerRadius = 5;
+        self.layer.cornerRadius = RSFloatingCornerRadius;
         self.layer.cornerCurve = kCACornerCurveContinuous;
         self.layer.masksToBounds = NO;
         _roundedImage = [[UIImageView alloc] initWithImage:image];
         _roundedImage.contentMode = UIViewContentModeScaleAspectFit;
-        _roundedImage.layer.cornerRadius = 5;
+        _roundedImage.layer.cornerRadius = RSFloatingCornerRadius;
         _roundedImage.layer.cornerCurve = kCACornerCurveContinuous;
         _roundedImage.clipsToBounds = YES;
         [self addSubview:_roundedImage];
@@ -52,7 +54,7 @@
 
 - (void)layoutSubviews {
     [super layoutSubviews]; self.roundedImage.frame = self.bounds;
-    self.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.bounds cornerRadius:5].CGPath;
+    self.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.bounds cornerRadius:RSFloatingCornerRadius].CGPath;
 }
 - (UIImage *)image { return self.roundedImage.image; }
 - (void)setImage:(UIImage *)image { self.roundedImage.image = image; }
@@ -97,7 +99,7 @@
 - (UITargetedPreview *)menuPreview {
     UIPreviewParameters *parameters = [UIPreviewParameters new];
     parameters.backgroundColor = UIColor.clearColor;
-    parameters.visiblePath = [UIBezierPath bezierPathWithRoundedRect:self.roundedImage.bounds cornerRadius:5];
+    parameters.visiblePath = [UIBezierPath bezierPathWithRoundedRect:self.roundedImage.bounds cornerRadius:RSFloatingCornerRadius];
     return [[UITargetedPreview alloc] initWithView:self.roundedImage parameters:parameters];
 }
 - (UITargetedPreview *)contextMenuInteraction:(UIContextMenuInteraction *)interaction previewForHighlightingMenuWithConfiguration:(UIContextMenuConfiguration *)configuration { return [self menuPreview]; }

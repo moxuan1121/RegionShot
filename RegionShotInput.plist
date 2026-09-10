@@ -6,7 +6,6 @@
 	<dict>
 		<key>Bundles</key>
 		<array>
-			<string>com.apple.springboard</string>
 			<string>com.tencent.xin</string>
 			<string>jp.naver.line</string>
 			<string>org.coolstar.Sileo</string>

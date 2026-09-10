@@ -8,6 +8,16 @@ typedef struct {
     double height;
 } RSRectD;
 
+// Preserve the screenshot aspect ratio. Only tiny images are enlarged.
+static inline RSRectD RSFloatingSize(double width, double height, double maxWidth, double maxHeight) {
+    if (!isfinite(width) || !isfinite(height) || width <= 0 || height <= 0 || maxWidth <= 0 || maxHeight <= 0)
+        return (RSRectD){0, 0, 0, 0};
+    double scale = fmin(1, fmin(maxWidth / width, maxHeight / height));
+    double w = width * scale, h = height * scale;
+    if (fmax(w, h) < 80) { scale *= 80 / fmax(w, h); w = width * scale; h = height * scale; }
+    return (RSRectD){0, 0, w, h};
+}
+
 // Device landscape and interface landscape use opposite left/right names.
 static inline int RSInterfaceOrientationFromDevice(int device) {
     return device == 3 ? 4 : device == 4 ? 3 : device == 1 ? 1 : 0;

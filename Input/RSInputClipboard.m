@@ -1,10 +1,17 @@
 // Adapted from KeyboardAI-RootHide 23c761e, GPL-3.0; see THIRD_PARTY.md.
 // Prompt interaction adapted from Kayoko, GPL-3.0; see THIRD_PARTY.md.
 #import "RSInputClipboard.h"
-#import "RSInputInterface.h"
 #import "RSInputStore.h"
 #import "RSInputOptions.h"
-#import "RSInputAnchoredMenuView.h"
+static void RSClipboardOpenSearchEngine(NSDictionary *engine, NSString *text) {
+    NSURL *url = RSInputSearchURL(engine[@"engine"], text);
+    if (url) [UIApplication.sharedApplication openURL:url options:@{} completionHandler:nil];
+}
+static void RSClipboardOpenSearch(NSString *text) { RSClipboardOpenSearchEngine(RSInputSearchEngines(RSInputConfig()).firstObject, text); }
+
+#import "../KeyboardAI/RSKAInterface.h"
+#import "../KeyboardAI/RSKAAnchoredMenuView.h"
+#import "../AI/RSChatController.h"
 #import <notify.h>
 #import "../Geometry/RSOrientation.h"
 #import <objc/message.h>
@@ -21,11 +28,6 @@ static UIColor *RSInputHexColor(NSString *hex) {
     [[NSScanner scannerWithString:hex] scanHexInt:&rgb];
     return [UIColor colorWithRed:((rgb >> 16) & 255)/255.0 green:((rgb >> 8) & 255)/255.0 blue:(rgb & 255)/255.0 alpha:1];
 }
-void RSInputOpenSearchEngine(NSDictionary *engine, NSString *text) {
-    NSURL *url = RSInputSearchURL(engine[@"engine"], text);
-    if (url) [UIApplication.sharedApplication openURL:url options:@{} completionHandler:nil];
-}
-void RSInputOpenSearch(NSString *text) { RSInputOpenSearchEngine(RSInputSearchEngines(RSInputConfig()).firstObject, text); }
 
 @interface RSInputPromptWindow : UIWindow
 @property(weak) UIView *interactiveView;
@@ -81,7 +83,7 @@ void RSInputOpenSearch(NSString *text) { RSInputOpenSearchEngine(RSInputSearchEn
 @interface RSInputClipboardPrompt : NSObject
 @property(strong) RSInputPromptWindow *window;
 @property(strong) RSInputPromptButton *button;
-@property(strong) RSInputAnchoredMenuView *menu;
+@property(strong) RSKAAnchoredMenuView *menu;
 @property(copy) NSString *text;
 @property(strong) NSDictionary *options;
 @property(strong) NSTimer *timer;
@@ -117,24 +119,24 @@ void RSInputOpenSearch(NSString *text) { RSInputOpenSearchEngine(RSInputSearchEn
 - (void)tap {
     NSString *text = self.text;
     [self hide];
-    if (!RSInputLocked()) RSInputOpenCopiedText(text);
+    if (!RSInputLocked()) RSKAOpenTokens(text);
 }
 - (void)longPress:(UILongPressGestureRecognizer *)gesture {
     if (RSInputLocked()) { [self hide]; return; }
     if (gesture.state == UIGestureRecognizerStateBegan) {
         [self.timer invalidate]; self.timer = nil;
         NSString *text = self.text;
-        RSInputAnchoredMenuView *menu = [RSInputAnchoredMenuView new];
+        RSKAAnchoredMenuView *menu = [RSKAAnchoredMenuView new];
         menu.menuWidth = 180; menu.centersTitles = YES; menu.presentsBelowSource = YES;
         __weak RSInputClipboardPrompt *weakSelf = self;
         for (NSDictionary *engine in RSInputSearchEngines(RSInputConfig())) {
             [menu addItemWithTitle:engine[@"name"] image:[UIImage systemImageNamed:@"magnifyingglass"] destructive:NO handler:^{
-                [weakSelf hide]; if (!RSInputLocked()) RSInputOpenSearchEngine(engine, text);
+                [weakSelf hide]; if (!RSInputLocked()) RSClipboardOpenSearchEngine(engine, text);
             }];
         }
         for (NSDictionary *action in RSInputVisibleActions(@"clipboardHiddenPersonas")) {
             [menu addItemWithTitle:action[@"title"] image:[UIImage systemImageNamed:@"sparkles"] destructive:NO handler:^{
-                [weakSelf hide]; if (!RSInputLocked()) RSInputRunCopiedAction(action, text, ^(NSString *result) { RSInputOpenSearch(result); });
+                [weakSelf hide]; if (!RSInputLocked()) [RSChatController showText:text scene:nil persona:action];
             }];
         }
         menu.onDismiss = ^{
@@ -159,7 +161,7 @@ void RSInputOpenSearch(NSString *text) { RSInputOpenSearchEngine(RSInputSearchEn
         self.changeCount = pasteboard.changeCount;
         [self hide];
         self.options = RSInputPromptOptions(RSInputConfig());
-        if (RSInputLocked() || RSInputIsPanelVisible() || ![self.options[@"enabled"] boolValue] ||
+        if (RSInputLocked() || RSKAIsPanelVisible() || ![self.options[@"enabled"] boolValue] ||
             [pasteboard containsPasteboardTypes:@[@"com.moxuan.regionshot.input.internal"]]) return;
         NSString *text = pasteboard.string;
         if (!text.length || text.length > 24000) return;
@@ -205,7 +207,7 @@ void RSInputOpenSearch(NSString *text) { RSInputOpenSearchEngine(RSInputSearchEn
         button.accessibilityLabel = @"分词";
         button.accessibilityHint = @"轻按分词，长按打开搜索引擎和 AI 人设";
         button.accessibilityCustomActions = @[[[UIAccessibilityCustomAction alloc] initWithName:@"搜索复制文字" actionHandler:^BOOL(__unused UIAccessibilityCustomAction *action) {
-            NSString *copied = self.text; [self hide]; if (!RSInputLocked()) RSInputOpenSearch(copied); return YES;
+            NSString *copied = self.text; [self hide]; if (!RSInputLocked()) RSClipboardOpenSearch(copied); return YES;
         }]];
         [button addTarget:self action:@selector(tap) forControlEvents:UIControlEventTouchUpInside];
         [button addGestureRecognizer:[[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(longPress:)]];
@@ -233,7 +235,7 @@ void RSInputStartClipboardPrompt(void) {
         int token;
         notify_register_dispatch("com.apple.pasteboard.notify.changed", &token, dispatch_get_main_queue(), ^(__unused int value) { [prompt capture]; });
         notify_register_dispatch("com.apple.springboard.lockstate", &token, dispatch_get_main_queue(), ^(__unused int value) {
-            prompt.epoch++; [prompt hide]; RSInputClosePanel();
+            prompt.epoch++; [prompt hide]; RSKAClosePanel();
         });
         [NSNotificationCenter.defaultCenter addObserver:prompt selector:@selector(hide) name:UIApplicationProtectedDataWillBecomeUnavailable object:nil];
     });

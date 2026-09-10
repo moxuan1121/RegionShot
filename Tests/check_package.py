@@ -61,3 +61,7 @@ assert not any('RegionShotURLs' in p for p in files)
 
 input_filter = plistlib.loads(files['Library/MobileSubstrate/DynamicLibraries/RegionShotInput.plist'])['Filter']['Bundles']
 assert 'com.apple.Preferences' not in input_filter and 'com.apple.mobilesafari' not in input_filter
+assert 'com.apple.springboard' not in input_filter
+assert set(input_filter) == {'com.tencent.xin', 'jp.naver.line', 'org.coolstar.Sileo', 'org.coolstar.SileoStore'}
+main_filter = plistlib.loads(files['Library/MobileSubstrate/DynamicLibraries/RegionShot.plist'])['Filter']['Bundles']
+assert main_filter == ['com.apple.springboard']
