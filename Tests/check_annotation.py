@@ -41,4 +41,4 @@ for panel in ("Input/RSInputInterface.m", "KeyboardAI/RSKAInterface.m"):
     assert "@selector(clearTokenSelection:)" in read(panel)
 assert "chat.host.isKeyWindow" in chat
 assert "UTTypeItem" in chat
-assert '@"file_data"' in chat and '@"filename"' in chat
+assert '@"file_data"' in read("AI/RSChatAttachments.h") and '@"filename"' in read("AI/RSChatAttachments.h")

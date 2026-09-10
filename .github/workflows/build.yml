@@ -23,6 +23,8 @@ jobs:
         run: python3 Tests/check_settings_structure.py
       - name: Check release cleanup
         run: python3 Tests/check_release_cleanup.py
+      - name: Check attachment decoding and failed-request recovery
+        run: clang -fobjc-arc -Wall -Wextra -Werror -framework Foundation Tests/test_attachments.m -o /tmp/regionshot-attachments && /tmp/regionshot-attachments
       - name: Check annotation integration
         run: python3 Tests/check_annotation.py
       - name: Check settings validation

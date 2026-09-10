@@ -1,6 +1,7 @@
 #import "../Geometry/RSWindowAnimation.h"
 #import "RSChatController.h"
 #import "RSSSEDecoder.h"
+#import "RSChatAttachments.h"
 #import "../Geometry/RSOrientation.h"
 #import "RSAISettingsController.h"
 #import "../Input/RSInputStore.h"
@@ -82,9 +83,9 @@
 @property (nonatomic) BOOL stopped;
 @property (nonatomic) NSUInteger received;
 @property (nonatomic) BOOL refreshScheduled;
-@property (nonatomic, strong) NSData *fileAttachment;
+@property (nonatomic, strong) NSDictionary *fileAttachment;
+@property (nonatomic, strong) NSMutableIndexSet *excludedHistory;
 @property (nonatomic, copy) NSString *fileName;
-@property (nonatomic, copy) NSString *fileMIME;
 @end
 
 static RSChatController *RSActiveChat;
@@ -515,6 +516,7 @@ static NSUserDefaults *RSChatPreferences(void) {
             UIView *row = self.rows.lastObject;
             [self.chat removeArrangedSubview:row]; [row removeFromSuperview]; [self.rows removeLastObject];
         }
+        [self.excludedHistory removeIndexesInRange:NSMakeRange(userIndex, NSUIntegerMax - userIndex)];
         [self startRequest];
     }]];
     [self presentViewController:alert animated:YES completion:nil];
@@ -536,9 +538,7 @@ static NSUserDefaults *RSChatPreferences(void) {
         [content addObject:@{@"type":@"image_url", @"image_url":@{@"url":url}}];
     }
     if (self.fileAttachment) {
-        NSString *dataURI = [NSString stringWithFormat:@"data:%@;base64,%@", self.fileMIME ?: @"application/octet-stream",
-            [self.fileAttachment base64EncodedStringWithOptions:0]];
-        [content addObject:@{@"type":@"file", @"file":@{@"filename":self.fileName, @"file_data":dataURI}}];
+        [content addObject:self.fileAttachment];
         displayText = [NSString stringWithFormat:@"%@%@附件：%@", displayText, displayText.length ? @"\n" : @"", self.fileName];
     }
     [self addRow:displayText image:self.attachment assistant:NO index:self.history.count];
@@ -547,12 +547,14 @@ static NSUserDefaults *RSChatPreferences(void) {
     [self startRequest];
 }
 - (void)startRequest {
+    if (!self.excludedHistory) self.excludedHistory = [NSMutableIndexSet indexSet];
     NSUserDefaults *prefs = RSChatPreferences();
     NSURL *endpoint = [NSURL URLWithString:[prefs stringForKey:@"AIEndpoint"] ?: @""];
     if (![endpoint.scheme.lowercaseString isEqual:@"https"] || !endpoint.host.length || endpoint.user || endpoint.password || ![prefs stringForKey:@"AIModel"].length) {
+        [self.excludedHistory addIndex:self.history.count - 1];
         [self message:@"请先配置有效的 HTTPS 服务地址和模型。"]; return;
     }
-    NSMutableArray *messages = self.history.mutableCopy;
+    NSMutableArray *messages = RSChatRequestHistory(self.history, self.excludedHistory);
     BOOL imageQuestion = NO;
     id lastContent = [self.history.lastObject objectForKey:@"content"];
     if ([lastContent isKindOfClass:NSArray.class]) for (id part in lastContent)
@@ -565,8 +567,9 @@ static NSUserDefaults *RSChatPreferences(void) {
     NSMutableDictionary *payload = [@{@"model":model, @"messages":messages, @"stream":RSOption(@"AIStream")} mutableCopy];
     if ([RSOption(@"AIFastResponse") boolValue] && RSKASupportsFastResponse(endpoint.absoluteString, model)) payload[@"enable_thinking"] = @NO;
     NSData *data = [NSJSONSerialization dataWithJSONObject:payload options:0 error:&error];
-    if (!data || data.length > 32 * 1024 * 1024) {
-        [self message:error.localizedDescription ?: @"对话图片总量超过 32 MB，请关闭后开始新对话。"]; return;
+    if (!data || data.length > 128 * 1024 * 1024) {
+        [self.excludedHistory addIndex:self.history.count - 1];
+        [self message:error.localizedDescription ?: @"本次请求编码后超过 128 MB，请减少附件或开始新对话。"]; return;
     }
     NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:endpoint];
     request.HTTPMethod = @"POST"; request.HTTPBody = data; request.timeoutInterval = 120;
@@ -657,7 +660,7 @@ static NSUserDefaults *RSChatPreferences(void) {
     if (task != self.task) return;
     if (!self.responseStatus && error) self.failure = error.localizedDescription;
     else if (self.responseStatus < 200 || self.responseStatus >= 300)
-        self.failure = [NSString stringWithFormat:@"请求失败（HTTP %ld）。请检查服务地址、模型及密钥。", (long)self.responseStatus];
+        self.failure = RSChatHTTPError(self.body, self.responseStatus);
     else if (!self.streaming && !error) {
         id json = [NSJSONSerialization JSONObjectWithData:self.body options:0 error:nil];
         id choices = [json isKindOfClass:NSDictionary.class] ? json[@"choices"] : nil;
@@ -675,11 +678,13 @@ static NSUserDefaults *RSChatPreferences(void) {
     if (!status && !self.answer.length) status = @"服务返回了空回答，请重新生成。";
     if (status) { [self.view setNeedsLayout]; self.reply.text = self.answer.length ? [self.answer stringByAppendingFormat:@"\n\n〔%@〕", status] : status; }
     if (self.keyboardPresentation) RSKAUpdateAnswer(self.answer, YES, status);
+    if (self.failure && self.history.count >= 2)
+        [self.excludedHistory addIndexesInRange:NSMakeRange(self.history.count - 2, 2)];
     self.task = nil; self.decoder = nil; self.body = nil;
     [self.sendButton setTitle:@"发送" forState:UIControlStateNormal];
     self.sendButton.accessibilityLabel = @"发送";
 }
-- (void)clearAttachment { self.attachment = nil; self.fileAttachment = nil; self.fileName = nil; self.fileMIME = nil; self.chip.accessibilityLabel = nil; self.chip.image = nil; self.chip.hidden = YES; }
+- (void)clearAttachment { self.attachment = nil; self.fileAttachment = nil; self.fileName = nil; self.chip.accessibilityLabel = nil; self.chip.image = nil; self.chip.hidden = YES; }
 - (void)attachments {
     UIAlertController *sheet = [UIAlertController alertControllerWithTitle:@"添加附件" message:nil preferredStyle:UIAlertControllerStyleActionSheet];
     [sheet addAction:[UIAlertAction actionWithTitle:@"相册" style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
@@ -728,15 +733,20 @@ static NSUserDefaults *RSChatPreferences(void) {
         NSString *name = url.lastPathComponent;
         UTType *type = [UTType typeWithFilenameExtension:url.pathExtension];
         UIImage *image = [type conformsToType:UTTypeImage] && data ? [UIImage imageWithData:data] : nil;
+        BOOL textFile = [type conformsToType:UTTypeText] || [type conformsToType:UTTypeJSON] ||
+            [type.preferredMIMEType hasPrefix:@"text/"] ||
+            [@[@"txt", @"md", @"csv", @"json", @"xml", @"log", @"ips", @"crash", @"yaml", @"yml"] containsObject:url.pathExtension.lowercaseString];
+        NSString *fileError = nil;
+        NSDictionary *part = !image && data ? RSChatFilePart(data, name, type.preferredMIMEType, textFile, &fileError) : nil;
         dispatch_async(dispatch_get_main_queue(), ^{
             if (!self.host) return;
             if (!data || data.length > 64 * 1024 * 1024) {
                 [self message:error.localizedDescription ?: @"无法读取文件，请选择不超过 64 MB 的普通文件。"]; return;
             }
             if (image) { [self acceptImage:image]; return; }
+            if (!part) { [self message:fileError ?: @"无法读取文件。"]; return; }
             [self clearAttachment];
-            self.fileAttachment = data; self.fileName = name.length ? name : @"attachment";
-            self.fileMIME = type.preferredMIMEType ?: @"application/octet-stream";
+            self.fileAttachment = part; self.fileName = name.length ? name : @"attachment";
             self.chip.image = [UIImage systemImageNamed:@"doc.fill"];
             self.chip.hidden = NO; self.chip.accessibilityLabel = self.fileName;
         });
