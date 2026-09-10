@@ -572,7 +572,7 @@ static NSString *RSInputFullText(id<UITextInput> target) {
 }
 - (void)showSearchMenu:(UILongPressGestureRecognizer *)gesture {
     if (gesture.state == UIGestureRecognizerStateBegan) {
-        if (!self.tokenView || !self.searchAction || !self.replaceButton.enabled || ![self actionText].length) return;
+        if (!self.searchAction || !self.replaceButton.enabled || ![self actionText].length) return;
         [self.searchMenu dismiss];
         RSInputAnchoredMenuView *menu = [RSInputAnchoredMenuView new];
         menu.menuWidth = 180;
@@ -588,7 +588,7 @@ static NSString *RSInputFullText(id<UITextInput> target) {
                     RSInputOpenSearchEngine(engine, text);
                 }];
         }
-        for (NSDictionary *action in RSInputActions()) {
+        for (NSDictionary *action in RSInputVisibleActions(@"clipboardHiddenPersonas")) {
             [menu addItemWithTitle:action[@"title"] image:[UIImage systemImageNamed:@"sparkles"]
                 destructive:NO handler:^{
                     [weakSelf close];

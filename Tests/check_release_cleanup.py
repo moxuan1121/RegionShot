@@ -32,3 +32,10 @@ for name in ('Input/RSInputInterface.m', 'KeyboardAI/RSKAInterface.m'):
     close = panel.split('- (void)close {', 1)[1]
     assert '[NSNotificationCenter.defaultCenter removeObserver:self];' in close
 print('Verified release hygiene, bounded model requests and stale callback guards')
+floating = (root / 'Floating/RSFloatingWindow.m').read_text(encoding='utf-8')
+assert 'centerImages' not in floating and 'view.center =' not in floating
+assert 'controller.targetOrientation == orientation' in floating
+for name in ('Input/RSInputInterface.m', 'KeyboardAI/RSKAInterface.m'):
+    source = (root / name).read_text(encoding='utf-8').split('- (void)showSearchMenu:', 1)[1]
+    assert 'RSInputVisibleActions(@"clipboardHiddenPersonas")' in source
+    assert '!self.tokenView ||' not in source

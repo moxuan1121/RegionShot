@@ -1,22 +1,10 @@
 #import "RSFloatingWindow.h"
-#import "RSFloatingImageView.h"
 #import "../Geometry/RSOrientation.h"
 
 @interface RSFloatingController : UIViewController
-@property (nonatomic) BOOL centerImages;
 @property (nonatomic) UIInterfaceOrientation targetOrientation;
 @end
 @implementation RSFloatingController
-- (void)viewDidLayoutSubviews {
-    [super viewDidLayoutSubviews];
-    if (!self.centerImages) return;
-    BOOL landscape = UIInterfaceOrientationIsLandscape(self.targetOrientation);
-    if (landscape != (self.view.bounds.size.width > self.view.bounds.size.height)) return;
-    self.centerImages = NO;
-    CGPoint center = CGPointMake(CGRectGetMidX(self.view.bounds), CGRectGetMidY(self.view.bounds));
-    for (UIView *view in self.view.subviews)
-        if ([view isKindOfClass:RSFloatingImageView.class]) view.center = center;
-}
 - (BOOL)shouldAutorotate { return NO; }
 - (BOOL)autorotate { return NO; }
 - (UIInterfaceOrientationMask)supportedInterfaceOrientations { return UIInterfaceOrientationMaskAllButUpsideDown; }
@@ -60,13 +48,16 @@
     UIInterfaceOrientation orientation = target ? target.integerValue : RSActiveOrientation(self.windowScene);
     RSFloatingController *controller = (RSFloatingController *)self.rootViewController;
     if (!RSValidInterfaceOrientation((int)orientation)) return;
-    controller.targetOrientation = orientation; controller.centerImages = YES;
+    if (controller.targetOrientation == orientation) return;
+    controller.targetOrientation = orientation;
     RSApplyWindowOrientation(self, orientation);
     [controller.view setNeedsLayout]; [controller.view layoutIfNeeded];
 }
 - (void)updateOrientation {
     if (self.hidden) return;
-    RSApplyWindowOrientation(self, RSActiveOrientation(self.windowScene));
+    UIInterfaceOrientation orientation = RSActiveOrientation(self.windowScene);
+    ((RSFloatingController *)self.rootViewController).targetOrientation = orientation;
+    RSApplyWindowOrientation(self, orientation);
     [self.rootViewController.view setNeedsLayout];
     [self.rootViewController.view layoutIfNeeded];
 }

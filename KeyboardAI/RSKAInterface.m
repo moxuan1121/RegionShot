@@ -10,6 +10,7 @@
 #import "RSKAAnchoredMenuView.h"
 #import "../Geometry/RSOrientation.h"
 #import "../Input/RSInputStore.h"
+#include <dlfcn.h>
 static NSDictionary *RSKAConfig(void) { return RSInputConfig(); }
 static void RSKAOpenSearchEngine(NSDictionary *engine, NSString *text) {
     NSURL *url = RSKASearchURL(engine[@"engine"], text);
@@ -323,6 +324,13 @@ static UIWindowLevel RSKAPanelWindowLevel(NSDictionary *options, NSString *key) 
         NSString *text = [self actionText]; __weak RSKAPanel *weakSelf = self;
         for (NSDictionary *engine in RSKASearchEngines(RSKAConfig()))
             [menu addItemWithTitle:engine[@"name"] image:[UIImage systemImageNamed:@"magnifyingglass"] destructive:NO handler:^{ [weakSelf close]; RSKAOpenSearchEngine(engine, text); }];
+        void (*runAction)(NSDictionary *, NSString *, void (^)(NSString *)) =
+            (void (*)(NSDictionary *, NSString *, void (^)(NSString *)))dlsym(RTLD_DEFAULT, "RSInputRunCopiedAction");
+        if (runAction) for (NSDictionary *action in RSInputVisibleActions(@"clipboardHiddenPersonas"))
+            [menu addItemWithTitle:action[@"title"] image:[UIImage systemImageNamed:@"sparkles"] destructive:NO handler:^{
+                [weakSelf close]; runAction(action, text, ^(NSString *result) { RSKAOpenSearch(result); });
+            }];
+        menu.onDismiss = ^{ weakSelf.searchMenu = nil; };
         self.searchMenu = menu;
         [menu presentFromView:self.replaceButton inView:((RSKAPanelController *)self.overlayWindow.rootViewController).canvas];
     }
