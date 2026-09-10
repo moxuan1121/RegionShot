@@ -159,7 +159,6 @@ static BOOL RSStageWeChatScanImage(UIImage *image) {
             UIImage *image = [RSScreenCapture cropImage:window.imageView.image toRect:window.selectionRect displaySize:window.displaySize];
             if (!image) return;
             RSStageWeChatScanImage(image);
-            [RSRegionShotManager.sharedManager saveImage:image];
             if (window.toolbar.cancelHandler) window.toolbar.cancelHandler();
             [UIApplication.sharedApplication openURL:[NSURL URLWithString:@"weixin://scanqrcode"] options:@{} completionHandler:nil];
         };
