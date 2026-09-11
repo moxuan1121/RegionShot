@@ -52,3 +52,5 @@ assert 'RSInstallMaterialBackground(self.card, 20)' in camera
 support = (root / 'CameraSupport/RSCameraMediaSupport.m').read_text(encoding='utf-8')
 assert '(id, SEL, void *, id)' in support and support.count('MSHookMessageEx') == 1
 assert 'RSLog' not in support
+assert 'action:@selector(restoreFromBall)' in chat
+assert '- (void)restoreFromBall { [self restoreFocusingInput:NO]; }' in chat

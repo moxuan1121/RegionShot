@@ -310,7 +310,7 @@ static NSUserDefaults *RSChatPreferences(void) {
         [self.chat.topAnchor constraintEqualToAnchor:self.scroll.contentLayoutGuide.topAnchor],
         [self.chat.bottomAnchor constraintEqualToAnchor:self.scroll.contentLayoutGuide.bottomAnchor],
         [self.chat.widthAnchor constraintEqualToAnchor:self.scroll.frameLayoutGuide.widthAnchor]]];
-    self.ball = [self button:@"text.bubble.fill" title:@"恢复图片问答" action:@selector(restore)];
+    self.ball = [self button:@"text.bubble.fill" title:@"恢复图片问答" action:@selector(restoreFromBall)];
     self.ball.frame = CGRectMake(16, 120, 44, 44);
     self.ball.layer.cornerRadius = 26;
     RSInstallMaterialBackground(self.ball, 26);
@@ -399,7 +399,9 @@ static NSUserDefaults *RSChatPreferences(void) {
     [self.host resignKeyWindow];
     [self.previousKey makeKeyWindow];
 }
-- (void)restore {
+- (void)restore { [self restoreFocusingInput:YES]; }
+- (void)restoreFromBall { [self restoreFocusingInput:NO]; }
+- (void)restoreFocusingInput:(BOOL)focusInput {
     BOOL wasHidden = self.host.hidden || self.card.hidden;
     [RSChatPreferences() synchronize];
     RSReloadOptions(); [self applyAppearance]; [self updateModelTitle];
@@ -408,7 +410,7 @@ static NSUserDefaults *RSChatPreferences(void) {
     self.ball.hidden = YES;
     self.view.backgroundColor = [UIColor colorWithWhite:0 alpha:0.28];
     [self.host makeKeyAndVisible];
-    [self focusInput];
+    if (focusInput) [self focusInput];
     if (wasHidden) RSOpenWindowSurface(self.card);
     if (wasHidden) [[[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleLight] impactOccurred];
 }
