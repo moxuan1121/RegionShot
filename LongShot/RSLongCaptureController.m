@@ -32,6 +32,7 @@
 @property (nonatomic) BOOL busy;
 @property (nonatomic) BOOL stopped;
 @property (nonatomic) BOOL retryCurrentFrame;
+@property (nonatomic) CFTimeInterval nextStepAllowedTime;
 
 @property (nonatomic, copy) void (^resultHandler)(UIWindowScene *);
 @property (nonatomic, copy) dispatch_block_t cancelHandler;
@@ -169,6 +170,19 @@
     [self processImage:[self screenImage] finalFrame:NO];
 }
 
+- (void)enableContinueWhenReady {
+    if (!self.continueButton || self.stopped || self.busy || self.finishRequested) return;
+    NSTimeInterval delay = MAX(0, self.nextStepAllowedTime - CACurrentMediaTime());
+    if (delay <= 0) { self.continueButton.enabled = YES; return; }
+    self.continueButton.enabled = NO;
+    __weak typeof(self) weakSelf = self;
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(delay * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        typeof(self) self = weakSelf;
+        if (self && !self.stopped && !self.busy && !self.finishRequested && CACurrentMediaTime() >= self.nextStepAllowedTime)
+            self.continueButton.enabled = YES;
+    });
+}
+
 - (void)capturePressed {
     if (self.stopped || self.finishRequested) return;
     self.finishRequested = YES;
@@ -184,7 +198,7 @@
         self.busy = NO;
         self.statusLabel.text = @"未能读取屏幕，请重试截取";
         if (self.finishRequested) { self.finishRequested = NO; self.captureButton.enabled = YES; [self startSampling]; }
-        if (self.continueButton) self.continueButton.enabled = YES;
+        [self enableContinueWhenReady];
         return;
     }
     self.busy = YES;
@@ -204,7 +218,8 @@
                 if (self.mode == RSLongCaptureModeConservativeStep && !self.finishRequested) {
                     self.retryCurrentFrame = result == RSLongAppendResultUncertain;
                     [self.continueButton setTitle:self.retryCurrentFrame ? @"重试" : @"继续" forState:UIControlStateNormal];
-                    self.continueButton.enabled = result != RSLongAppendResultLimit;
+                    self.continueButton.enabled = NO;
+                    if (result != RSLongAppendResultLimit) [self enableContinueWhenReady];
                     if (self.retryCurrentFrame) self.statusLabel.text = @"本次未记录，页面稳定后点重试";
                     else if (result == RSLongAppendResultUnchanged) self.statusLabel.text = @"页面未移动，可能已到底；可结束或继续";
                 }
@@ -217,7 +232,7 @@
                     else if (result == RSLongAppendResultUncertain) {
                         self.finishRequested = NO; self.captureButton.enabled = YES; [self startSampling];
                         if (self.continueButton) {
-                            self.retryCurrentFrame = YES; self.continueButton.enabled = YES;
+                            self.retryCurrentFrame = YES; [self enableContinueWhenReady];
                             [self.continueButton setTitle:@"重试" forState:UIControlStateNormal];
                         }
                     } else [self donePressed];
@@ -229,12 +244,16 @@
 
 - (void)continuePressed {
     if (self.busy || self.stopped || self.finishRequested) return;
+    CFTimeInterval now = CACurrentMediaTime();
+    if (now < self.nextStepAllowedTime) { [self enableContinueWhenReady]; return; }
+    self.nextStepAllowedTime = now + 1.8;
+    self.continueButton.enabled = NO;
     if (self.retryCurrentFrame) {
-        self.retryCurrentFrame = NO; self.continueButton.enabled = NO;
+        self.retryCurrentFrame = NO;
         [self.continueButton setTitle:@"继续" forState:UIControlStateNormal];
         [self manualTick]; return;
     }
-    self.busy = YES; self.continueButton.enabled = NO;
+    self.busy = YES;
     self.statusLabel.text = @"正在向下移动并记录…";
     CGFloat screenHeight = CGRectGetHeight(self.rootViewController.view.bounds);
     CGFloat startY = screenHeight > 0 ? (CGRectGetMinY(self.panel.frame) - 24) / screenHeight : 0.68;
@@ -247,7 +266,7 @@
         self.busy = NO;
         if (!success) {
             self.statusLabel.text = @"系统滚动不可用，请切换手动滚动";
-            self.continueButton.enabled = YES; return;
+            [self enableContinueWhenReady]; return;
         }
         [self manualTick];
     });

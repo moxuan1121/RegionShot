@@ -30,4 +30,6 @@ assert 'LongShot/RSLongSwipe.m' in makefile
 assert 'com.apple.UIKit' not in injection
 assert 'progress * progress * (3.0 - 2.0 * progress)' in swipe
 assert '700 * NSEC_PER_MSEC' in swipe
+assert 'self.nextStepAllowedTime = now + 1.8' in controller
+assert '- (void)enableContinueWhenReady' in controller
 print('Verified original preference keys/defaults/ranges and root settings destinations')
