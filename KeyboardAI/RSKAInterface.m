@@ -275,7 +275,11 @@ static UIWindowLevel RSKAPanelWindowLevel(NSDictionary *options, NSString *key) 
     [self.searchMenu dismiss]; self.searchMenu = nil;
     RSCloseWindowSurface(self.overlayWindow, self.panel); self.panel = nil;
     [self.previousWindow makeKeyWindow]; self.overlayWindow = nil;
-    self.tokenView = nil; self.generating = NO;
+    self.textView = nil; self.contentStack = nil; self.header = nil; self.tokenView = nil;
+    self.backButton = nil; self.replaceButton = nil; self.clipboardButton = nil; self.visitButton = nil;
+    self.statusLabel = nil; self.spinner = nil; self.heightConstraint = nil;
+    self.panelTop = nil; self.panelLeading = nil; self.panelWidth = nil; self.windowOptions = nil;
+    self.result = nil; self.completedResult = NO; self.generating = NO;
     self.visitURL = nil; self.visitURLChecked = NO;
     if (callback) callback();
 }

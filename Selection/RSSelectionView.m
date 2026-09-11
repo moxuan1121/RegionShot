@@ -37,6 +37,7 @@ static const CGFloat RSHandleHitRadius = 28.0;
 @property (nonatomic) RSSelectionDragMode dragMode;
 @property (nonatomic) CFTimeInterval selectionAppearedAt;
 @property (nonatomic, strong) CADisplayLink *appearanceLink;
+@property (nonatomic) CGFloat shadeAlpha;
 @end
 
 @implementation RSSelectionView
@@ -47,6 +48,7 @@ static const CGFloat RSHandleHitRadius = 28.0;
         self.backgroundColor = UIColor.clearColor;
         self.opaque = NO;
         self.multipleTouchEnabled = NO;
+        self.shadeAlpha = [RSOption(@"SelectionShade") doubleValue];
         UIPanGestureRecognizer *pan = [[RSSelectionPanGestureRecognizer alloc] initWithTarget:self action:@selector(handlePan:)];
         pan.maximumNumberOfTouches = 1;
         pan.delegate = self;
@@ -186,7 +188,7 @@ static const CGFloat RSHandleHitRadius = 28.0;
     }
     if ([self hasValidSelection]) [shade appendPath:[UIBezierPath bezierPathWithRect:visualRect]];
     shade.usesEvenOddFillRule = YES;
-    [[UIColor colorWithWhite:0 alpha:[RSOption(@"SelectionShade") doubleValue]] setFill];
+    [[UIColor colorWithWhite:0 alpha:self.shadeAlpha] setFill];
     [shade fill];
     if (![self hasValidSelection]) return;
 

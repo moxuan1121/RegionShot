@@ -77,6 +77,7 @@ static RSHistoryStore *RSStore(void) {
 @property (nonatomic) BOOL loading;
 @property (nonatomic, copy) NSString *sourceFilter;
 @property (nonatomic, strong) UIStackView *filters;
+@property (nonatomic, strong) NSDateFormatter *dateFormatter;
 @end
 static RSHistoryController *RSActiveHistory;
 @implementation RSHistoryController
@@ -128,6 +129,7 @@ static RSHistoryController *RSActiveHistory;
 - (void)viewDidLoad {
     [super viewDidLoad]; self.title = @"截图历史";
     self.thumbnails = [NSCache new]; self.thumbnails.countLimit = 30;
+    self.dateFormatter = [NSDateFormatter new]; self.dateFormatter.dateFormat = @"yyyy-MM-dd HH:mm:ss";
     self.tableView.rowHeight = 78;
     self.tableView.separatorInset = UIEdgeInsetsMake(0, 8, 0, 8);
     self.tableView.backgroundColor = UIColor.systemBackgroundColor;
@@ -186,8 +188,7 @@ static RSHistoryController *RSActiveHistory;
 }
 - (void)filterSource:(UIButton *)button { self.sourceFilter = button.accessibilityIdentifier; [self rebuildFilters]; [self updateSearchResultsForSearchController:self.search]; }
 - (NSString *)dateText:(NSDictionary *)entry {
-    NSDateFormatter *format = [NSDateFormatter new]; format.dateFormat = @"yyyy-MM-dd HH:mm:ss";
-    return [format stringFromDate:entry[@"date"]];
+    return [self.dateFormatter stringFromDate:entry[@"date"]];
 }
 - (void)updateSearchResultsForSearchController:(UISearchController *)search {
     NSString *query = search.searchBar.text ?: @"";

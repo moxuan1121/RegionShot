@@ -23,6 +23,7 @@
 - (void)takeScreenshotWithPresentationOptions:(id)options;
 @end
 static BOOL RSEnabled = YES;
+static BOOL RSStatusBarSwipeEnabled = YES;
 static BOOL RSTargetOrientationInstalled;
 static __thread NSUInteger RSOriginalDepth;
 static std::atomic<bool> RSNativeScreenshotPending(false);
@@ -32,6 +33,7 @@ static void RSReload(void) {
     NSUserDefaults *prefs = [[NSUserDefaults alloc] initWithSuiteName:@"com.moxuan.regionshot"];
     [prefs synchronize];
     RSEnabled = ![prefs objectForKey:@"Enabled"] || [prefs boolForKey:@"Enabled"];
+    RSStatusBarSwipeEnabled = [RSOption(@"StatusBarSwipe") boolValue];
 }
 static BOOL RSTryCapture(void) {
     if (RSOriginalDepth || RSNativeScreenshotPending) return NO;
@@ -74,12 +76,12 @@ extern "C" BOOL RSRequestNativeScreenshot(void) {
 - (BOOL)gestureRecognizer:(UIGestureRecognizer *)gesture shouldReceiveTouch:(UITouch *)touch {
     UIView *view = gesture.view;
     CGPoint point = [touch locationInView:view]; CGRect bounds = view.bounds;
-    return RSEnabled && !RSRegionShotManager.sharedManager.isCapturing && [RSOption(@"StatusBarSwipe") boolValue] && view.window && !view.hidden && view.alpha > 0.01 &&
+    return RSEnabled && RSStatusBarSwipeEnabled && !RSRegionShotManager.sharedManager.isCapturing && view.window && !view.hidden && view.alpha > 0.01 &&
         RSInStatusBarRightRegion(point.x - bounds.origin.x, point.y - bounds.origin.y, bounds.size.width, bounds.size.height);
 }
 - (void)swiped:(UISwipeGestureRecognizer *)gesture {
     if (gesture.state != UIGestureRecognizerStateRecognized || !gesture.view.window) return;
-    dispatch_async(dispatch_get_main_queue(), ^{ if ([RSOption(@"StatusBarSwipe") boolValue]) RSTryCapture(); });
+    dispatch_async(dispatch_get_main_queue(), ^{ if (RSStatusBarSwipeEnabled) RSTryCapture(); });
 }
 @end
 static char RSStatusBarGestureKey;

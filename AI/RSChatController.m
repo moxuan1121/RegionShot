@@ -546,7 +546,8 @@ static NSUserDefaults *RSChatPreferences(void) {
     if (text.length > 24000) { [self message:@"单次问题最多 24,000 字符。"]; return; }
     NSString *displayText = (self.attachment && ([text isEqual:@"请按当前人设处理这张图片"] || [text isEqual:@"轻按当前人设处理这张图片"])) ? @"" : text;
     if (!text.length && self.fileAttachment) text = @"请处理附件中的内容。";
-    if (!text.length) text = [RSOption(@"AIImagePrompt") length] ? RSOption(@"AIImagePrompt") : @"请描述图片内容。";
+    NSString *imagePrompt = RSOption(@"AIImagePrompt");
+    if (!text.length) text = imagePrompt.length ? imagePrompt : @"请描述图片内容。";
     NSMutableArray *content = [NSMutableArray arrayWithObject:@{@"type":@"text", @"text":text}];
     if (self.attachment) {
         NSData *jpeg = UIImageJPEGRepresentation(self.attachment, 0.85);
