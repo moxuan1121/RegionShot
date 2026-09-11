@@ -25,6 +25,7 @@
 @property (nonatomic, strong) UIButton *captureButton;
 @property (nonatomic, strong) NSTimer *timer;
 @property (nonatomic, strong) dispatch_queue_t processingQueue;
+@property (nonatomic, copy) NSArray<UIWindow *> *temporarilyHiddenWindows;
 @property (nonatomic) BOOL busy;
 @property (nonatomic) BOOL stopped;
 
@@ -83,21 +84,32 @@
     return hit == self.rootViewController.view ? nil : hit;
 }
 
-- (NSArray<UIWindow *> *)windowsToExclude {
-    NSMutableArray *windows = [NSMutableArray arrayWithObject:self];
+- (void)hideOtherRegionShotWindows {
+    NSMutableArray *windows = [NSMutableArray array];
     for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
         if (![scene isKindOfClass:UIWindowScene.class]) continue;
         for (UIWindow *window in ((UIWindowScene *)scene).windows) {
-            if (window != self && [NSStringFromClass(window.class) hasPrefix:@"RS"]) [windows addObject:window];
+            if (window != self && !window.hidden && [NSStringFromClass(window.class) hasPrefix:@"RS"]) {
+                window.hidden = YES; [windows addObject:window];
+            }
         }
     }
-    return windows;
+    self.temporarilyHiddenWindows = windows;
 }
 
-- (UIImage *)screenImage { return [RSScreenCapture captureScreenExcludingWindows:self.windowsToExclude]; }
+- (UIImage *)screenImage {
+    UIImage *screen = [RSScreenCapture captureScreen];
+    CGSize displaySize = self.rootViewController.view.bounds.size;
+    CGFloat bottom = CGRectGetMinY(self.panel.frame);
+    if (!screen || displaySize.width <= 0 || bottom <= 0) return nil;
+    return [RSScreenCapture cropImage:screen
+                               toRect:CGRectMake(0, 0, displaySize.width, bottom)
+                          displaySize:displaySize];
+}
 
 - (void)beginSession {
     [self layoutIfNeeded];
+    [self hideOtherRegionShotWindows];
     self.stitcher = [[RSLongStitcher alloc] initWithTopInset:self.rootViewController.view.safeAreaInsets.top];
     self.statusLabel.text = @"缓慢向上滑动，结束后点击截取";
     [self startSampling];
@@ -220,6 +232,8 @@
     RSLongStitcher *stitcher = self.stitcher; self.stitcher = nil;
     if (stitcher) dispatch_async(self.processingQueue, ^{ [stitcher cancel]; });
     self.finishedImage = nil; self.resultHandler = nil; self.cancelHandler = nil; self.hidden = YES; self.rootViewController = nil;
+    for (UIWindow *window in self.temporarilyHiddenWindows) window.hidden = NO;
+    self.temporarilyHiddenWindows = nil;
 }
 
 @end

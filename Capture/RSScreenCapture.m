@@ -4,7 +4,6 @@
 #import "RSCaptureSymbol.h"
 #include <stdint.h>
 #import "RSCopyPixels.h"
-#import <QuartzCore/QuartzCore.h>
 
 typedef UIImage *(*RSScreenImageFunction)(void);
 
@@ -45,37 +44,6 @@ typedef UIImage *(*RSScreenImageFunction)(void);
         return nil;
     }
     return [self preparedScreenImage:image];
-}
-
-+ (UIImage *)captureScreenExcludingWindows:(NSArray<UIWindow *> *)windows {
-    NSAssert(NSThread.isMainThread, @"Screen capture must run on the main thread");
-    SEL selector = NSSelectorFromString(@"_snapshotExcludingWindows:withRect:");
-    UIScreen *screen = UIScreen.mainScreen;
-    if ([screen respondsToSelector:selector]) @try {
-        NSMethodSignature *signature = [screen methodSignatureForSelector:selector];
-        if (signature.numberOfArguments >= 4 && signature.methodReturnType[0] == '@') {
-            NSInvocation *invocation = [NSInvocation invocationWithMethodSignature:signature];
-            NSArray *excluded = windows ?: @[];
-            CGRect rect = CGRectNull;
-            invocation.selector = selector;
-            invocation.target = screen;
-            [invocation setArgument:&excluded atIndex:2];
-            [invocation setArgument:&rect atIndex:3];
-            [invocation invoke];
-            __unsafe_unretained id value = nil;
-            [invocation getReturnValue:&value];
-            if ([value isKindOfClass:UIImage.class] && ((UIImage *)value).CGImage) {
-                return [self preparedScreenImage:value];
-            }
-        }
-    } @catch (__unused NSException *exception) {}
-    NSMutableArray *visible = [NSMutableArray array];
-    for (UIWindow *window in windows) if (!window.hidden) { [visible addObject:window]; window.hidden = YES; }
-    [CATransaction flush];
-    UIImage *image = [self captureScreen];
-    for (UIWindow *window in visible) window.hidden = NO;
-    [CATransaction flush];
-    return image;
 }
 
 + (UIImage *)normalizedImage:(UIImage *)image {
