@@ -4,10 +4,7 @@
 #import "RSCaptureSymbol.h"
 #include <stdint.h>
 #import "RSCopyPixels.h"
-#import <objc/message.h>
-#import <objc/runtime.h>
 #import <QuartzCore/QuartzCore.h>
-#include <string.h>
 
 typedef UIImage *(*RSScreenImageFunction)(void);
 
@@ -48,23 +45,12 @@ typedef UIImage *(*RSScreenImageFunction)(void);
 
 + (UIImage *)captureScreenExcludingWindows:(NSArray<UIWindow *> *)windows {
     NSAssert(NSThread.isMainThread, @"Screen capture must run on the main thread");
-    SEL selector = NSSelectorFromString(@"_snapshotExcludingWindows:withRect:");
-    Method method = class_getInstanceMethod(UIScreen.class, selector);
-    if (method && method_getNumberOfArguments(method) == 4) {
-        char result[8] = {0}, windowsType[8] = {0}, rectType[64] = {0};
-        method_getReturnType(method, result, sizeof(result));
-        method_getArgumentType(method, 2, windowsType, sizeof(windowsType));
-        method_getArgumentType(method, 3, rectType, sizeof(rectType));
-        if (result[0] == '@' && windowsType[0] == '@' && strcmp(rectType, @encode(CGRect)) == 0) {
-            UIImage *image = ((UIImage *(*)(id, SEL, id, CGRect))objc_msgSend)(UIScreen.mainScreen, selector, windows ?: @[], CGRectNull);
-            if (image.CGImage) return [self normalizedImage:image];
-        }
-    }
     NSMutableArray *visible = [NSMutableArray array];
     for (UIWindow *window in windows) if (!window.hidden) { [visible addObject:window]; window.hidden = YES; }
     [CATransaction flush];
     UIImage *image = [self captureScreen];
     for (UIWindow *window in visible) window.hidden = NO;
+    [CATransaction flush];
     return image;
 }
 
