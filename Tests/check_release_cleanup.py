@@ -54,3 +54,5 @@ assert '(id, SEL, void *, id)' in support and support.count('MSHookMessageEx') =
 assert 'RSLog' not in support
 assert 'action:@selector(restoreFromBall)' in chat
 assert '- (void)restoreFromBall { [self restoreFocusingInput:NO]; }' in chat
+assert 'self.ball.backgroundColor = UIColor.systemBlueColor' in chat
+assert 'bezierPathWithOvalInRect:self.ball.bounds' in chat

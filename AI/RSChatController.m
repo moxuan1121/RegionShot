@@ -312,8 +312,14 @@ static NSUserDefaults *RSChatPreferences(void) {
         [self.chat.widthAnchor constraintEqualToAnchor:self.scroll.frameLayoutGuide.widthAnchor]]];
     self.ball = [self button:@"text.bubble.fill" title:@"恢复图片问答" action:@selector(restoreFromBall)];
     self.ball.frame = CGRectMake(16, 120, 44, 44);
-    self.ball.layer.cornerRadius = 26;
-    RSInstallMaterialBackground(self.ball, 26);
+    self.ball.backgroundColor = UIColor.systemBlueColor;
+    self.ball.tintColor = UIColor.whiteColor;
+    self.ball.layer.borderWidth = 1.5;
+    self.ball.layer.borderColor = [UIColor.whiteColor colorWithAlphaComponent:0.65].CGColor;
+    self.ball.layer.shadowColor = UIColor.blackColor.CGColor;
+    self.ball.layer.shadowOpacity = 0.28;
+    self.ball.layer.shadowRadius = 6;
+    self.ball.layer.shadowOffset = CGSizeMake(0, 2);
     self.ball.hidden = YES;
     [self.ball addGestureRecognizer:[[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(panBall:)]];
     [self.view addSubview:self.ball];
@@ -346,7 +352,9 @@ static NSUserDefaults *RSChatPreferences(void) {
     CGFloat size = [RSOption(@"AIBallSize") doubleValue];
     for (NSLayoutConstraint *constraint in self.ball.constraints)
         if (constraint.firstAttribute == NSLayoutAttributeWidth || constraint.firstAttribute == NSLayoutAttributeHeight) constraint.constant = size;
-    self.ball.bounds = CGRectMake(0, 0, size, size); self.ball.layer.cornerRadius = size / 2;
+    self.ball.bounds = CGRectMake(0, 0, size, size);
+    self.ball.layer.cornerRadius = size / 2;
+    self.ball.layer.shadowPath = [UIBezierPath bezierPathWithOvalInRect:self.ball.bounds].CGPath;
     self.ball.alpha = [RSOption(@"AIBallOpacity") doubleValue];
 }
 - (void)updateModelTitle {
