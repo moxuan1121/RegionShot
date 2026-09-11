@@ -100,12 +100,17 @@
     [self layoutIfNeeded];
     self.stitcher = [[RSLongStitcher alloc] initWithTopInset:self.rootViewController.view.safeAreaInsets.top];
     self.statusLabel.text = @"缓慢向上滑动，结束后点击截取";
+    [self startSampling];
+    [self manualTick];
+}
+
+- (void)startSampling {
+    if (self.stopped || self.timer || self.finishedImage) return;
     __weak typeof(self) weakSelf = self;
     self.timer = [NSTimer timerWithTimeInterval:0.25 repeats:YES block:^(NSTimer *timer) {
         [weakSelf manualTick];
     }];
     [NSRunLoop.mainRunLoop addTimer:self.timer forMode:NSRunLoopCommonModes];
-    [self manualTick];
 }
 
 - (void)manualTick {
@@ -127,7 +132,7 @@
     if (!image) {
         self.busy = NO;
         self.statusLabel.text = @"未能读取屏幕，请重试截取";
-        if (self.finishRequested) { self.finishRequested = NO; self.captureButton.enabled = YES; }
+        if (self.finishRequested) { self.finishRequested = NO; self.captureButton.enabled = YES; [self startSampling]; }
         return;
     }
     self.busy = YES;
@@ -149,7 +154,7 @@
             if (self.finishRequested) {
                 if (!finalFrame) [self processImage:[self screenImage] finalFrame:YES];
                 else if (result == RSLongAppendResultUncertain) {
-                    self.finishRequested = NO; self.captureButton.enabled = YES;
+                    self.finishRequested = NO; self.captureButton.enabled = YES; [self startSampling];
                 } else [self donePressed];
             }
         });
