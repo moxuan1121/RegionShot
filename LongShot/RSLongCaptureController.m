@@ -1,6 +1,6 @@
 #import "RSLongCaptureController.h"
 #import "RSLongStitcher.h"
-#import "RSHIDSwipe.h"
+#import <Photos/Photos.h>
 #import "../Capture/RSScreenCapture.h"
 #import "../Geometry/RSOrientation.h"
 #import <QuartzCore/QuartzCore.h>
@@ -15,7 +15,8 @@
 @end
 
 @interface RSLongCaptureController ()
-@property (nonatomic) RSLongCaptureMode mode;
+@property (nonatomic) BOOL finishRequested;
+@property (nonatomic, strong) UIImage *finishedImage;
 @property (nonatomic, strong) RSLongStitcher *stitcher;
 @property (nonatomic, strong) UIVisualEffectView *panel;
 @property (nonatomic, strong) UILabel *statusLabel;
@@ -25,7 +26,7 @@
 @property (nonatomic, strong) dispatch_queue_t processingQueue;
 @property (nonatomic) BOOL busy;
 @property (nonatomic) BOOL stopped;
-@property (nonatomic) NSUInteger unchangedCount;
+
 @property (nonatomic, copy) void (^resultHandler)(UIImage *, UIWindowScene *);
 @property (nonatomic, copy) dispatch_block_t cancelHandler;
 @end
@@ -35,9 +36,8 @@
 + (instancetype)startWithScene:(UIWindowScene *)scene mode:(RSLongCaptureMode)mode
                     completion:(void (^)(UIImage *, UIWindowScene *))completion cancel:(dispatch_block_t)cancel {
     RSLongCaptureController *window = scene ? [[self alloc] initWithWindowScene:scene] : [[self alloc] initWithFrame:UIScreen.mainScreen.bounds];
-    window.mode = MIN(MAX(mode, RSLongCaptureModeRolling), RSLongCaptureModeAutomatic);
     window.resultHandler = completion; window.cancelHandler = cancel;
-    [window configure]; [window makeKeyAndVisible]; [window beginSession];
+    [window configure]; RSApplyWindowOrientation(window, RSActiveOrientation(scene)); window.hidden = NO; [window beginSession];
     return window;
 }
 
@@ -55,10 +55,9 @@
     self.statusLabel.font = [UIFont preferredFontForTextStyle:UIFontTextStyleFootnote];
     self.statusLabel.numberOfLines = 2; [self.panel.contentView addSubview:self.statusLabel];
     UIButton *cancel = [self button:@"取消" action:@selector(cancelPressed)];
-    UIButton *done = [self button:@"完成" action:@selector(donePressed)];
     self.captureButton = [self button:@"截取" action:@selector(capturePressed)];
-    [self.panel.contentView addSubview:cancel]; [self.panel.contentView addSubview:self.captureButton]; [self.panel.contentView addSubview:done];
-    cancel.tag = 1; self.captureButton.tag = 2; done.tag = 3;
+    [self.panel.contentView addSubview:cancel]; [self.panel.contentView addSubview:self.captureButton];
+    cancel.tag = 1; self.captureButton.tag = 2;
 }
 
 - (UIButton *)button:(NSString *)title action:(SEL)action {
@@ -74,7 +73,7 @@
     self.panel.frame = CGRectMake((bounds.size.width - width) / 2, bounds.size.height - insets.bottom - 118, width, 96);
     self.preview.frame = CGRectMake(12, 12, 54, 54);
     self.statusLabel.frame = CGRectMake(76, 9, width - 88, 38);
-    CGFloat buttonWidth = (width - 24) / 3;
+    CGFloat buttonWidth = (width - 24) / 2;
     for (UIView *view in self.panel.contentView.subviews) if ([view isKindOfClass:UIButton.class])
         view.frame = CGRectMake(12 + (view.tag - 1) * buttonWidth, 51, buttonWidth, 38);
 }
@@ -100,84 +99,109 @@
 - (void)beginSession {
     [self layoutIfNeeded];
     self.stitcher = [[RSLongStitcher alloc] initWithTopInset:self.rootViewController.view.safeAreaInsets.top];
-    self.statusLabel.text = @[@"请缓慢向上滚动", @"每次截取后自动滚动", @"正在自动拼接"][self.mode];
-    self.captureButton.hidden = self.mode != RSLongCaptureModeStep;
+    self.statusLabel.text = @"缓慢向上滑动，结束后点击截取";
     __weak typeof(self) weakSelf = self;
-    [self processImage:[self screenImage] completion:^(RSLongAppendResult result) {
-        RSLongCaptureController *window = weakSelf;
-        if (!window || window.stopped) return;
-        if (window.mode == RSLongCaptureModeRolling) {
-            window.timer = [NSTimer scheduledTimerWithTimeInterval:0.42 target:window selector:@selector(manualTick) userInfo:nil repeats:YES];
-        } else if (window.mode == RSLongCaptureModeAutomatic) {
-            [window scrollAndCapture];
-        }
+    self.timer = [NSTimer timerWithTimeInterval:0.25 repeats:YES block:^(NSTimer *timer) {
+        [weakSelf manualTick];
     }];
+    [NSRunLoop.mainRunLoop addTimer:self.timer forMode:NSRunLoopCommonModes];
+    [self manualTick];
 }
 
 - (void)manualTick {
-    if (self.busy || self.stopped) return;
-    [self captureSettledFrameThen:nil];
+    if (self.busy || self.stopped || self.finishRequested) return;
+    [self processImage:[self screenImage] finalFrame:NO];
 }
 
 - (void)capturePressed {
-    if (self.busy || self.stopped) return;
-    [self scrollAndCapture];
+    if (self.stopped || self.finishRequested) return;
+    self.finishRequested = YES;
+    [self.timer invalidate]; self.timer = nil;
+    self.captureButton.enabled = NO;
+    if (self.finishedImage) { [self saveFinishedImage]; return; }
+    if (!self.busy) [self processImage:[self screenImage] finalFrame:YES];
 }
 
-- (void)scrollAndCapture {
-    if (self.busy || self.stopped) return;
-    self.busy = YES; self.captureButton.enabled = NO;
-    if (!RSLongPerformUpwardSwipe(self.bounds.size)) {
-        self.busy = NO; self.captureButton.enabled = YES;
-        self.statusLabel.text = @"自动滚动不可用，请手动滚动后完成。"; return;
-    }
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 420 * NSEC_PER_MSEC), dispatch_get_main_queue(), ^{
-        [self captureSettledFrameThen:^(RSLongAppendResult result) {
-            if (self.mode == RSLongCaptureModeAutomatic && !self.stopped) {
-                if (result == RSLongAppendResultAdded) { self.unchangedCount = 0; [self scrollAndCapture]; }
-                else if (result == RSLongAppendResultUnchanged && ++self.unchangedCount < 2) [self scrollAndCapture];
-                else if (result == RSLongAppendResultUnchanged) [self donePressed];
-                else { self.statusLabel.text = result == RSLongAppendResultLimit ? @"已达到长图上限，请完成。" : @"接缝不确定，已暂停，请检查后完成。"; }
-            }
-        }];
-    });
-}
-
-- (void)captureSettledFrameThen:(void (^)(RSLongAppendResult))completion {
+- (void)processImage:(UIImage *)image finalFrame:(BOOL)finalFrame {
     if (self.stopped) return;
-    self.busy = YES; UIImage *first = [self screenImage];
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 130 * NSEC_PER_MSEC), dispatch_get_main_queue(), ^{
-        if (self.stopped) return;
-        UIImage *second = [self screenImage] ?: first;
-        [self processImage:second completion:completion];
-    });
-}
-
-- (void)processImage:(UIImage *)image completion:(void (^)(RSLongAppendResult))completion {
-    if (!image || self.stopped) { self.busy = NO; return; }
+    if (!image) {
+        self.busy = NO;
+        self.statusLabel.text = @"未能读取屏幕，请重试截取";
+        if (self.finishRequested) { self.finishRequested = NO; self.captureButton.enabled = YES; }
+        return;
+    }
+    self.busy = YES;
+    RSLongStitcher *stitcher = self.stitcher;
     dispatch_async(self.processingQueue, ^{
-        RSLongAppendResult result = [self.stitcher appendImage:image];
+        RSLongAppendResult result = [stitcher appendImage:image];
+        NSUInteger count = stitcher.frameCount;
+        CGFloat height = stitcher.estimatedHeight;
         dispatch_async(dispatch_get_main_queue(), ^{
             if (self.stopped) return;
-            self.busy = NO; self.captureButton.enabled = YES; self.preview.image = image;
-            self.statusLabel.text = [NSString stringWithFormat:@"已拼接 %lu 段 · 约 %.0f 屏", (unsigned long)self.stitcher.frameCount, self.stitcher.estimatedHeight];
-            if (completion) completion(result);
+            self.busy = NO; self.preview.image = image;
+            self.statusLabel.text = result == RSLongAppendResultUncertain
+                ? @"接缝未匹配，请滑回上一段后缓慢上滑"
+                : [NSString stringWithFormat:@"已记录 %lu 段 · 约 %.1f 屏", (unsigned long)count, height];
+            if (result == RSLongAppendResultLimit) {
+                [self.timer invalidate]; self.timer = nil;
+                self.statusLabel.text = @"已到尺寸上限，请点击截取";
+            }
+            if (self.finishRequested) {
+                if (!finalFrame) [self processImage:[self screenImage] finalFrame:YES];
+                else if (result == RSLongAppendResultUncertain) {
+                    self.finishRequested = NO; self.captureButton.enabled = YES;
+                } else [self donePressed];
+            }
         });
     });
 }
 
 - (void)donePressed {
-    if (self.stopped || self.busy || !self.stitcher.frameCount) return;
-    self.busy = YES; self.statusLabel.text = @"正在生成长图…"; self.userInteractionEnabled = NO;
+    if (self.stopped || self.busy) return;
+    self.busy = YES; self.statusLabel.text = @"正在生成长图…";
+    RSLongStitcher *stitcher = self.stitcher;
     dispatch_async(self.processingQueue, ^{
-        NSError *error = nil; UIImage *image = [self.stitcher finish:&error];
+        NSError *error = nil; UIImage *image = [stitcher finish:&error];
         dispatch_async(dispatch_get_main_queue(), ^{
             if (self.stopped) return;
-            if (!image) { self.busy = NO; self.userInteractionEnabled = YES; self.statusLabel.text = error.localizedDescription ?: @"长截图生成失败。"; return; }
-            void (^handler)(UIImage *, UIWindowScene *) = self.resultHandler; UIWindowScene *scene = self.windowScene;
-            [self stop]; if (handler) handler(image, scene);
+            self.busy = NO;
+            if (!image) {
+                self.finishRequested = NO; self.captureButton.enabled = YES;
+                self.statusLabel.text = error.localizedDescription ?: @"生成失败，请重试"; return;
+            }
+            self.finishedImage = image;
+            UIPasteboard.generalPasteboard.image = image;
+            [self saveFinishedImage];
         });
     });
+}
+
+- (void)saveFinishedImage {
+    PHAuthorizationStatus status = [PHPhotoLibrary authorizationStatusForAccessLevel:PHAccessLevelAddOnly];
+    if (status == PHAuthorizationStatusNotDetermined) {
+        [PHPhotoLibrary requestAuthorizationForAccessLevel:PHAccessLevelAddOnly handler:^(PHAuthorizationStatus result) {
+            dispatch_async(dispatch_get_main_queue(), ^{ if (!self.stopped) [self saveFinishedImage]; });
+        }]; return;
+    }
+    if (status != PHAuthorizationStatusAuthorized && status != PHAuthorizationStatusLimited) {
+        self.statusLabel.text = @"已复制；请允许相册写入后重试截取";
+        self.finishRequested = NO; self.captureButton.enabled = YES; return;
+    }
+    self.statusLabel.text = @"已复制，正在保存到相册…";
+    [PHPhotoLibrary.sharedPhotoLibrary performChanges:^{
+        [PHAssetChangeRequest creationRequestForAssetFromImage:self.finishedImage];
+    } completionHandler:^(BOOL success, NSError *error) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if (self.stopped) return;
+            if (!success) {
+                self.statusLabel.text = error.localizedDescription ?: @"已复制，相册保存失败，请重试";
+                self.finishRequested = NO; self.captureButton.enabled = YES; return;
+            }
+            void (^handler)(UIImage *, UIWindowScene *) = self.resultHandler;
+            UIImage *image = self.finishedImage; UIWindowScene *scene = self.windowScene;
+            [self stop]; if (handler) handler(image, scene);
+        });
+    }];
 }
 
 - (void)cancelPressed {
@@ -189,7 +213,7 @@
     [self.timer invalidate]; self.timer = nil;
     RSLongStitcher *stitcher = self.stitcher; self.stitcher = nil;
     if (stitcher) dispatch_async(self.processingQueue, ^{ [stitcher cancel]; });
-    self.resultHandler = nil; self.cancelHandler = nil; self.hidden = YES; self.rootViewController = nil;
+    self.finishedImage = nil; self.resultHandler = nil; self.cancelHandler = nil; self.hidden = YES; self.rootViewController = nil;
 }
 
 @end

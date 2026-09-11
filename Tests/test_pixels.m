@@ -1,6 +1,7 @@
 #include <stdint.h>
 #include <assert.h>
 #import "../Capture/RSCopyPixels.h"
+#import "../LongShot/RSLongPixels.h"
 int main(void) {
     // Deliberately padded rows catch subimage stride/offset assumptions.
     uint8_t bytes[8 * 48] = {0};
@@ -19,6 +20,17 @@ int main(void) {
         const uint8_t *p = out + y * stride + x * 4;
         assert(p[0] == (x + 2) * 20 && p[1] == (y + 3) * 25 && p[2] == 90 && p[3] == 255);
     }
-    CFRelease(data); CGImageRelease(crop);
+    CFRelease(data);
+    CGColorSpaceRef rgb = CGColorSpaceCreateDeviceRGB();
+    uint8_t stitched[5 * 8 * 4] = {0};
+    CGContextRef canvas = CGBitmapContextCreate(stitched, 5, 8, 8, 20, rgb,
+        kCGImageAlphaPremultipliedLast | kCGBitmapByteOrder32Big);
+    RSLongDrawSlice(canvas, crop, 8, 0, 4, 1);
+    RSLongDrawSlice(canvas, crop, 8, 4, 4, 1);
+    for (int y = 0; y < 8; y++) for (int x = 0; x < 5; x++) {
+        const uint8_t *p = stitched + (y * 5 + x) * 4;
+        assert(p[0] == (x + 2) * 20 && p[1] == (y % 4 + 3) * 25);
+    }
+    CGContextRelease(canvas); CGColorSpaceRelease(rgb); CGImageRelease(crop);
     return 0;
 }

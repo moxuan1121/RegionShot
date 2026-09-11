@@ -22,9 +22,9 @@ static inline RSLongMatch RSFindVerticalOverlap(const uint8_t *previous, const u
     result.unchangedScore = (double)unchanged / (double)(width * height);
 
     double second = DBL_MAX;
-    size_t minimum = height / 12, maximum = height * 4 / 5;
+    size_t minimum = 1, maximum = height * 4 / 5;
     for (size_t offset = minimum; offset <= maximum; offset++) {
-        size_t overlap = height - offset, stepY = overlap > 96 ? 2 : 1;
+        size_t overlap = height - offset, stepY = overlap > 120 ? overlap / 120 : 1;
         uint64_t difference = 0, samples = 0;
         for (size_t y = 0; y < overlap; y += stepY) {
             const uint8_t *a = previous + (y + offset) * width;

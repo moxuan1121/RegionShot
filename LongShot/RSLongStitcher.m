@@ -1,5 +1,6 @@
 #import "RSLongStitcher.h"
 #import "RSLongMatch.h"
+#import "RSLongPixels.h"
 #import <ImageIO/ImageIO.h>
 #import <sys/mman.h>
 #import <sys/stat.h>
@@ -9,7 +10,7 @@
 #include <stdlib.h>
 
 static NSString *const RSLongErrorDomain = @"RegionShot.LongCapture";
-enum { RSLongSignatureWidth = 48, RSLongSignatureHeight = 240 };
+enum { RSLongSignatureWidth = 48 };
 
 @interface RSLongSlice : NSObject
 @property (nonatomic, copy) NSString *path;
@@ -56,14 +57,15 @@ enum { RSLongSignatureWidth = 48, RSLongSignatureHeight = 240 };
 }
 
 - (NSData *)graySignature:(CGImageRef)image {
-    NSMutableData *data = [NSMutableData dataWithLength:RSLongSignatureWidth * RSLongSignatureHeight];
+    size_t signatureHeight = CGImageGetHeight(image);
+    NSMutableData *data = [NSMutableData dataWithLength:RSLongSignatureWidth * signatureHeight];
     CGColorSpaceRef gray = CGColorSpaceCreateDeviceGray();
-    CGContextRef context = CGBitmapContextCreate(data.mutableBytes, RSLongSignatureWidth, RSLongSignatureHeight,
+    CGContextRef context = CGBitmapContextCreate(data.mutableBytes, RSLongSignatureWidth, signatureHeight,
         8, RSLongSignatureWidth, gray, kCGImageAlphaNone);
     CGColorSpaceRelease(gray);
     if (!context) return nil;
     CGContextSetInterpolationQuality(context, kCGInterpolationLow);
-    CGContextDrawImage(context, CGRectMake(0, 0, RSLongSignatureWidth, RSLongSignatureHeight), image);
+    CGContextDrawImage(context, CGRectMake(0, 0, RSLongSignatureWidth, signatureHeight), image);
     CGContextRelease(context);
     return data;
 }
@@ -104,33 +106,36 @@ enum { RSLongSignatureWidth = 48, RSLongSignatureHeight = 240 };
     }
     NSData *gray = [self graySignature:clean];
     if (!gray) { CGImageRelease(clean); return RSLongAppendResultUncertain; }
-    const size_t trim = RSLongSignatureHeight * 12 / 100;
+    const size_t trim = height * 12 / 100;
     RSLongMatch match = RSFindVerticalOverlap((const uint8_t *)self.previousGray.bytes + trim * RSLongSignatureWidth,
         (const uint8_t *)gray.bytes + trim * RSLongSignatureWidth, RSLongSignatureWidth,
-        RSLongSignatureHeight - trim * 2);
+        height - trim * 2);
     if (match.unchangedScore < 2.2) {
-        self.previousGray = gray; CGImageRelease(clean); return RSLongAppendResultUnchanged;
+        CGImageRelease(clean); return RSLongAppendResultUnchanged;
     }
     if (!match.offset || match.score > 18.0) {
         CGImageRelease(clean); return RSLongAppendResultUncertain;
     }
-    size_t offset = (size_t)llround((double)match.offset * height /
-        (double)(RSLongSignatureHeight - trim * 2));
+    size_t offset = match.offset;
     const uint8_t *oldBytes = self.previousGray.bytes, *newBytes = gray.bytes;
-    size_t fixedBottom = 0, misses = 0, maximumFixed = RSLongSignatureHeight / 5;
+    size_t fixedBottom = 0, misses = 0, maximumFixed = height / 5;
     for (size_t row = 0; row < maximumFixed; row++) {
-        size_t y = RSLongSignatureHeight - 1 - row; unsigned difference = 0;
+        size_t y = height - 1 - row; unsigned difference = 0;
         for (size_t x = 0; x < RSLongSignatureWidth; x += 2)
             difference += abs((int)oldBytes[y * RSLongSignatureWidth + x] - (int)newBytes[y * RSLongSignatureWidth + x]);
         double score = difference / (double)(RSLongSignatureWidth / 2);
         if (score < 3.0) { fixedBottom = row + 1; misses = 0; }
         else if (++misses >= 2) break;
     }
-    size_t bottom = (size_t)llround((double)fixedBottom * height / RSLongSignatureHeight);
-    if (offset <= bottom + 4 || offset > height * 4 / 5) {
+    size_t bottom = fixedBottom;
+    if (offset + bottom >= height || offset > height * 4 / 5) {
         CGImageRelease(clean); return RSLongAppendResultUncertain;
     }
-    BOOL saved = [self writeSlice:clean y:height - offset height:offset - bottom];
+    RSLongSlice *previous = self.slices.lastObject;
+    // Only the initial full frame includes the fixed footer. Subsequent slices exclude it.
+    size_t footer = self.slices.count == 1 ? MIN(bottom, previous.height - 1) : 0;
+    BOOL saved = [self writeSlice:clean y:height - bottom - offset height:offset];
+    if (saved && footer) { previous.height -= footer; self.totalHeight -= footer; }
     if (saved) self.previousGray = gray;
     CGImageRelease(clean);
     return saved ? RSLongAppendResultAdded : RSLongAppendResultUncertain;
@@ -166,12 +171,19 @@ enum { RSLongSignatureWidth = 48, RSLongSignatureHeight = 240 };
     CGColorSpaceRelease(color);
     if (!context) { munmap(bytes, length); return nil; }
     CGContextSetInterpolationQuality(context, kCGInterpolationHigh);
-    CGContextTranslateCTM(context, 0, height);
-    CGContextScaleCTM(context, scale, -scale);
     size_t y = 0;
     for (RSLongSlice *slice in self.slices) @autoreleasepool {
         UIImage *image = [UIImage imageWithContentsOfFile:slice.path];
-        if (image.CGImage) CGContextDrawImage(context, CGRectMake(0, y, slice.width, slice.height), image.CGImage);
+        CGImageRef crop = image.CGImage ? CGImageCreateWithImageInRect(image.CGImage,
+            CGRectMake(0, 0, slice.width, slice.height)) : NULL;
+        if (!crop) {
+            CGContextRelease(context); munmap(bytes, length);
+            if (error) *error = [NSError errorWithDomain:RSLongErrorDomain code:5
+                userInfo:@{NSLocalizedDescriptionKey:@"长截图片段读取失败，请重新截取。"}];
+            return nil;
+        }
+        RSLongDrawSlice(context, crop, height, y, slice.height, scale);
+        CGImageRelease(crop);
         y += slice.height;
     }
     CGImageRef output = CGBitmapContextCreateImage(context);

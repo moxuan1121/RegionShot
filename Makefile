@@ -15,7 +15,6 @@ RegionShot_FILES = Selection/RSFreezeSystemHooks.xm Trigger.xm Preferences/RSURL
 	Capture/RSScreenCapture.m \
 	LongShot/RSLongCaptureController.m \
 	LongShot/RSLongStitcher.m \
-	LongShot/RSHIDSwipe.m \
 	Selection/RSSelectionWindow.m \
 	Selection/RSSelectionView.m \
 	Selection/RSSelectionToolbar.m \

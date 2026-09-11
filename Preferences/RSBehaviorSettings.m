@@ -19,6 +19,10 @@
     NSDictionary *option = [self optionAt:path];
     UITableViewCell *cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:nil];
     cell.textLabel.text = option[@"title"]; cell.textLabel.numberOfLines = 0;
+    if (option[@"readOnlyText"]) {
+        cell.detailTextLabel.text = option[@"readOnlyText"]; cell.detailTextLabel.numberOfLines = 0;
+        cell.selectionStyle = UITableViewCellSelectionStyleNone; return cell;
+    }
     id value = RSOption(option[@"key"]);
     if ([option[@"default"] isKindOfClass:NSNumber.class] && !option[@"min"]) {
         UISwitch *toggle = [UISwitch new]; toggle.on = [value boolValue]; toggle.accessibilityIdentifier = option[@"key"];
@@ -47,6 +51,7 @@
         [self.navigationController pushViewController:page animated:YES]; return;
     }
     NSDictionary *option = [self optionAt:path];
+    if (option[@"readOnlyText"]) return;
     NSArray *choices = option[@"choices"];
     if (choices.count) {
         UIAlertController *sheet = [UIAlertController alertControllerWithTitle:option[@"title"] message:nil preferredStyle:UIAlertControllerStyleActionSheet];

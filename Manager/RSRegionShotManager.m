@@ -129,7 +129,7 @@
         mode:[RSOption(@"LongCaptureMode") integerValue]
         completion:^(UIImage *image, UIWindowScene *resultScene) {
             RSRegionShotManager *manager = weakSelf; manager.longCaptureWindow = nil; manager.capturing = NO;
-            [manager createFloatingSnap:image windowScene:resultScene];
+
         } cancel:^{
             RSRegionShotManager *manager = weakSelf; manager.longCaptureWindow = nil; manager.capturing = NO;
         }];

@@ -87,6 +87,8 @@ static BOOL RSStageWeChatScanImage(UIImage *image) {
         [controller.view addSubview:_selectionView];
         _toolbar = [[RSSelectionToolbar alloc] initWithFrame:CGRectZero];
         _toolbarScroll = [UIScrollView new];
+        _toolbarScroll.showsHorizontalScrollIndicator = NO;
+        _toolbarScroll.showsVerticalScrollIndicator = NO;
         [controller.view addSubview:_toolbarScroll];
         _toolbarBlur = [[UIVisualEffectView alloc] initWithEffect:[UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemChromeMaterialDark]];
         _toolbarBlur.userInteractionEnabled = NO;
