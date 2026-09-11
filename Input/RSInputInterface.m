@@ -105,6 +105,7 @@ static NSString *RSInputFullText(id<UITextInput> target) {
 @property(strong) UIButton *clipboardButton;
 @property(strong) UIButton *visitButton;
 @property(strong) NSURL *visitURL;
+@property BOOL visitURLChecked;
 @property(strong) RSInputAnchoredMenuView *searchMenu;
 @property(weak) UIResponder<UITextInput> *target;
 @property(copy) NSString *original;
@@ -134,6 +135,7 @@ static NSString *RSInputFullText(id<UITextInput> target) {
 - (void)run:(NSDictionary *)action copiedText:(NSString *)copied search:(void (^)(NSString *))search;
 - (void)close;
 - (void)enterTokens;
+- (void)updateTokenActions;
 - (void)openCopiedText:(NSString *)text;
 @end
 
@@ -354,6 +356,7 @@ static NSString *RSInputFullText(id<UITextInput> target) {
     self.clipboardButton = nil;
     self.visitButton = nil;
     self.visitURL = nil;
+    self.visitURLChecked = NO;
     [self.searchMenu dismiss];
     self.searchMenu = nil;
     self.statusLabel = nil;
@@ -457,10 +460,11 @@ static NSString *RSInputFullText(id<UITextInput> target) {
     self.result = result;
     BOOL complete = !error && RSInputTrim(result).length > 0;
     self.completedResult = complete;
+    self.visitURL = result.length ? RSContainedWebURL(result) : nil;
+    self.visitURLChecked = YES;
     self.statusLabel.text = complete ? @"已完成" : @"未完成 · 原文未修改";
     [self displayText:error ? [NSString stringWithFormat:@"%@%@", error, result.length ? [@"\n\n已接收的部分内容：\n" stringByAppendingString:result] : @""] : result];
-    self.clipboardButton.enabled = result.length > 0;
-    self.replaceButton.enabled = complete && (self.searchAction || !self.inputInvalidated);
+    [self updateTokenActions];
     UIAccessibilityPostNotification(UIAccessibilityAnnouncementNotification, complete ? @"AI 结果已就绪" : @"AI 请求未完成");
 }
 - (void)URLSession:(NSURLSession *)session dataTask:(NSURLSessionDataTask *)task
@@ -534,7 +538,6 @@ static NSString *RSInputFullText(id<UITextInput> target) {
 - (void)leaveTokens {
     [self.tokenView removeFromSuperview];
     self.tokenView = nil;
-    self.visitURL = nil;
     self.overlayWindow.windowLevel = RSInputPanelWindowLevel(self.windowOptions, @"aiWindowPriority");
     self.textView.hidden = NO;
     self.header.hidden = NO;
@@ -558,6 +561,7 @@ static NSString *RSInputFullText(id<UITextInput> target) {
     if (![self show]) return;
     self.result = text;
     self.completedResult = YES;
+    self.visitURLChecked = NO;
     self.textView.accessibilityLabel = @"复制的文字";
     [self displayText:text];
     [self enterTokens];
@@ -566,8 +570,11 @@ static NSString *RSInputFullText(id<UITextInput> target) {
     if (self.generating || !self.completedResult || self.tokenView) return;
     NSArray *pieces = RSInputTextPieces(self.result);
     if (!pieces.count) return;
+    if (!self.visitURLChecked) {
+        self.visitURL = RSContainedWebURL(self.result);
+        self.visitURLChecked = YES;
+    }
     self.tokenView = [[RSInputTokenView alloc] initWithPieces:pieces];
-    self.visitURL = self.searchAction ? RSContainedWebURL(self.result) : nil;
     self.overlayWindow.windowLevel = RSInputPanelWindowLevel(self.windowOptions, @"tokenWindowPriority");
     __weak RSInputPanel *weakSelf = self;
     self.tokenView.onSelectionChanged = ^{ [weakSelf updateTokenActions]; };
