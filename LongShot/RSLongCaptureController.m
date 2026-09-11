@@ -111,13 +111,24 @@
     CGSize displaySize = self.rootViewController.view.bounds.size;
     CGFloat height = CGRectGetMinY(self.panel.frame);
     if (displaySize.width <= 0 || height <= 0) return nil;
-    self.hidden = YES; [CATransaction flush];
     UIImage *screen = [RSScreenCapture captureScreen];
-    self.hidden = NO; [CATransaction flush];
     if (!screen) return nil;
     return [RSScreenCapture cropImage:screen
                                toRect:CGRectMake(0, displaySize.height - height, displaySize.width, height)
                           displaySize:displaySize];
+}
+
+- (void)captureFinalFrame {
+    if (self.stopped) return;
+    self.busy = YES;
+    self.hidden = YES; [CATransaction flush];
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 80 * NSEC_PER_MSEC), dispatch_get_main_queue(), ^{
+        if (self.stopped) return;
+        UIImage *image = [self finalScreenImage];
+        self.hidden = NO; [CATransaction flush];
+        self.busy = NO;
+        [self processImage:image finalFrame:YES];
+    });
 }
 
 - (void)beginSession {
@@ -149,7 +160,7 @@
     [self.timer invalidate]; self.timer = nil;
     self.captureButton.enabled = NO;
     if (self.finishedImage) { [self saveFinishedImage]; return; }
-    if (!self.busy) [self processImage:[self finalScreenImage] finalFrame:YES];
+    if (!self.busy) [self captureFinalFrame];
 }
 
 - (void)processImage:(UIImage *)image finalFrame:(BOOL)finalFrame {
@@ -179,7 +190,7 @@
                     self.statusLabel.text = @"已到尺寸上限，请点击截取";
                 }
                 if (self.finishRequested) {
-                    if (!finalFrame) [self processImage:[self finalScreenImage] finalFrame:YES];
+                    if (!finalFrame) [self captureFinalFrame];
                     else if (result == RSLongAppendResultUncertain) {
                         self.finishRequested = NO; self.captureButton.enabled = YES; [self startSampling];
                     } else [self donePressed];
