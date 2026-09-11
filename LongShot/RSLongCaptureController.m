@@ -137,7 +137,10 @@
     self.stitcher = [[RSLongStitcher alloc] initWithTopInset:self.rootViewController.view.safeAreaInsets.top];
     self.statusLabel.text = @"缓慢向上滑动，结束后点击截取";
     [self startSampling];
-    [self manualTick];
+    [CATransaction flush];
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 80 * NSEC_PER_MSEC), dispatch_get_main_queue(), ^{
+        [self manualTick];
+    });
 }
 
 - (void)startSampling {
