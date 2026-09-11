@@ -10,7 +10,8 @@
     CGFloat width = CGRectGetWidth(self.bounds);
     CGFloat size = RSSelectionMenuSize(YES);
     BOOL hideNames = RSSelectionMenuHideNames();
-    self.imageView.frame = CGRectMake((width - size) / 2.0, 3, size, size);
+    CGFloat imageY = hideNames ? (CGRectGetHeight(self.bounds) - size) / 2.0 : 3;
+    self.imageView.frame = CGRectMake((width - size) / 2.0, imageY, size, size);
     self.titleLabel.frame = hideNames ? CGRectZero : CGRectMake(0, size + 5, width, 16);
     self.titleLabel.textAlignment = NSTextAlignmentCenter;
     self.titleLabel.font = [UIFont systemFontOfSize:RSSelectionMenuSize(NO) weight:UIFontWeightMedium];

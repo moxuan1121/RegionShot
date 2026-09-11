@@ -15,7 +15,7 @@ NSArray<NSDictionary *> *RSOptionGroups(void) {
             @{@"key":@"CaptureHaptic", @"title":@"截图反馈振动", @"default":@YES} ]},
         @{@"title":@"菜单外观", @"items":@[
             @{@"key":@"MenuBlurOpacity", @"title":@"菜单不透明度", @"default":@0.88, @"min":@0.15, @"max":@1.0} ]},
-        @{@"title":@"悬浮图片", @"items":@[
+        @{@"title":@"悬浮图片", @"footer":@"“初始宽度上限”仅限制从截图历史重新打开的悬浮图片。", @"items":@[
             @{@"key":@"FloatShadow", @"title":@"显示阴影", @"default":@YES},
             @{@"key":@"FloatDoubleClose", @"title":@"双击关闭当前悬浮图片", @"default":@YES},
             @{@"key":@"FloatOpacity", @"title":@"悬浮图片不透明度", @"default":@1.0, @"min":@0.25, @"max":@1.0},
