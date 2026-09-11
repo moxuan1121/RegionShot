@@ -3,6 +3,7 @@
 #import <Photos/Photos.h>
 #import "../Capture/RSScreenCapture.h"
 #import "../Geometry/RSOrientation.h"
+#import "../Geometry/RSMaterialBackground.h"
 #import <QuartzCore/QuartzCore.h>
 
 @interface RSLongCaptureRoot : UIViewController
@@ -18,7 +19,7 @@
 @property (nonatomic) BOOL finishRequested;
 @property (nonatomic, strong) UIImage *finishedImage;
 @property (nonatomic, strong) RSLongStitcher *stitcher;
-@property (nonatomic, strong) UIVisualEffectView *panel;
+@property (nonatomic, strong) UIView *panel;
 @property (nonatomic, strong) UILabel *statusLabel;
 @property (nonatomic, strong) UIImageView *preview;
 @property (nonatomic, strong) UIButton *captureButton;
@@ -46,23 +47,22 @@
     self.windowLevel = UIWindowLevelAlert + 210; self.backgroundColor = UIColor.clearColor;
     self.processingQueue = dispatch_queue_create("com.moxuan.regionshot.long-stitch", DISPATCH_QUEUE_SERIAL);
     RSLongCaptureRoot *root = [RSLongCaptureRoot new]; root.view.backgroundColor = UIColor.clearColor; self.rootViewController = root;
-    self.panel = [[UIVisualEffectView alloc] initWithEffect:[UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemChromeMaterialDark]];
-    self.panel.layer.cornerRadius = 22; self.panel.clipsToBounds = YES; [root.view addSubview:self.panel];
+    self.panel = [UIView new]; RSInstallMaterialBackground(self.panel, 22); [root.view addSubview:self.panel];
     self.preview = [UIImageView new]; self.preview.contentMode = UIViewContentModeScaleAspectFill; self.preview.clipsToBounds = YES;
-    self.preview.layer.cornerRadius = 10; self.preview.backgroundColor = [UIColor colorWithWhite:1 alpha:0.08];
-    [self.panel.contentView addSubview:self.preview];
-    self.statusLabel = [UILabel new]; self.statusLabel.textColor = UIColor.whiteColor;
+    self.preview.layer.cornerRadius = 10; self.preview.backgroundColor = UIColor.tertiarySystemFillColor;
+    [self.panel addSubview:self.preview];
+    self.statusLabel = [UILabel new]; self.statusLabel.textColor = UIColor.labelColor;
     self.statusLabel.font = [UIFont preferredFontForTextStyle:UIFontTextStyleFootnote];
-    self.statusLabel.numberOfLines = 2; [self.panel.contentView addSubview:self.statusLabel];
+    self.statusLabel.numberOfLines = 2; [self.panel addSubview:self.statusLabel];
     UIButton *cancel = [self button:@"取消" action:@selector(cancelPressed)];
     self.captureButton = [self button:@"截取" action:@selector(capturePressed)];
-    [self.panel.contentView addSubview:cancel]; [self.panel.contentView addSubview:self.captureButton];
+    [self.panel addSubview:cancel]; [self.panel addSubview:self.captureButton];
     cancel.tag = 1; self.captureButton.tag = 2;
 }
 
 - (UIButton *)button:(NSString *)title action:(SEL)action {
     UIButton *button = [UIButton buttonWithType:UIButtonTypeSystem]; [button setTitle:title forState:UIControlStateNormal];
-    [button setTitleColor:UIColor.whiteColor forState:UIControlStateNormal]; button.titleLabel.font = [UIFont systemFontOfSize:15 weight:UIFontWeightSemibold];
+    [button setTitleColor:UIColor.systemBlueColor forState:UIControlStateNormal]; button.titleLabel.font = [UIFont systemFontOfSize:15 weight:UIFontWeightSemibold];
     [button addTarget:self action:action forControlEvents:UIControlEventTouchUpInside]; return button;
 }
 
@@ -74,7 +74,7 @@
     self.preview.frame = CGRectMake(12, 12, 54, 54);
     self.statusLabel.frame = CGRectMake(76, 9, width - 88, 38);
     CGFloat buttonWidth = (width - 24) / 2;
-    for (UIView *view in self.panel.contentView.subviews) if ([view isKindOfClass:UIButton.class])
+    for (UIView *view in self.panel.subviews) if ([view isKindOfClass:UIButton.class])
         view.frame = CGRectMake(12 + (view.tag - 1) * buttonWidth, 51, buttonWidth, 38);
 }
 

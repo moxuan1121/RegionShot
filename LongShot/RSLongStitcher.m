@@ -110,7 +110,8 @@ enum { RSLongSignatureWidth = 48 };
     RSLongMatch match = RSFindVerticalOverlap((const uint8_t *)self.previousGray.bytes + trim * RSLongSignatureWidth,
         (const uint8_t *)gray.bytes + trim * RSLongSignatureWidth, RSLongSignatureWidth,
         height - trim * 2);
-    if (match.unchangedScore < 2.2) {
+    // Mostly blank pages can move while their average difference remains tiny.
+    if (match.changedFraction < 0.002) {
         CGImageRelease(clean); return RSLongAppendResultUnchanged;
     }
     if (!match.offset || match.score > 18.0) {

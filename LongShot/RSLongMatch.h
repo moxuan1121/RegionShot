@@ -11,15 +11,21 @@ typedef struct {
     double score;
     double margin;
     double unchangedScore;
+    double changedFraction;
 } RSLongMatch;
 
 static inline RSLongMatch RSFindVerticalOverlap(const uint8_t *previous, const uint8_t *current,
                                                  size_t width, size_t height) {
-    RSLongMatch result = {0, DBL_MAX, 0, 0};
+    RSLongMatch result = {0, DBL_MAX, 0, 0, 0};
     if (!previous || !current || width < 8 || height < 24) return result;
-    uint64_t unchanged = 0;
-    for (size_t i = 0; i < width * height; i++) unchanged += (uint64_t)abs((int)previous[i] - (int)current[i]);
+    uint64_t unchanged = 0, changed = 0;
+    for (size_t i = 0; i < width * height; i++) {
+        unsigned difference = (unsigned)abs((int)previous[i] - (int)current[i]);
+        unchanged += difference;
+        changed += difference > 8;
+    }
     result.unchangedScore = (double)unchanged / (double)(width * height);
+    result.changedFraction = (double)changed / (double)(width * height);
 
     double second = DBL_MAX;
     size_t minimum = 1, maximum = height * 4 / 5;

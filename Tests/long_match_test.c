@@ -21,6 +21,12 @@ int main(void) {
         assert(match.offset == shift && match.score == 0);
     }
     match = RSFindVerticalOverlap(first, first, W, H);
-    assert(match.unchangedScore == 0);
+    assert(match.unchangedScore == 0 && match.changedFraction == 0);
+
+    memset(first, 255, sizeof(first)); memset(second, 255, sizeof(second));
+    for (size_t y = 12; y < 16; y++) memset(first + y * W + 4, 0, 24);
+    for (size_t y = 5; y < 9; y++) memset(second + y * W + 4, 0, 24);
+    match = RSFindVerticalOverlap(first, second, W, H);
+    assert(match.changedFraction > 0.002);
     return 0;
 }

@@ -23,7 +23,8 @@ assert '@finally { [file closeAndReturnError:NULL]; }' in store
 trigger = (root / 'Trigger.xm').read_text(encoding='utf-8')
 assert 'generation == RSNativeScreenshotGeneration' in trigger
 capture = (root / 'Capture/RSScreenCapture.m').read_text(encoding='utf-8')
-assert '_snapshotExcludingWindows:withRect:' not in capture
+assert '_snapshotExcludingWindows:withRect:' in capture
+assert 'NSInvocation' in capture
 assert 'for (UIWindow *window in visible) window.hidden = NO;' in capture
 chat = (root / 'AI/RSChatController.m').read_text(encoding='utf-8')
 assert '能否解析此文件取决于' not in chat
