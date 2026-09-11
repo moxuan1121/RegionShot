@@ -12,6 +12,7 @@
 #import "RSInputOptions.h"
 #import "RSInputAnchoredMenuView.h"
 #import "../Geometry/RSOrientation.h"
+#import "../Capture/RSWebURL.h"
 
 void RSInputOpenSearchEngine(NSDictionary *engine, NSString *text) {
     NSURL *url = RSInputSearchURL(engine[@"engine"], text);
@@ -102,6 +103,8 @@ static NSString *RSInputFullText(id<UITextInput> target) {
 @property(strong) UIButton *backButton;
 @property(strong) UIButton *replaceButton;
 @property(strong) UIButton *clipboardButton;
+@property(strong) UIButton *visitButton;
+@property(strong) NSURL *visitURL;
 @property(strong) RSInputAnchoredMenuView *searchMenu;
 @property(weak) UIResponder<UITextInput> *target;
 @property(copy) NSString *original;
@@ -175,7 +178,7 @@ static NSString *RSInputFullText(id<UITextInput> target) {
     configuration.background.cornerRadius = 12;
     configuration.baseBackgroundColor = UIColor.systemBlueColor;
     configuration.contentInsets = NSDirectionalEdgeInsetsMake(11, 6, 11, 6);
-    configuration.image = [UIImage systemImageNamed:[title isEqualToString:@"搜索"] ? @"magnifyingglass" : [title isEqualToString:@"替换"] ? @"arrow.left.arrow.right" : [title isEqualToString:@"复制"] ? @"doc.on.doc" : @"xmark"];
+    configuration.image = [UIImage systemImageNamed:[title isEqualToString:@"搜索"] ? @"magnifyingglass" : [title isEqualToString:@"替换"] ? @"arrow.left.arrow.right" : [title isEqualToString:@"复制"] ? @"doc.on.doc" : [title isEqualToString:@"访问"] ? @"safari" : @"xmark"];
     configuration.imagePadding = 5;
     configuration.preferredSymbolConfigurationForImage = [UIImageSymbolConfiguration configurationWithPointSize:14 weight:UIImageSymbolWeightSemibold];
     button.configuration = configuration;
@@ -243,12 +246,14 @@ static NSString *RSInputFullText(id<UITextInput> target) {
         self.replaceButton.accessibilityHint = @"轻按使用默认搜索引擎，长按选择搜索引擎";
     }
     self.clipboardButton = [self button:@"复制" action:@selector(copyResult)];
+    self.visitButton = [self button:@"访问" action:@selector(visitResult)];
+    self.visitButton.hidden = YES;
     UIButton *close = [self button:@"关闭" action:@selector(close)];
     UILongPressGestureRecognizer *clearSelection = [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(clearTokenSelection:)];
     clearSelection.minimumPressDuration = 0.5;
     [close addGestureRecognizer:clearSelection];
     close.accessibilityHint = @"轻按关闭，分词时长按取消全部选择";
-    UIStackView *buttons = [[UIStackView alloc] initWithArrangedSubviews:@[self.replaceButton, self.clipboardButton, close]];
+    UIStackView *buttons = [[UIStackView alloc] initWithArrangedSubviews:@[self.replaceButton, self.clipboardButton, self.visitButton, close]];
     buttons.distribution = UIStackViewDistributionFillEqually;
     buttons.spacing = 8;
     self.statusLabel = [UILabel new];
@@ -347,6 +352,8 @@ static NSString *RSInputFullText(id<UITextInput> target) {
     self.textView = nil;
     self.replaceButton = nil;
     self.clipboardButton = nil;
+    self.visitButton = nil;
+    self.visitURL = nil;
     [self.searchMenu dismiss];
     self.searchMenu = nil;
     self.statusLabel = nil;
@@ -521,10 +528,13 @@ static NSString *RSInputFullText(id<UITextInput> target) {
     BOOL hasText = self.tokenView ? self.tokenView.hasSelection : self.result.length > 0;
     self.clipboardButton.enabled = hasText;
     self.replaceButton.enabled = hasText && self.completedResult && (self.searchAction || !self.inputInvalidated);
+    self.visitButton.hidden = self.visitURL == nil;
+    self.visitButton.enabled = self.visitURL != nil;
 }
 - (void)leaveTokens {
     [self.tokenView removeFromSuperview];
     self.tokenView = nil;
+    self.visitURL = nil;
     self.overlayWindow.windowLevel = RSInputPanelWindowLevel(self.windowOptions, @"aiWindowPriority");
     self.textView.hidden = NO;
     self.header.hidden = NO;
@@ -557,6 +567,7 @@ static NSString *RSInputFullText(id<UITextInput> target) {
     NSArray *pieces = RSInputTextPieces(self.result);
     if (!pieces.count) return;
     self.tokenView = [[RSInputTokenView alloc] initWithPieces:pieces];
+    self.visitURL = self.searchAction ? RSContainedWebURL(self.result) : nil;
     self.overlayWindow.windowLevel = RSInputPanelWindowLevel(self.windowOptions, @"tokenWindowPriority");
     __weak RSInputPanel *weakSelf = self;
     self.tokenView.onSelectionChanged = ^{ [weakSelf updateTokenActions]; };
@@ -617,6 +628,12 @@ static NSString *RSInputFullText(id<UITextInput> target) {
         [self close];
         UIAccessibilityPostNotification(UIAccessibilityAnnouncementNotification, @"已复制");
     }
+}
+- (void)visitResult {
+    NSURL *url = self.visitURL;
+    if (!url) return;
+    [self close];
+    [UIApplication.sharedApplication openURL:url options:@{} completionHandler:nil];
 }
 - (void)replace {
     UIResponder<UITextInput> *target = self.target;

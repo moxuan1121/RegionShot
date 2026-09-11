@@ -28,6 +28,8 @@ int main(void) {
         assert([RSBarcodeWebURL(@"example.jp").host isEqualToString:@"example.jp"]);
         assert([RSBarcodeWebURL(@"example.co.jp/path").host isEqualToString:@"example.co.jp"]);
         assert(RSBarcodeWebURL(@"普通二维码文本") == nil);
+        assert([RSContainedWebURL(@"请访问 https://example.com/path 获取详情").host isEqualToString:@"example.com"]);
+        assert(RSContainedWebURL(@"这里没有网址") == nil);
         CGImageRelease(cg);
         puts("RegionShot real QR generation/recognition check passed");
     }
