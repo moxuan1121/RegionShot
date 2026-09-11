@@ -11,6 +11,7 @@
 #import "../AI/RSChatController.h"
 #import "../Geometry/RSOrientation.h"
 #import "../Input/RSInputStore.h"
+#import "../Capture/RSWebURL.h"
 static NSDictionary *RSKAConfig(void) { return RSInputConfig(); }
 static void RSKAOpenSearchEngine(NSDictionary *engine, NSString *text) {
     NSURL *url = RSKASearchURL(engine[@"engine"], text);
@@ -69,6 +70,9 @@ static UIWindowLevel RSKAPanelWindowLevel(NSDictionary *options, NSString *key) 
 @property(strong) UIButton *backButton;
 @property(strong) UIButton *replaceButton;
 @property(strong) UIButton *clipboardButton;
+@property(strong) UIButton *visitButton;
+@property(strong) NSURL *visitURL;
+@property BOOL visitURLChecked;
 @property(strong) RSKAAnchoredMenuView *searchMenu;
 @property(copy) NSString *result;
 @property BOOL generating;
@@ -84,6 +88,7 @@ static UIWindowLevel RSKAPanelWindowLevel(NSDictionary *options, NSString *key) 
 @property(copy) dispatch_block_t onClose;
 - (void)close;
 - (void)enterTokens;
+- (void)updateTokenActions;
 @end
 @implementation RSKAPanel
 - (void)observePanelEvents {
@@ -113,7 +118,7 @@ static UIWindowLevel RSKAPanelWindowLevel(NSDictionary *options, NSString *key) 
     configuration.background.cornerRadius = 12;
     configuration.baseBackgroundColor = UIColor.systemBlueColor;
     configuration.contentInsets = NSDirectionalEdgeInsetsMake(11, 6, 11, 6);
-    configuration.image = [UIImage systemImageNamed:[title isEqualToString:@"搜索"] ? @"magnifyingglass" : [title isEqualToString:@"替换"] ? @"arrow.left.arrow.right" : [title isEqualToString:@"复制"] ? @"doc.on.doc" : @"xmark"];
+    configuration.image = [UIImage systemImageNamed:[title isEqualToString:@"搜索"] ? @"magnifyingglass" : [title isEqualToString:@"替换"] ? @"arrow.left.arrow.right" : [title isEqualToString:@"复制"] ? @"doc.on.doc" : [title isEqualToString:@"访问"] ? @"safari" : @"xmark"];
     configuration.imagePadding = 5;
     configuration.preferredSymbolConfigurationForImage = [UIImageSymbolConfiguration configurationWithPointSize:14 weight:UIImageSymbolWeightSemibold];
     button.configuration = configuration;
@@ -181,12 +186,14 @@ static UIWindowLevel RSKAPanelWindowLevel(NSDictionary *options, NSString *key) 
         self.replaceButton.accessibilityHint = @"轻按使用默认搜索引擎，长按选择搜索引擎";
     }
     self.clipboardButton = [self button:@"复制" action:@selector(copyResult)];
+    self.visitButton = [self button:@"访问" action:@selector(visitResult)];
+    self.visitButton.hidden = YES;
     UIButton *close = [self button:@"关闭" action:@selector(close)];
     UILongPressGestureRecognizer *clearSelection = [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(clearTokenSelection:)];
     clearSelection.minimumPressDuration = 0.5;
     [close addGestureRecognizer:clearSelection];
     close.accessibilityHint = @"轻按关闭，分词时长按取消全部选择";
-    UIStackView *buttons = [[UIStackView alloc] initWithArrangedSubviews:@[self.replaceButton, self.clipboardButton, close]];
+    UIStackView *buttons = [[UIStackView alloc] initWithArrangedSubviews:@[self.replaceButton, self.clipboardButton, self.visitButton, close]];
     buttons.distribution = UIStackViewDistributionFillEqually;
     buttons.spacing = 8;
     self.statusLabel = [UILabel new];
@@ -269,6 +276,7 @@ static UIWindowLevel RSKAPanelWindowLevel(NSDictionary *options, NSString *key) 
     RSCloseWindowSurface(self.overlayWindow, self.panel); self.panel = nil;
     [self.previousWindow makeKeyWindow]; self.overlayWindow = nil;
     self.tokenView = nil; self.generating = NO;
+    self.visitURL = nil; self.visitURLChecked = NO;
     if (callback) callback();
 }
 - (NSString *)actionText {
@@ -278,6 +286,8 @@ static UIWindowLevel RSKAPanelWindowLevel(NSDictionary *options, NSString *key) 
     BOOL hasText = self.tokenView ? self.tokenView.hasSelection : self.result.length > 0;
     self.clipboardButton.enabled = hasText;
     self.replaceButton.enabled = hasText && self.completedResult;
+    self.visitButton.hidden = self.visitURL == nil;
+    self.visitButton.enabled = self.visitURL != nil;
 }
 - (void)leaveTokens {
     [self.tokenView removeFromSuperview];
@@ -302,6 +312,10 @@ static UIWindowLevel RSKAPanelWindowLevel(NSDictionary *options, NSString *key) 
     if (self.generating || !self.completedResult || self.tokenView) return;
     NSArray *pieces = RSKATextPieces(self.result);
     if (!pieces.count) { self.statusLabel.text = @"文字超过 24,000 字，暂不支持分词；可复制全文。"; [self updateTokenActions]; return; }
+    if (!self.visitURLChecked) {
+        self.visitURL = RSContainedWebURL(self.result);
+        self.visitURLChecked = YES;
+    }
     self.tokenView = [[RSKATokenView alloc] initWithPieces:pieces];
     self.overlayWindow.windowLevel = RSKAPanelWindowLevel(self.windowOptions, @"tokenWindowPriority");
     __weak RSKAPanel *weakSelf = self;
@@ -342,6 +356,12 @@ static UIWindowLevel RSKAPanelWindowLevel(NSDictionary *options, NSString *key) 
         UIAccessibilityPostNotification(UIAccessibilityAnnouncementNotification, @"已复制");
     }
 }
+- (void)visitResult {
+    NSURL *url = self.visitURL;
+    if (!url) return;
+    [self close];
+    [UIApplication.sharedApplication openURL:url options:@{} completionHandler:nil];
+}
 @end
 static RSKAPanel *RSKASharedPanel(void) {
     static RSKAPanel *panel; static dispatch_once_t once;
@@ -360,6 +380,10 @@ void RSKAUpdateAnswer(NSString *text, BOOL finished, NSString *error) {
     RSKAPanel *panel = RSKASharedPanel(); if (!panel.panel) return;
     panel.result = text ?: @""; panel.generating = !finished;
     panel.completedResult = finished && panel.result.length > 0;
+    if (finished) {
+        panel.visitURL = RSContainedWebURL(panel.result);
+        panel.visitURLChecked = YES;
+    }
     [panel displayText:error.length ? [NSString stringWithFormat:@"%@\n\n%@", panel.result, error] : panel.result];
     if (finished) { [panel.spinner stopAnimating]; panel.statusLabel.text = error.length ? @"未完成" : @"已完成 · 长按文字分词"; }
     [panel updateTokenActions];

@@ -49,6 +49,8 @@ jobs:
         run: clang -fobjc-arc -Wall -Wextra -Werror -framework Foundation -framework Vision -framework CoreImage -framework CoreGraphics -framework ImageIO Tests/test_recognition.m -o /tmp/regionshot-recognition && /tmp/regionshot-recognition
       - name: Check WeChat scanner integration
         run: python3 Tests/check_wechat_scan.py
+      - name: Check URL actions in both input panels
+        run: python3 Tests/check_url_action.py
       - name: Install signing tools
         run: brew install ldid xz
       - name: Install pinned RootHide Theos and iOS 15.6 SDK
