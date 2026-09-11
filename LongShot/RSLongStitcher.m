@@ -149,7 +149,7 @@ enum { RSLongSignatureWidth = 48 };
     }
     double scale = MIN(1.0, 30000.0 / self.totalHeight);
     double pixels = (double)self.pixelWidth * self.totalHeight;
-    if (pixels * scale * scale > 28000000.0) scale = sqrt(28000000.0 / pixels);
+    if (pixels * scale * scale > 12000000.0) scale = sqrt(12000000.0 / pixels);
     size_t width = MAX(1, (size_t)floor(self.pixelWidth * scale));
     size_t height = MAX(1, (size_t)floor(self.totalHeight * scale));
     size_t bytesPerRow = width * 4, length = bytesPerRow * height;
@@ -167,10 +167,10 @@ enum { RSLongSignatureWidth = 48 };
         return nil;
     }
     CGColorSpaceRef color = CGColorSpaceCreateDeviceRGB();
+    CGBitmapInfo bitmapInfo = kCGBitmapByteOrder32Little | kCGImageAlphaPremultipliedFirst;
     CGContextRef context = CGBitmapContextCreate(bytes, width, height, 8, bytesPerRow, color,
-        kCGBitmapByteOrder32Little | kCGImageAlphaPremultipliedFirst);
-    CGColorSpaceRelease(color);
-    if (!context) { munmap(bytes, length); return nil; }
+        bitmapInfo);
+    if (!context) { CGColorSpaceRelease(color); munmap(bytes, length); return nil; }
     CGContextSetInterpolationQuality(context, kCGInterpolationHigh);
     size_t y = 0;
     for (RSLongSlice *slice in self.slices) @autoreleasepool {
@@ -187,8 +187,12 @@ enum { RSLongSignatureWidth = 48 };
         CGImageRelease(crop);
         y += slice.height;
     }
-    CGImageRef output = CGBitmapContextCreateImage(context);
     CGContextRelease(context);
+    CGDataProviderRef provider = CGDataProviderCreateWithData(NULL, bytes, length, NULL);
+    CGImageRef output = provider ? CGImageCreate(width, height, 8, 32, bytesPerRow, color,
+        bitmapInfo, provider, NULL, false, kCGRenderingIntentDefault) : NULL;
+    if (provider) CGDataProviderRelease(provider);
+    CGColorSpaceRelease(color);
     NSString *path = [self.directory stringByAppendingPathComponent:@"result.png"];
     CGImageDestinationRef destination = output ? CGImageDestinationCreateWithURL((__bridge CFURLRef)[NSURL fileURLWithPath:path], CFSTR("public.png"), 1, nil) : nil;
     if (destination) { CGImageDestinationAddImage(destination, output, nil); }
