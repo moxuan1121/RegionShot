@@ -39,3 +39,8 @@ for name in ('Input/RSInputInterface.m', 'KeyboardAI/RSKAInterface.m'):
     source = (root / name).read_text(encoding='utf-8').split('- (void)showSearchMenu:', 1)[1]
     assert 'RSInputVisibleActions(@"clipboardHiddenPersonas")' in source
     assert '!self.tokenView ||' not in source
+material = (root / 'Geometry/RSMaterialBackground.h').read_text(encoding='utf-8')
+assert 'UIBlurEffectStyleSystemMaterial' in material
+for name in ('Input/RSInputInterface.m', 'KeyboardAI/RSKAInterface.m',
+             'AI/RSChatController.m', 'History/RSHistoryController.m'):
+    assert 'RSInstallMaterialBackground' in (root / name).read_text(encoding='utf-8'), name

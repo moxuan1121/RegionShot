@@ -12,6 +12,7 @@
 #import "RSInputOptions.h"
 #import "RSInputAnchoredMenuView.h"
 #import "../Geometry/RSOrientation.h"
+#import "../Geometry/RSMaterialBackground.h"
 #import "../Capture/RSWebURL.h"
 
 void RSInputOpenSearchEngine(NSDictionary *engine, NSString *text) {
@@ -218,13 +219,13 @@ static NSString *RSInputFullText(id<UITextInput> target) {
     window = self.overlayWindow;
     UIView *panel = [RSInputCard new];
     panel.translatesAutoresizingMaskIntoConstraints = NO;
-    panel.backgroundColor = UIColor.secondarySystemGroupedBackgroundColor;
     panel.layer.cornerRadius = 20;
     panel.layer.cornerCurve = kCACornerCurveContinuous;
     panel.layer.shadowColor = UIColor.blackColor.CGColor;
     panel.layer.shadowOpacity = 0.18;
     panel.layer.shadowRadius = 18;
     panel.layer.shadowOffset = CGSizeMake(0, 7);
+    RSInstallMaterialBackground(panel, 20);
     self.panel = panel;
     UITextView *text = [UITextView new];
     text.editable = NO;

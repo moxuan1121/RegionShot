@@ -1,4 +1,5 @@
 #import "../Geometry/RSWindowAnimation.h"
+#import "../Geometry/RSMaterialBackground.h"
 #import "RSHistoryController.h"
 #import "RSHistoryStore.h"
 #import <objc/message.h>
@@ -50,7 +51,7 @@ static RSHistoryStore *RSStore(void) {
     [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(screenRotated:) name:@"com.moxuan.regionshot.orientation.target" object:nil];
     [self addChildViewController:self.navigation];
     UIView *panel = self.navigation.view; panel.translatesAutoresizingMaskIntoConstraints = NO;
-    panel.layer.cornerRadius = 20; panel.clipsToBounds = YES;
+    panel.layer.cornerRadius = 20; panel.clipsToBounds = YES; RSInstallMaterialBackground(panel, 20);
     [self.view addSubview:panel]; [self.navigation didMoveToParentViewController:self];
     UITapGestureRecognizer *outside = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(tappedOutside:)];
     outside.delegate = self; [self.view addGestureRecognizer:outside];
@@ -132,7 +133,7 @@ static RSHistoryController *RSActiveHistory;
     self.dateFormatter = [NSDateFormatter new]; self.dateFormatter.dateFormat = @"yyyy-MM-dd HH:mm:ss";
     self.tableView.rowHeight = 78;
     self.tableView.separatorInset = UIEdgeInsetsMake(0, 8, 0, 8);
-    self.tableView.backgroundColor = UIColor.systemBackgroundColor;
+    self.tableView.backgroundColor = UIColor.clearColor;
     self.search = [[UISearchController alloc] initWithSearchResultsController:nil];
     self.search.searchResultsUpdater = self; self.search.obscuresBackgroundDuringPresentation = NO;
     self.search.searchBar.placeholder = @"搜索名称或日期";
@@ -204,6 +205,7 @@ static RSHistoryController *RSActiveHistory;
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section { return self.filtered.count; }
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)path {
     UITableViewCell *cell = [[RSHistoryCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:nil];
+    cell.backgroundColor = UIColor.clearColor;
     NSDictionary *entry = self.filtered[path.row]; NSString *identifier = entry[@"id"];
     cell.textLabel.text = entry[@"title"]; cell.detailTextLabel.text = [self dateText:entry]; cell.accessoryType = UITableViewCellAccessoryNone;
     cell.imageView.image = [self.thumbnails objectForKey:identifier] ?: [UIImage systemImageNamed:@"photo"];

@@ -1,4 +1,5 @@
 #import "../Geometry/RSWindowAnimation.h"
+#import "../Geometry/RSMaterialBackground.h"
 #import "RSChatController.h"
 #import "RSSSEDecoder.h"
 #import "RSChatAttachments.h"
@@ -215,9 +216,9 @@ static NSUserDefaults *RSChatPreferences(void) {
     [single requireGestureRecognizerToFail:doubleTap];
     [self.view addGestureRecognizer:single]; [self.view addGestureRecognizer:doubleTap];
     self.card = [UIView new];
-    self.card.backgroundColor = UIColor.secondarySystemBackgroundColor;
     self.card.layer.cornerRadius = 28;
     self.card.clipsToBounds = YES;
+    RSInstallMaterialBackground(self.card, 28);
     self.card.translatesAutoresizingMaskIntoConstraints = NO;
     [self.view addSubview:self.card];
     UIStackView *content = [UIStackView new];
@@ -310,8 +311,8 @@ static NSUserDefaults *RSChatPreferences(void) {
         [self.chat.widthAnchor constraintEqualToAnchor:self.scroll.frameLayoutGuide.widthAnchor]]];
     self.ball = [self button:@"text.bubble.fill" title:@"恢复图片问答" action:@selector(restore)];
     self.ball.frame = CGRectMake(16, 120, 44, 44);
-    self.ball.backgroundColor = UIColor.secondarySystemBackgroundColor;
     self.ball.layer.cornerRadius = 26;
+    RSInstallMaterialBackground(self.ball, 26);
     self.ball.hidden = YES;
     [self.ball addGestureRecognizer:[[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(panBall:)]];
     [self.view addSubview:self.ball];

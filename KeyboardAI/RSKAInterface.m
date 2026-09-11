@@ -10,6 +10,7 @@
 #import "RSKAAnchoredMenuView.h"
 #import "../AI/RSChatController.h"
 #import "../Geometry/RSOrientation.h"
+#import "../Geometry/RSMaterialBackground.h"
 #import "../Input/RSInputStore.h"
 #import "../Capture/RSWebURL.h"
 static NSDictionary *RSKAConfig(void) { return RSInputConfig(); }
@@ -156,13 +157,13 @@ static UIWindowLevel RSKAPanelWindowLevel(NSDictionary *options, NSString *key) 
     window = self.overlayWindow;
     UIView *panel = [RSKACard new];
     panel.translatesAutoresizingMaskIntoConstraints = NO;
-    panel.backgroundColor = UIColor.secondarySystemGroupedBackgroundColor;
     panel.layer.cornerRadius = 20;
     panel.layer.cornerCurve = kCACornerCurveContinuous;
     panel.layer.shadowColor = UIColor.blackColor.CGColor;
     panel.layer.shadowOpacity = 0.18;
     panel.layer.shadowRadius = 18;
     panel.layer.shadowOffset = CGSizeMake(0, 7);
+    RSInstallMaterialBackground(panel, 20);
     self.panel = panel;
     UITextView *text = [UITextView new];
     text.editable = NO;
