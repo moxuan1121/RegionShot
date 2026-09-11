@@ -707,6 +707,15 @@ static NSUserDefaults *RSChatPreferences(void) {
 - (void)clearAttachment { self.attachment = nil; self.fileAttachment = nil; self.fileName = nil; self.chip.accessibilityLabel = nil; self.chip.image = nil; self.chip.hidden = YES; }
 - (void)attachments {
     UIAlertController *sheet = [UIAlertController alertControllerWithTitle:@"添加附件" message:nil preferredStyle:UIAlertControllerStyleActionSheet];
+    [sheet addAction:[UIAlertAction actionWithTitle:@"照片" style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
+        PHPickerConfiguration *config = [PHPickerConfiguration new]; config.filter = PHPickerFilter.imagesFilter; config.selectionLimit = 1;
+        PHPickerViewController *picker = [[PHPickerViewController alloc] initWithConfiguration:config]; picker.delegate = self;
+        [self presentViewController:picker animated:YES completion:nil];
+    }]];
+    [sheet addAction:[UIAlertAction actionWithTitle:@"文件" style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
+        UIDocumentPickerViewController *picker = [[UIDocumentPickerViewController alloc] initForOpeningContentTypes:@[UTTypeItem] asCopy:YES];
+        picker.delegate = self; [self presentViewController:picker animated:YES completion:nil];
+    }]];
     [sheet addAction:[UIAlertAction actionWithTitle:@"相机" style:UIAlertActionStyleDefault handler:^(__unused UIAlertAction *action) {
         [self hideKeyboard];
         __weak typeof(self) weakSelf = self;
@@ -715,15 +724,6 @@ static NSUserDefaults *RSChatPreferences(void) {
             [weakSelf acceptImage:image];
             [weakSelf focusInput];
         }];
-    }]];
-    [sheet addAction:[UIAlertAction actionWithTitle:@"相册" style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
-        PHPickerConfiguration *config = [PHPickerConfiguration new]; config.filter = PHPickerFilter.imagesFilter; config.selectionLimit = 1;
-        PHPickerViewController *picker = [[PHPickerViewController alloc] initWithConfiguration:config]; picker.delegate = self;
-        [self presentViewController:picker animated:YES completion:nil];
-    }]];
-    [sheet addAction:[UIAlertAction actionWithTitle:@"文件" style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
-        UIDocumentPickerViewController *picker = [[UIDocumentPickerViewController alloc] initForOpeningContentTypes:@[UTTypeItem] asCopy:YES];
-        picker.delegate = self; [self presentViewController:picker animated:YES completion:nil];
     }]];
     [sheet addAction:[UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:nil]];
     sheet.popoverPresentationController.sourceView = self.input;
