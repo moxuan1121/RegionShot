@@ -30,8 +30,10 @@
         [toggle addTarget:self action:@selector(toggled:) forControlEvents:UIControlEventValueChanged]; cell.accessoryView = toggle;
     } else {
         NSArray *choices = option[@"choices"];
-        NSInteger index = [value integerValue];
-        cell.detailTextLabel.text = index >= 0 && choices.count > (NSUInteger)index ? choices[index] : [value description];
+        NSArray *choiceValues = option[@"choiceValues"];
+        NSUInteger index = choiceValues.count ? [choiceValues indexOfObject:value] : [value unsignedIntegerValue];
+        if (index == NSNotFound && choiceValues.count) index = 0;
+        cell.detailTextLabel.text = choices.count > index ? choices[index] : [value description];
         cell.detailTextLabel.numberOfLines = 2; cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
     }
     return cell;
@@ -57,7 +59,8 @@
         UIAlertController *sheet = [UIAlertController alertControllerWithTitle:option[@"title"] message:nil preferredStyle:UIAlertControllerStyleActionSheet];
         [choices enumerateObjectsUsingBlock:^(NSString *title, NSUInteger index, BOOL *stop) {
             [sheet addAction:[UIAlertAction actionWithTitle:title style:UIAlertActionStyleDefault handler:^(__unused UIAlertAction *action) {
-                RSSetOption(option[@"key"], @(index)); [tableView reloadData];
+                NSArray *choiceValues = option[@"choiceValues"];
+                RSSetOption(option[@"key"], choiceValues.count > index ? choiceValues[index] : @(index)); [tableView reloadData];
             }]];
         }];
         [sheet addAction:[UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:nil]];

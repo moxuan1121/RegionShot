@@ -15,4 +15,16 @@ for selector in re.findall(r'@"((?:open|test|check)\w+)"', page):
 assert '当前开发预览' not in page and '关于' not in page
 assert page.index('@"Enabled"') < page.index('NSArray *sections')
 assert 'presentViewController:self.pages' not in page
+behavior = (root / 'Preferences/RSBehaviorSettings.m').read_text(encoding='utf-8')
+controller = (root / 'LongShot/RSLongCaptureController.m').read_text(encoding='utf-8')
+header = (root / 'LongShot/RSLongCaptureController.h').read_text(encoding='utf-8')
+makefile = (root / 'Makefile').read_text(encoding='utf-8')
+injection = (root / 'RegionShot.plist').read_text(encoding='utf-8')
+assert '@"choiceValues":@[@2, @3]' in source
+assert 'choiceValues.count > index ? choiceValues[index] : @(index)' in behavior
+assert 'RSLongCaptureModeConservativeStep = 3' in header
+assert '@"继续" action:@selector(continuePressed)' in controller
+assert 'self.mode == RSLongCaptureModeConservativeStep || self.stopped' in controller
+assert 'LongShot/RSLongSwipe.m' in makefile
+assert 'com.apple.UIKit' not in injection
 print('Verified original preference keys/defaults/ranges and root settings destinations')

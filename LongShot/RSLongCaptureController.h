@@ -5,7 +5,8 @@ NS_ASSUME_NONNULL_BEGIN
 typedef NS_ENUM(NSInteger, RSLongCaptureMode) {
     RSLongCaptureModeRolling = 0,
     RSLongCaptureModeStep = 1,
-    RSLongCaptureModeAutomatic = 2
+    RSLongCaptureModeAutomatic = 2,
+    RSLongCaptureModeConservativeStep = 3
 };
 
 @interface RSLongCaptureController : UIWindow

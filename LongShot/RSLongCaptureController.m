@@ -1,5 +1,6 @@
 #import "RSLongCaptureController.h"
 #import "RSLongStitcher.h"
+#import "RSLongSwipe.h"
 #import <Photos/Photos.h>
 #import "../Capture/RSScreenCapture.h"
 #import "../Geometry/RSOrientation.h"
@@ -16,6 +17,7 @@
 @end
 
 @interface RSLongCaptureController ()
+@property (nonatomic) RSLongCaptureMode mode;
 @property (nonatomic) BOOL finishRequested;
 @property (nonatomic, strong) NSURL *finishedFileURL;
 @property (nonatomic, strong) RSLongStitcher *stitcher;
@@ -23,11 +25,13 @@
 @property (nonatomic, strong) UILabel *statusLabel;
 @property (nonatomic, strong) UIImageView *preview;
 @property (nonatomic, strong) UIButton *captureButton;
+@property (nonatomic, strong) UIButton *continueButton;
 @property (nonatomic, strong) NSTimer *timer;
 @property (nonatomic, strong) dispatch_queue_t processingQueue;
 @property (nonatomic, copy) NSArray<UIWindow *> *temporarilyHiddenWindows;
 @property (nonatomic) BOOL busy;
 @property (nonatomic) BOOL stopped;
+@property (nonatomic) BOOL retryCurrentFrame;
 
 @property (nonatomic, copy) void (^resultHandler)(UIWindowScene *);
 @property (nonatomic, copy) dispatch_block_t cancelHandler;
@@ -38,6 +42,7 @@
 + (instancetype)startWithScene:(UIWindowScene *)scene mode:(RSLongCaptureMode)mode
                     completion:(void (^)(UIWindowScene *))completion cancel:(dispatch_block_t)cancel {
     RSLongCaptureController *window = scene ? [[self alloc] initWithWindowScene:scene] : [[self alloc] initWithFrame:UIScreen.mainScreen.bounds];
+    window.mode = mode;
     window.resultHandler = completion; window.cancelHandler = cancel;
     [window configure]; RSApplyWindowOrientation(window, RSActiveOrientation(scene)); window.hidden = NO; [window beginSession];
     return window;
@@ -56,9 +61,15 @@
     self.statusLabel.font = [UIFont preferredFontForTextStyle:UIFontTextStyleFootnote];
     self.statusLabel.numberOfLines = 2; [self.panel addSubview:self.statusLabel];
     UIButton *cancel = [self button:@"取消" action:@selector(cancelPressed)];
-    self.captureButton = [self button:@"截取" action:@selector(capturePressed)];
-    [self.panel addSubview:cancel]; [self.panel addSubview:self.captureButton];
-    cancel.tag = 1; self.captureButton.tag = 2;
+    self.captureButton = [self button:self.mode == RSLongCaptureModeConservativeStep ? @"结束" : @"截取" action:@selector(capturePressed)];
+    [self.panel addSubview:cancel];
+    cancel.tag = 1;
+    if (self.mode == RSLongCaptureModeConservativeStep) {
+        self.continueButton = [self button:@"继续" action:@selector(continuePressed)];
+        self.continueButton.enabled = NO; self.continueButton.tag = 2;
+        self.captureButton.tag = 3; [self.panel addSubview:self.continueButton];
+    } else self.captureButton.tag = 2;
+    [self.panel addSubview:self.captureButton];
 }
 
 - (UIButton *)button:(NSString *)title action:(SEL)action {
@@ -74,7 +85,7 @@
     self.panel.frame = CGRectMake((bounds.size.width - width) / 2, bounds.size.height - insets.bottom - 118, width, 96);
     self.preview.frame = CGRectMake(12, 12, 54, 54);
     self.statusLabel.frame = CGRectMake(76, 9, width - 88, 38);
-    CGFloat buttonWidth = (width - 24) / 2;
+    CGFloat buttonWidth = (width - 24) / (self.continueButton ? 3 : 2);
     for (UIView *view in self.panel.subviews) if ([view isKindOfClass:UIButton.class])
         view.frame = CGRectMake(12 + (view.tag - 1) * buttonWidth, 51, buttonWidth, 38);
 }
@@ -135,7 +146,8 @@
     [self layoutIfNeeded];
     [self hideOtherRegionShotWindows];
     self.stitcher = [[RSLongStitcher alloc] initWithTopInset:self.rootViewController.view.safeAreaInsets.top];
-    self.statusLabel.text = @"缓慢向上滑动，结束后点击截取";
+    self.statusLabel.text = self.mode == RSLongCaptureModeConservativeStep
+        ? @"正在记录首屏…" : @"缓慢向上滑动，结束后点击截取";
     [self startSampling];
     [CATransaction flush];
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 80 * NSEC_PER_MSEC), dispatch_get_main_queue(), ^{
@@ -144,7 +156,7 @@
 }
 
 - (void)startSampling {
-    if (self.stopped || self.timer || self.finishedFileURL) return;
+    if (self.mode == RSLongCaptureModeConservativeStep || self.stopped || self.timer || self.finishedFileURL) return;
     __weak typeof(self) weakSelf = self;
     self.timer = [NSTimer timerWithTimeInterval:0.25 repeats:YES block:^(NSTimer *timer) {
         [weakSelf manualTick];
@@ -172,6 +184,7 @@
         self.busy = NO;
         self.statusLabel.text = @"未能读取屏幕，请重试截取";
         if (self.finishRequested) { self.finishRequested = NO; self.captureButton.enabled = YES; [self startSampling]; }
+        if (self.continueButton) self.continueButton.enabled = YES;
         return;
     }
     self.busy = YES;
@@ -188,18 +201,55 @@
                 self.statusLabel.text = result == RSLongAppendResultUncertain
                     ? @"接缝未匹配，请滑回上一段后缓慢上滑"
                     : [NSString stringWithFormat:@"已记录 %lu 段 · 约 %.1f 屏", (unsigned long)count, height];
+                if (self.mode == RSLongCaptureModeConservativeStep && !self.finishRequested) {
+                    self.retryCurrentFrame = result == RSLongAppendResultUncertain;
+                    [self.continueButton setTitle:self.retryCurrentFrame ? @"重试" : @"继续" forState:UIControlStateNormal];
+                    self.continueButton.enabled = result != RSLongAppendResultLimit;
+                    if (self.retryCurrentFrame) self.statusLabel.text = @"本次未记录，页面稳定后点重试";
+                    else if (result == RSLongAppendResultUnchanged) self.statusLabel.text = @"页面未移动，可能已到底；可结束或继续";
+                }
                 if (result == RSLongAppendResultLimit) {
                     [self.timer invalidate]; self.timer = nil;
-                    self.statusLabel.text = @"已到尺寸上限，请点击截取";
+                    self.statusLabel.text = self.continueButton ? @"已到尺寸上限，请点击结束" : @"已到尺寸上限，请点击截取";
                 }
                 if (self.finishRequested) {
                     if (!finalFrame) [self captureFinalFrame];
                     else if (result == RSLongAppendResultUncertain) {
                         self.finishRequested = NO; self.captureButton.enabled = YES; [self startSampling];
+                        if (self.continueButton) {
+                            self.retryCurrentFrame = YES; self.continueButton.enabled = YES;
+                            [self.continueButton setTitle:@"重试" forState:UIControlStateNormal];
+                        }
                     } else [self donePressed];
                 }
             });
         }
+    });
+}
+
+- (void)continuePressed {
+    if (self.busy || self.stopped || self.finishRequested) return;
+    if (self.retryCurrentFrame) {
+        self.retryCurrentFrame = NO; self.continueButton.enabled = NO;
+        [self.continueButton setTitle:@"继续" forState:UIControlStateNormal];
+        [self manualTick]; return;
+    }
+    self.busy = YES; self.continueButton.enabled = NO;
+    self.statusLabel.text = @"正在向下移动并记录…";
+    CGFloat screenHeight = CGRectGetHeight(self.rootViewController.view.bounds);
+    CGFloat startY = screenHeight > 0 ? (CGRectGetMinY(self.panel.frame) - 24) / screenHeight : 0.68;
+    startY = MIN(0.68, MAX(0.38, startY));
+    CGFloat endY = MAX(0.16, startY - 0.20);
+    __weak typeof(self) weakSelf = self;
+    RSPerformLongStepSwipe(startY, endY, ^(BOOL success) {
+        typeof(self) self = weakSelf;
+        if (!self || self.stopped) return;
+        self.busy = NO;
+        if (!success) {
+            self.statusLabel.text = @"系统滚动不可用，请切换手动滚动";
+            self.continueButton.enabled = YES; return;
+        }
+        [self manualTick];
     });
 }
 
