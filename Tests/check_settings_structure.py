@@ -20,6 +20,7 @@ controller = (root / 'LongShot/RSLongCaptureController.m').read_text(encoding='u
 header = (root / 'LongShot/RSLongCaptureController.h').read_text(encoding='utf-8')
 makefile = (root / 'Makefile').read_text(encoding='utf-8')
 injection = (root / 'RegionShot.plist').read_text(encoding='utf-8')
+swipe = (root / 'LongShot/RSLongSwipe.m').read_text(encoding='utf-8')
 assert '@"choiceValues":@[@2, @3]' in source
 assert 'choiceValues.count > index ? choiceValues[index] : @(index)' in behavior
 assert 'RSLongCaptureModeConservativeStep = 3' in header
@@ -27,4 +28,6 @@ assert '@"继续" action:@selector(continuePressed)' in controller
 assert 'self.mode == RSLongCaptureModeConservativeStep || self.stopped' in controller
 assert 'LongShot/RSLongSwipe.m' in makefile
 assert 'com.apple.UIKit' not in injection
+assert 'progress * progress * (3.0 - 2.0 * progress)' in swipe
+assert '700 * NSEC_PER_MSEC' in swipe
 print('Verified original preference keys/defaults/ranges and root settings destinations')

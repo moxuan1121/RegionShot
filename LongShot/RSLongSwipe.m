@@ -77,19 +77,20 @@ void RSPerformLongStepSwipe(CGFloat startY, CGFloat endY, void (^completion)(BOO
         if (ready) {
             BOOL began = RSSendFinger(startY, 0);
             ready = began;
-            for (NSUInteger step = 1; step <= 18; step++) {
-                CGFloat progress = step / 18.0;
+            for (NSUInteger step = 1; step <= 30; step++) {
+                CGFloat progress = step / 30.0;
+                progress = progress * progress * (3.0 - 2.0 * progress);
                 ready = RSSendFinger(startY + (endY - startY) * progress, 1);
                 if (!ready) break;
-                usleep(12000);
+                usleep(16000);
             }
-            for (NSUInteger hold = 0; ready && hold < 5; hold++) { ready = RSSendFinger(endY, 1); usleep(15000); }
+            for (NSUInteger hold = 0; ready && hold < 6; hold++) { ready = RSSendFinger(endY, 1); usleep(20000); }
             if (began) {
                 BOOL ended = RSSendFinger(endY, 2);
                 ready = ready && ended;
             }
         }
-        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 450 * NSEC_PER_MSEC), dispatch_get_main_queue(), ^{
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 700 * NSEC_PER_MSEC), dispatch_get_main_queue(), ^{
             completion(ready);
         });
     });
