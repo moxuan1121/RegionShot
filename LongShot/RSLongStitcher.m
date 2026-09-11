@@ -114,7 +114,7 @@ enum { RSLongSignatureWidth = 48 };
     if (match.changedFraction < 0.002) {
         CGImageRelease(clean); return RSLongAppendResultUnchanged;
     }
-    if (!match.offset || match.score > 18.0) {
+    if (!RSLongMatchIsReliable(match)) {
         CGImageRelease(clean); return RSLongAppendResultUncertain;
     }
     size_t offset = match.offset;
@@ -142,7 +142,7 @@ enum { RSLongSignatureWidth = 48 };
     return saved ? RSLongAppendResultAdded : RSLongAppendResultUncertain;
 }
 
-- (UIImage *)finish:(NSError **)error {
+- (NSURL *)finishToURL:(NSError **)error {
     if (!self.slices.count || !self.pixelWidth || !self.totalHeight) {
         if (error) *error = [NSError errorWithDomain:RSLongErrorDomain code:1 userInfo:@{NSLocalizedDescriptionKey:@"没有可生成的长截图。"}];
         return nil;
@@ -200,10 +200,21 @@ enum { RSLongSignatureWidth = 48 };
     if (destination) CFRelease(destination);
     if (output) CGImageRelease(output);
     munmap(bytes, length);
-    NSData *mapped = written ? [NSData dataWithContentsOfFile:path options:NSDataReadingMappedIfSafe error:error] : nil;
-    UIImage *result = mapped ? [UIImage imageWithData:mapped scale:UIScreen.mainScreen.scale] : nil;
-    if (!result && error && !*error) *error = [NSError errorWithDomain:RSLongErrorDomain code:4 userInfo:@{NSLocalizedDescriptionKey:@"长截图编码失败。"}];
-    return result;
+    if (!written) {
+        if (error && !*error) *error = [NSError errorWithDomain:RSLongErrorDomain code:4 userInfo:@{NSLocalizedDescriptionKey:@"长截图编码失败。"}];
+        return nil;
+    }
+    self.previousGray = nil;
+    for (RSLongSlice *slice in self.slices) [NSFileManager.defaultManager removeItemAtPath:slice.path error:nil];
+    [self.slices removeAllObjects];
+    [NSFileManager.defaultManager removeItemAtPath:rawPath error:nil];
+    return [NSURL fileURLWithPath:path];
+}
+
+- (UIImage *)finish:(NSError **)error {
+    NSURL *url = [self finishToURL:error];
+    NSData *mapped = url ? [NSData dataWithContentsOfURL:url options:NSDataReadingMappedIfSafe error:error] : nil;
+    return mapped ? [UIImage imageWithData:mapped scale:UIScreen.mainScreen.scale] : nil;
 }
 
 - (void)cancel {

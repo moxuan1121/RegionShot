@@ -17,7 +17,7 @@
 
 @interface RSLongCaptureController ()
 @property (nonatomic) BOOL finishRequested;
-@property (nonatomic, strong) UIImage *finishedImage;
+@property (nonatomic, strong) NSURL *finishedFileURL;
 @property (nonatomic, strong) RSLongStitcher *stitcher;
 @property (nonatomic, strong) UIView *panel;
 @property (nonatomic, strong) UILabel *statusLabel;
@@ -29,14 +29,14 @@
 @property (nonatomic) BOOL busy;
 @property (nonatomic) BOOL stopped;
 
-@property (nonatomic, copy) void (^resultHandler)(UIImage *, UIWindowScene *);
+@property (nonatomic, copy) void (^resultHandler)(UIWindowScene *);
 @property (nonatomic, copy) dispatch_block_t cancelHandler;
 @end
 
 @implementation RSLongCaptureController
 
 + (instancetype)startWithScene:(UIWindowScene *)scene mode:(RSLongCaptureMode)mode
-                    completion:(void (^)(UIImage *, UIWindowScene *))completion cancel:(dispatch_block_t)cancel {
+                    completion:(void (^)(UIWindowScene *))completion cancel:(dispatch_block_t)cancel {
     RSLongCaptureController *window = scene ? [[self alloc] initWithWindowScene:scene] : [[self alloc] initWithFrame:UIScreen.mainScreen.bounds];
     window.resultHandler = completion; window.cancelHandler = cancel;
     [window configure]; RSApplyWindowOrientation(window, RSActiveOrientation(scene)); window.hidden = NO; [window beginSession];
@@ -144,7 +144,7 @@
 }
 
 - (void)startSampling {
-    if (self.stopped || self.timer || self.finishedImage) return;
+    if (self.stopped || self.timer || self.finishedFileURL) return;
     __weak typeof(self) weakSelf = self;
     self.timer = [NSTimer timerWithTimeInterval:0.25 repeats:YES block:^(NSTimer *timer) {
         [weakSelf manualTick];
@@ -162,7 +162,7 @@
     self.finishRequested = YES;
     [self.timer invalidate]; self.timer = nil;
     self.captureButton.enabled = NO;
-    if (self.finishedImage) { [self saveFinishedImage]; return; }
+    if (self.finishedFileURL) { [self saveFinishedImage]; return; }
     if (!self.busy) [self captureFinalFrame];
 }
 
@@ -208,16 +208,17 @@
     self.busy = YES; self.statusLabel.text = @"正在生成长图…";
     RSLongStitcher *stitcher = self.stitcher;
     dispatch_async(self.processingQueue, ^{
-        NSError *error = nil; UIImage *image = [stitcher finish:&error];
+        NSError *error = nil; NSURL *url = [stitcher finishToURL:&error];
+        NSData *png = url ? [NSData dataWithContentsOfURL:url options:NSDataReadingMappedIfSafe error:&error] : nil;
         dispatch_async(dispatch_get_main_queue(), ^{
             if (self.stopped) return;
             self.busy = NO;
-            if (!image) {
+            if (!url || !png) {
                 self.finishRequested = NO; self.captureButton.enabled = YES;
                 self.statusLabel.text = error.localizedDescription ?: @"生成失败，请重试"; return;
             }
-            self.finishedImage = image;
-            UIPasteboard.generalPasteboard.image = image;
+            self.finishedFileURL = url;
+            [UIPasteboard.generalPasteboard setData:png forPasteboardType:@"public.png"];
             [self saveFinishedImage];
         });
     });
@@ -235,9 +236,10 @@
         self.finishRequested = NO; self.captureButton.enabled = YES; return;
     }
     self.statusLabel.text = @"已复制，正在保存到相册…";
-    UIImage *imageToSave = self.finishedImage;
+    NSURL *fileURL = self.finishedFileURL;
     [PHPhotoLibrary.sharedPhotoLibrary performChanges:^{
-        [PHAssetChangeRequest creationRequestForAssetFromImage:imageToSave];
+        PHAssetCreationRequest *request = [PHAssetCreationRequest creationRequestForAsset];
+        [request addResourceWithType:PHAssetResourceTypePhoto fileURL:fileURL options:nil];
     } completionHandler:^(BOOL success, NSError *error) {
         dispatch_async(dispatch_get_main_queue(), ^{
             if (self.stopped) return;
@@ -245,9 +247,9 @@
                 self.statusLabel.text = error.localizedDescription ?: @"已复制，相册保存失败，请重试";
                 self.finishRequested = NO; self.captureButton.enabled = YES; return;
             }
-            void (^handler)(UIImage *, UIWindowScene *) = self.resultHandler;
-            UIImage *image = self.finishedImage; UIWindowScene *scene = self.windowScene;
-            [self stop]; if (handler) handler(image, scene);
+            void (^handler)(UIWindowScene *) = self.resultHandler;
+            UIWindowScene *scene = self.windowScene;
+            [self stop]; if (handler) handler(scene);
         });
     }];
 }
@@ -261,7 +263,7 @@
     [self.timer invalidate]; self.timer = nil;
     RSLongStitcher *stitcher = self.stitcher; self.stitcher = nil;
     if (stitcher) dispatch_async(self.processingQueue, ^{ [stitcher cancel]; });
-    self.finishedImage = nil; self.resultHandler = nil; self.cancelHandler = nil; self.hidden = YES; self.rootViewController = nil;
+    self.finishedFileURL = nil; self.resultHandler = nil; self.cancelHandler = nil; self.hidden = YES; self.rootViewController = nil;
     for (UIWindow *window in self.temporarilyHiddenWindows) window.hidden = NO;
     self.temporarilyHiddenWindows = nil;
 }

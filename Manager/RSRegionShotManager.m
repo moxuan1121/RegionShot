@@ -127,7 +127,7 @@
     __weak typeof(self) weakSelf = self;
     self.longCaptureWindow = [RSLongCaptureController startWithScene:scene
         mode:[RSOption(@"LongCaptureMode") integerValue]
-        completion:^(UIImage *image, UIWindowScene *resultScene) {
+        completion:^(UIWindowScene *resultScene) {
             RSRegionShotManager *manager = weakSelf; manager.longCaptureWindow = nil; manager.capturing = NO;
 
         } cancel:^{

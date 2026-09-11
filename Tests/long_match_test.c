@@ -12,8 +12,8 @@ int main(void) {
     for (size_t y = H - SHIFT; y < H; y++) for (size_t x = 0; x < W; x++)
         second[y * W + x] = (uint8_t)((y * 17 + x * 11) & 255);
     RSLongMatch match = RSFindVerticalOverlap(first, second, W, H);
-    assert(match.offset == SHIFT && match.score == 0 && match.unchangedScore > 1);
-    for (size_t shift = 1; shift <= 40; shift++) {
+    assert(match.offset == SHIFT && match.score == 0 && match.unchangedScore > 1 && RSLongMatchIsReliable(match));
+    for (size_t shift = 1; shift <= 60; shift++) {
         for (size_t y = 0; y < H - shift; y++)
             memcpy(second + y * W, first + (y + shift) * W, W);
         memset(second + (H - shift) * W, 255, shift * W);
@@ -28,5 +28,13 @@ int main(void) {
     for (size_t y = 5; y < 9; y++) memset(second + y * W + 4, 0, 24);
     match = RSFindVerticalOverlap(first, second, W, H);
     assert(match.changedFraction > 0.002);
+
+    for (size_t y = 0; y < H; y++) for (size_t x = 0; x < W; x++) {
+        first[y * W + x] = (uint8_t)((y % 8) * 20);
+        second[y * W + x] = first[((y + 8) % H) * W + x];
+    }
+    memset(second + (H - 8) * W, 231, 8 * W);
+    match = RSFindVerticalOverlap(first, second, W, H);
+    assert(match.changedFraction > 0.002 && !RSLongMatchIsReliable(match));
     return 0;
 }

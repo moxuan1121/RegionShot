@@ -46,7 +46,9 @@ int main(void) { @autoreleasepool {
         assert([stitcher appendImage:frame(top)] == RSLongAppendResultAdded);
     }
     assert([stitcher appendImage:frame(120)] == RSLongAppendResultUnchanged);
-    NSError *error=nil; UIImage *result=[stitcher finish:&error];
+    NSError *error=nil; NSURL *resultURL=[stitcher finishToURL:&error];
+    assert(resultURL && [NSFileManager.defaultManager fileExistsAtPath:resultURL.path]);
+    UIImage *result=[UIImage imageWithContentsOfFile:resultURL.path];
     assert(result && !error && CGImageGetHeight(result.CGImage)==360);
     size_t w=CGImageGetWidth(result.CGImage), h=CGImageGetHeight(result.CGImage);
     uint8_t *bytes=calloc(w*h,4); CGColorSpaceRef rgb=CGColorSpaceCreateDeviceRGB();
