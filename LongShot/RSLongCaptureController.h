@@ -1,5 +1,7 @@
 #import <UIKit/UIKit.h>
 
+NS_ASSUME_NONNULL_BEGIN
+
 typedef NS_ENUM(NSInteger, RSLongCaptureMode) {
     RSLongCaptureModeRolling = 0,
     RSLongCaptureModeStep = 1,
@@ -13,3 +15,5 @@ typedef NS_ENUM(NSInteger, RSLongCaptureMode) {
                         cancel:(dispatch_block_t)cancel;
 - (void)stop;
 @end
+
+NS_ASSUME_NONNULL_END
