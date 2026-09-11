@@ -34,7 +34,7 @@ for name, size in [('RegionShotIcon.png', 29), ('RegionShotIcon@2x.png', 58), ('
     assert png[:8] == b'\x89PNG\r\n\x1a\n'
     assert struct.unpack_from('>II', png, 16) == (size, size)
     assert png[25] == 6
-for path in ['Library/MobileSubstrate/DynamicLibraries/' + name + '.dylib' for name in ['RegionShot', 'RegionShotInput']] + [bundle + info['CFBundleExecutable']]:
+for path in ['Library/MobileSubstrate/DynamicLibraries/' + name + '.dylib' for name in ['RegionShot', 'RegionShotInput', 'RegionShotCameraSupport']] + [bundle + info['CFBundleExecutable']]:
     binary = files[path]
     assert struct.unpack_from('<III', binary) == (0xfeedfacf, 0x100000c, 0x80000002), path
     offset, signed = 32, False
@@ -56,7 +56,7 @@ assert not any(p.startswith('usr/share/doc/com.moxuan.regionshot/') for p in fil
 
 assert not any(p.startswith('Applications/RegionShotCamera.app/') for p in files)
 
-assert sorted(p.rsplit('/', 1)[-1] for p in files if p.startswith('Library/MobileSubstrate/DynamicLibraries/') and p.endswith('.dylib')) == ['RegionShot.dylib', 'RegionShotInput.dylib']
+assert sorted(p.rsplit('/', 1)[-1] for p in files if p.startswith('Library/MobileSubstrate/DynamicLibraries/') and p.endswith('.dylib')) == ['RegionShot.dylib', 'RegionShotCameraSupport.dylib', 'RegionShotInput.dylib']
 assert not any('RegionShotURLs' in p for p in files)
 
 input_filter = plistlib.loads(files['Library/MobileSubstrate/DynamicLibraries/RegionShotInput.plist'])['Filter']['Bundles']
@@ -65,3 +65,6 @@ assert 'com.apple.springboard' not in input_filter
 assert set(input_filter) == {'com.tencent.xin', 'jp.naver.line', 'org.coolstar.Sileo', 'org.coolstar.SileoStore'}
 main_filter = plistlib.loads(files['Library/MobileSubstrate/DynamicLibraries/RegionShot.plist'])['Filter']['Bundles']
 assert main_filter == ['com.apple.springboard']
+camera_filter = plistlib.loads(files['Library/MobileSubstrate/DynamicLibraries/RegionShotCameraSupport.plist'])['Filter']
+assert camera_filter['Bundles'] == ['com.apple.springboard']
+assert set(camera_filter['Executables']) == {'SpringBoard', 'mediaserverd', 'com.apple.Celestial'}

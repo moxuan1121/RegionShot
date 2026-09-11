@@ -5,7 +5,7 @@ INSTALL_TARGET_PROCESSES = SpringBoard
 
 include $(THEOS)/makefiles/common.mk
 
-TWEAK_NAME = RegionShot RegionShotInput
+TWEAK_NAME = RegionShot RegionShotInput RegionShotCameraSupport
 RegionShot_FILES = Selection/RSFreezeSystemHooks.xm Trigger.xm Preferences/RSURLHooks.xm \
 	Preferences/RSOptions.m \
 	Preferences/RSBehaviorSettings.m \
@@ -22,6 +22,7 @@ RegionShot_FILES = Selection/RSFreezeSystemHooks.xm Trigger.xm Preferences/RSURL
 	Floating/RSFloatingWindow.m \
 	Floating/RSFloatingImageView.m \
 	AI/RSChatController.m \
+	AI/RSChatCameraController.m \
 	AI/RSAISettingsController.m \
 	AI/RSSSEDecoder.m \
 	KeyboardAI/RSKAInterface.m \
@@ -30,13 +31,17 @@ RegionShot_FILES = Selection/RSFreezeSystemHooks.xm Trigger.xm Preferences/RSURL
 	Input/RSInputClipboard.m
 RegionShot_FILES += $(wildcard Annotation/*.m)
 RegionShot_CFLAGS = -fobjc-arc -Wall -Wextra -Wno-unused-parameter
-RegionShot_FRAMEWORKS = Foundation UIKit Photos QuartzCore Security PhotosUI UniformTypeIdentifiers Vision CoreImage
+RegionShot_FRAMEWORKS = Foundation UIKit Photos QuartzCore Security PhotosUI UniformTypeIdentifiers Vision CoreImage AVFoundation
 
 RegionShotInput_FILES = Input/Tweak.xm Input/RSSileo.xm Input/RSInputInterface.m Input/RSInputStream.m Input/RSInputStore.m Input/RSInputTokenView.m Input/RSInputAnchoredMenuView.m
 RegionShotInput_CFLAGS = -fobjc-arc -Wall -Wextra -Wno-unused-parameter
 RegionShotInput_FRAMEWORKS = UIKit Foundation WebKit
 RegionShotInput_LIBRARIES = roothide
 RegionShot_LIBRARIES = roothide
+RegionShotCameraSupport_FILES = CameraSupport/RSCameraMediaSupport.m
+RegionShotCameraSupport_CFLAGS = -fobjc-arc -Wall -Wextra -Wno-unused-parameter
+RegionShotCameraSupport_FRAMEWORKS = Foundation
+RegionShotCameraSupport_LIBRARIES = roothide
 RegionShot_FILES += Input/RSInputStore.m Input/RSInputOptionsController.m
 include $(THEOS_MAKE_PATH)/tweak.mk
 SUBPROJECTS += Preferences

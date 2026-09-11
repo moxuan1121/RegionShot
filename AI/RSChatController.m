@@ -1,6 +1,7 @@
 #import "../Geometry/RSWindowAnimation.h"
 #import "../Geometry/RSMaterialBackground.h"
 #import "RSChatController.h"
+#import "RSChatCameraController.h"
 #import "RSSSEDecoder.h"
 #import "RSChatAttachments.h"
 #import "../Geometry/RSOrientation.h"
@@ -706,6 +707,15 @@ static NSUserDefaults *RSChatPreferences(void) {
 - (void)clearAttachment { self.attachment = nil; self.fileAttachment = nil; self.fileName = nil; self.chip.accessibilityLabel = nil; self.chip.image = nil; self.chip.hidden = YES; }
 - (void)attachments {
     UIAlertController *sheet = [UIAlertController alertControllerWithTitle:@"添加附件" message:nil preferredStyle:UIAlertControllerStyleActionSheet];
+    [sheet addAction:[UIAlertAction actionWithTitle:@"相机" style:UIAlertActionStyleDefault handler:^(__unused UIAlertAction *action) {
+        [self hideKeyboard];
+        __weak typeof(self) weakSelf = self;
+        [RSChatCameraController showInScene:self.host.windowScene completion:^(UIImage *image) {
+            if (!weakSelf.host) return;
+            [weakSelf acceptImage:image];
+            [weakSelf focusInput];
+        }];
+    }]];
     [sheet addAction:[UIAlertAction actionWithTitle:@"相册" style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
         PHPickerConfiguration *config = [PHPickerConfiguration new]; config.filter = PHPickerFilter.imagesFilter; config.selectionLimit = 1;
         PHPickerViewController *picker = [[PHPickerViewController alloc] initWithConfiguration:config]; picker.delegate = self;

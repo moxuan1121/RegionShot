@@ -44,3 +44,9 @@ assert 'UIBlurEffectStyleSystemMaterial' in material
 for name in ('Input/RSInputInterface.m', 'KeyboardAI/RSKAInterface.m',
              'AI/RSChatController.m', 'History/RSHistoryController.m'):
     assert 'RSInstallMaterialBackground' in (root / name).read_text(encoding='utf-8'), name
+camera = (root / 'AI/RSChatCameraController.m').read_text(encoding='utf-8')
+assert 'UIPinchGestureRecognizer' in camera and 'videoZoomFactor = zoom' in camera
+assert 'RSInstallMaterialBackground(self.card, 20)' in camera
+support = (root / 'CameraSupport/RSCameraMediaSupport.m').read_text(encoding='utf-8')
+assert '(id, SEL, void *, id)' in support and support.count('MSHookMessageEx') == 1
+assert 'RSLog' not in support
