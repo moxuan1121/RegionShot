@@ -11,6 +11,8 @@ NSArray<NSDictionary *> *RSOptionGroups(void) {
     dispatch_once(&once, ^{ groups = @[
         @{@"title":@"触发与选区", @"items":@[
             @{@"key":@"StatusBarSwipe", @"title":@"状态栏右半侧右滑截图", @"default":@YES},
+            @{@"key":@"LongCaptureMode", @"title":@"长截图方式", @"default":@2, @"min":@0, @"max":@2,
+              @"choices":@[@"滚动拼接", @"逐次截取", @"自动拼接"]},
             @{@"key":@"SelectionShade", @"title":@"选区外遮罩深度", @"default":@0.38, @"min":@0.05, @"max":@0.8},
             @{@"key":@"CaptureHaptic", @"title":@"截图反馈振动", @"default":@YES} ]},
         @{@"title":@"菜单外观", @"items":@[

@@ -116,6 +116,7 @@ static BOOL RSStageWeChatScanImage(UIImage *image) {
         _selectionView.doubleTapHandler = ^{ if (weakSelf.toolbar.captureHandler) weakSelf.toolbar.captureHandler(); };
         _toolbar.fullscreenHandler = ^{ [weakSelf.selectionView selectAll]; };
         _toolbar.historyHandler = ^{ [RSRegionShotManager.sharedManager showHistory]; };
+        _toolbar.longCaptureHandler = ^{ [RSRegionShotManager.sharedManager beginLongCapture]; };
         _toolbar.copyHandler = ^{
             RSSelectionWindow *window = weakSelf;
             CGRect rect = window.selectionView.hasValidSelection ? window.selectionRect : window.selectionView.bounds;
@@ -271,6 +272,7 @@ static BOOL RSStageWeChatScanImage(UIImage *image) {
     self.toolbar.personaHandler = nil;
     self.toolbar.aiHandler = nil; self.toolbar.copyHandler = nil; self.toolbar.saveHandler = nil; self.toolbar.fullscreenHandler = nil;
     self.toolbar.historyHandler = nil;
+    self.toolbar.longCaptureHandler = nil;
     self.selectionView.doubleTapHandler = nil;
     self.selectionView.cancelHandler = nil;
     self.selectionView.selectionChanged = nil;

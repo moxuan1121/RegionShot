@@ -13,6 +13,9 @@ RegionShot_FILES = Selection/RSFreezeSystemHooks.xm Trigger.xm Preferences/RSURL
 	History/RSHistoryController.m \
 	Manager/RSRegionShotManager.m \
 	Capture/RSScreenCapture.m \
+	LongShot/RSLongCaptureController.m \
+	LongShot/RSLongStitcher.m \
+	LongShot/RSHIDSwipe.m \
 	Selection/RSSelectionWindow.m \
 	Selection/RSSelectionView.m \
 	Selection/RSSelectionToolbar.m \
@@ -31,7 +34,7 @@ RegionShot_FILES = Selection/RSFreezeSystemHooks.xm Trigger.xm Preferences/RSURL
 	Input/RSInputClipboard.m
 RegionShot_FILES += $(wildcard Annotation/*.m)
 RegionShot_CFLAGS = -fobjc-arc -Wall -Wextra -Wno-unused-parameter
-RegionShot_FRAMEWORKS = Foundation UIKit Photos QuartzCore Security PhotosUI UniformTypeIdentifiers Vision CoreImage AVFoundation
+RegionShot_FRAMEWORKS = Foundation UIKit Photos QuartzCore Security PhotosUI UniformTypeIdentifiers Vision CoreImage AVFoundation ImageIO
 
 RegionShotInput_FILES = Input/Tweak.xm Input/RSSileo.xm Input/RSInputInterface.m Input/RSInputStream.m Input/RSInputStore.m Input/RSInputTokenView.m Input/RSInputAnchoredMenuView.m
 RegionShotInput_CFLAGS = -fobjc-arc -Wall -Wextra -Wno-unused-parameter

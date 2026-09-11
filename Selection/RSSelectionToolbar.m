@@ -81,6 +81,8 @@
         if (self.fullscreenHandler) self.fullscreenHandler();
     } else if (button.tag == 8) {
         if (self.historyHandler) self.historyHandler();
+    } else if (button.tag == 12) {
+        if (self.longCaptureHandler) self.longCaptureHandler();
     }
 }
 

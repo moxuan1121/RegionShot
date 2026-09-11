@@ -12,6 +12,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 + (instancetype)sharedManager;
 - (BOOL)beginCapture;
+- (void)beginLongCapture;
 - (void)cancelCapture;
 - (void)bringSnapToFront:(RSFloatingImageView *)snap;
 - (void)removeSnap:(RSFloatingImageView *)snap;

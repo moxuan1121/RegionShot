@@ -43,6 +43,8 @@ jobs:
         run: clang -fobjc-arc -Wall -Wextra -Werror -framework Foundation Tests/test_urls.m -o /tmp/regionshot-urls && /tmp/regionshot-urls
       - name: Check crop geometry
         run: cc -std=c11 -Wall -Wextra -Werror Tests/test_geometry.c -lm -o /tmp/regionshot-geometry && /tmp/regionshot-geometry
+      - name: Check long screenshot overlap matching
+        run: clang -std=c11 -Wall -Wextra -Werror Tests/long_match_test.c -o /tmp/regionshot-long-match && /tmp/regionshot-long-match
       - name: Check streaming packet boundaries
         run: clang -fobjc-arc -Wall -Wextra -Werror -framework Foundation Tests/test_stream.m AI/RSSSEDecoder.m -o /tmp/regionshot-stream && /tmp/regionshot-stream
       - name: Check generated QR recognition

@@ -24,7 +24,12 @@
         UISwitch *toggle = [UISwitch new]; toggle.on = [value boolValue]; toggle.accessibilityIdentifier = option[@"key"];
         toggle.accessibilityLabel = option[@"title"];
         [toggle addTarget:self action:@selector(toggled:) forControlEvents:UIControlEventValueChanged]; cell.accessoryView = toggle;
-    } else { cell.detailTextLabel.text = [value description]; cell.detailTextLabel.numberOfLines = 2; cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator; }
+    } else {
+        NSArray *choices = option[@"choices"];
+        NSInteger index = [value integerValue];
+        cell.detailTextLabel.text = index >= 0 && choices.count > (NSUInteger)index ? choices[index] : [value description];
+        cell.detailTextLabel.numberOfLines = 2; cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
+    }
     return cell;
 }
 - (void)toggled:(UISwitch *)toggle { RSSetOption(toggle.accessibilityIdentifier, @(toggle.on)); [self.tableView reloadData]; }
@@ -42,6 +47,19 @@
         [self.navigationController pushViewController:page animated:YES]; return;
     }
     NSDictionary *option = [self optionAt:path];
+    NSArray *choices = option[@"choices"];
+    if (choices.count) {
+        UIAlertController *sheet = [UIAlertController alertControllerWithTitle:option[@"title"] message:nil preferredStyle:UIAlertControllerStyleActionSheet];
+        [choices enumerateObjectsUsingBlock:^(NSString *title, NSUInteger index, BOOL *stop) {
+            [sheet addAction:[UIAlertAction actionWithTitle:title style:UIAlertActionStyleDefault handler:^(__unused UIAlertAction *action) {
+                RSSetOption(option[@"key"], @(index)); [tableView reloadData];
+            }]];
+        }];
+        [sheet addAction:[UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:nil]];
+        sheet.popoverPresentationController.sourceView = [tableView cellForRowAtIndexPath:path];
+        sheet.popoverPresentationController.sourceRect = sheet.popoverPresentationController.sourceView.bounds;
+        [self presentViewController:sheet animated:YES completion:nil]; return;
+    }
     BOOL number = option[@"min"] != nil;
     if (!number && [option[@"default"] isKindOfClass:NSNumber.class]) return;
     NSString *message = number ? [NSString stringWithFormat:@"范围 %@–%@", option[@"min"], option[@"max"]] : [NSString stringWithFormat:@"最多 %@ 字符", option[@"limit"]];
