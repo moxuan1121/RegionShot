@@ -188,8 +188,9 @@
         self.finishRequested = NO; self.captureButton.enabled = YES; return;
     }
     self.statusLabel.text = @"已复制，正在保存到相册…";
+    UIImage *imageToSave = self.finishedImage;
     [PHPhotoLibrary.sharedPhotoLibrary performChanges:^{
-        [PHAssetChangeRequest creationRequestForAssetFromImage:self.finishedImage];
+        [PHAssetChangeRequest creationRequestForAssetFromImage:imageToSave];
     } completionHandler:^(BOOL success, NSError *error) {
         dispatch_async(dispatch_get_main_queue(), ^{
             if (self.stopped) return;

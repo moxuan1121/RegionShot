@@ -19,6 +19,7 @@
 + (UIScreen *)mainScreen { return [UIScreen new]; }
 - (CGFloat)scale { return 1; }
 @end
+static BOOL fixedBars = NO;
 static UIImage *frame(size_t top) {
     enum { W=96, H=240 };
     uint8_t bytes[W*H*4];
@@ -26,6 +27,7 @@ static UIImage *frame(size_t top) {
         uint8_t *p=bytes+(y*W+x)*4;
         p[0]=(uint8_t)((top+y)*13+x*7+(top+y)*x);
         p[1]=(uint8_t)((top+y)*19+x*3); p[2]=(uint8_t)(x*2); p[3]=255;
+        if (fixedBars && (y < 12 || y >= H-12)) { p[0]=30; p[1]=50; p[2]=70; }
     }
     CGColorSpaceRef rgb=CGColorSpaceCreateDeviceRGB();
     CGDataProviderRef provider=CGDataProviderCreateWithData(NULL,bytes,sizeof(bytes),NULL);
@@ -57,5 +59,11 @@ int main(void) { @autoreleasepool {
         assert(abs((int)p[2]-(uint8_t)(x*2))<=1);
     }
     CGContextRelease(ctx); CGColorSpaceRelease(rgb); free(bytes); [stitcher cancel];
-    puts("Verified 41 small-scroll frames, final height, seam pixels and image orientation");
+    fixedBars=YES;
+    stitcher=[[RSLongStitcher alloc] initWithTopInset:0];
+    for(size_t top=0;top<=120;top+=3) assert([stitcher appendImage:frame(top)]==RSLongAppendResultAdded);
+    result=[stitcher finish:&error];
+    assert(result && CGImageGetHeight(result.CGImage)==348);
+    [stitcher cancel];
+    puts("Verified small-scroll frames, fixed bars, final height, seam pixels and orientation");
 } return 0; }
