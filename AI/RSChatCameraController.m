@@ -131,8 +131,8 @@ static RSChatCameraController *RSActiveCamera;
 - (void)updateVideoOrientation {
     UIInterfaceOrientation orientation = self.view.window.windowScene.interfaceOrientation;
     AVCaptureVideoOrientation videoOrientation = AVCaptureVideoOrientationPortrait;
-    if (orientation == UIInterfaceOrientationLandscapeLeft) videoOrientation = AVCaptureVideoOrientationLandscapeLeft;
-    else if (orientation == UIInterfaceOrientationLandscapeRight) videoOrientation = AVCaptureVideoOrientationLandscapeRight;
+    if (orientation == UIInterfaceOrientationLandscapeLeft) videoOrientation = AVCaptureVideoOrientationLandscapeRight;
+    else if (orientation == UIInterfaceOrientationLandscapeRight) videoOrientation = AVCaptureVideoOrientationLandscapeLeft;
     for (AVCaptureConnection *connection in @[self.preview.connection ?: NSNull.null, [self.output connectionWithMediaType:AVMediaTypeVideo] ?: NSNull.null])
         if ([connection isKindOfClass:AVCaptureConnection.class] && connection.isVideoOrientationSupported) connection.videoOrientation = videoOrientation;
 }

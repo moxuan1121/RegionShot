@@ -41,6 +41,8 @@ assert 'prefs://root=regionshot_aiwindow' in ai_settings
 camera = (root / 'AI/RSChatCameraController.m').read_text(encoding='utf-8')
 assert '[self.output connectionWithMediaType:AVMediaTypeVideo]' in camera
 assert '[self updateVideoOrientation];' in camera
+assert 'UIInterfaceOrientationLandscapeLeft) videoOrientation = AVCaptureVideoOrientationLandscapeRight' in camera
+assert 'UIInterfaceOrientationLandscapeRight) videoOrientation = AVCaptureVideoOrientationLandscapeLeft' in camera
 mode_block = re.search(r'typedef NS_ENUM\(NSInteger, RSLongCaptureMode\) \{([^}]+)\}', header).group(1)
 assert set(re.findall(r'(RSLongCaptureMode\w+)\s*=', mode_block)) == {
     'RSLongCaptureModeManual', 'RSLongCaptureModeButtonStep'}
