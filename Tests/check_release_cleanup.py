@@ -43,8 +43,8 @@ floating = (root / 'Floating/RSFloatingWindow.m').read_text(encoding='utf-8')
 assert 'controller.targetOrientation == orientation' in floating
 assert 'controller.targetOrientation = orientation; controller.centerImages = YES' in floating
 assert 'if (!self.centerImages) return' in floating and 'self.centerImages = NO' in floating
-assert '_setRotatableViewOrientation:orientation updateStatusBar:NO duration:UIAccessibilityIsReduceMotionEnabled() ? 0 : 0.3' in floating
-assert 'UIViewAnimationOptionCurveEaseInOut' in floating
+assert 'view.layer.opacity = 0' in floating and 'view.layer.opacity = 1' in floating
+assert 'RSApplyWindowOrientation(self, orientation)' in floating
 for name in ('Input/RSInputInterface.m', 'KeyboardAI/RSKAInterface.m'):
     source = (root / name).read_text(encoding='utf-8').split('- (void)showSearchMenu:', 1)[1]
     assert 'RSInputVisibleActions(@"clipboardHiddenPersonas")' in source

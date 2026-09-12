@@ -14,11 +14,13 @@
     if (landscape != (self.view.bounds.size.width > self.view.bounds.size.height)) return;
     self.centerImages = NO;
     CGPoint center = CGPointMake(CGRectGetMidX(self.view.bounds), CGRectGetMidY(self.view.bounds));
-    [UIView animateWithDuration:UIAccessibilityIsReduceMotionEnabled() ? 0 : 0.3 delay:0
-        options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction | UIViewAnimationOptionCurveEaseInOut
+    for (UIView *view in self.view.subviews)
+        if ([view isKindOfClass:RSFloatingImageView.class]) view.center = center;
+    [UIView animateWithDuration:UIAccessibilityIsReduceMotionEnabled() ? 0 : 0.22 delay:0
+        options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction | UIViewAnimationOptionCurveEaseOut
         animations:^{
             for (UIView *view in self.view.subviews)
-                if ([view isKindOfClass:RSFloatingImageView.class]) view.center = center;
+                if ([view isKindOfClass:RSFloatingImageView.class]) view.layer.opacity = 1;
         } completion:nil];
 }
 - (BOOL)shouldAutorotate { return NO; }
@@ -66,9 +68,10 @@
     if (!RSValidInterfaceOrientation((int)orientation)) return;
     if (controller.targetOrientation == orientation) return;
     controller.targetOrientation = orientation; controller.centerImages = YES;
-    if ([self respondsToSelector:@selector(_setRotatableViewOrientation:updateStatusBar:duration:force:)])
-        [self _setRotatableViewOrientation:orientation updateStatusBar:NO duration:UIAccessibilityIsReduceMotionEnabled() ? 0 : 0.3 force:YES];
-    else RSApplyWindowOrientation(self, orientation);
+    if (!UIAccessibilityIsReduceMotionEnabled())
+        for (UIView *view in controller.view.subviews)
+            if ([view isKindOfClass:RSFloatingImageView.class]) view.layer.opacity = 0;
+    RSApplyWindowOrientation(self, orientation);
     [controller.view setNeedsLayout]; [controller.view layoutIfNeeded];
 }
 - (void)updateOrientation {

@@ -1,5 +1,6 @@
 #import "RSChatCameraController.h"
 #import "../Geometry/RSMaterialBackground.h"
+#import "../Geometry/RSOrientation.h"
 #import <AVFoundation/AVFoundation.h>
 
 @interface RSChatCameraController () <AVCapturePhotoCaptureDelegate>
@@ -42,6 +43,7 @@ static RSChatCameraController *RSActiveCamera;
     self.view.backgroundColor = [UIColor colorWithWhite:0 alpha:0.36];
     self.queue = dispatch_queue_create("com.moxuan.regionshot.springboard-camera", DISPATCH_QUEUE_SERIAL);
     self.position = AVCaptureDevicePositionBack;
+    [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(screenRotated:) name:@"com.moxuan.regionshot.orientation.target" object:nil];
 
     self.card = [UIView new];
     self.card.layer.cornerRadius = 20;
@@ -129,7 +131,13 @@ static RSChatCameraController *RSActiveCamera;
     [self updateVideoOrientation];
 }
 - (void)updateVideoOrientation {
-    UIInterfaceOrientation orientation = self.view.window.windowScene.interfaceOrientation;
+    [self updateVideoOrientation:RSActiveOrientation(self.host.windowScene)];
+}
+- (void)screenRotated:(NSNotification *)note {
+    UIInterfaceOrientation orientation = [note.userInfo[@"orientation"] integerValue];
+    [self updateVideoOrientation:RSValidInterfaceOrientation((int)orientation) ? orientation : RSActiveOrientation(self.host.windowScene)];
+}
+- (void)updateVideoOrientation:(UIInterfaceOrientation)orientation {
     AVCaptureVideoOrientation videoOrientation = AVCaptureVideoOrientationPortrait;
     if (orientation == UIInterfaceOrientationLandscapeLeft) videoOrientation = AVCaptureVideoOrientationLandscapeLeft;
     else if (orientation == UIInterfaceOrientationLandscapeRight) videoOrientation = AVCaptureVideoOrientationLandscapeRight;
@@ -213,6 +221,7 @@ static RSChatCameraController *RSActiveCamera;
 - (void)close {
     if (self.closing) return;
     self.closing = YES;
+    [NSNotificationCenter.defaultCenter removeObserver:self];
     AVCaptureSession *session = self.session;
     dispatch_async(self.queue, ^{ [session stopRunning]; });
     self.host.hidden = YES;

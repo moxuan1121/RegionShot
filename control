@@ -1,6 +1,6 @@
 Package: com.moxuan.regionshot
 Name: RegionShot
-Version: 0.6.87-roothide
+Version: 0.6.88-roothide
 Architecture: iphoneos-arm64e
 Description: Lightweight floating region screenshots for iOS 15.6.
 Maintainer: moxuan

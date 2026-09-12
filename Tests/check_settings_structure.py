@@ -41,6 +41,9 @@ assert 'prefs://root=regionshot_aiwindow' in ai_settings
 camera = (root / 'AI/RSChatCameraController.m').read_text(encoding='utf-8')
 assert '[self.output connectionWithMediaType:AVMediaTypeVideo]' in camera
 assert '[self updateVideoOrientation];' in camera
+assert 'RSActiveOrientation(self.host.windowScene)' in camera
+assert 'name:@"com.moxuan.regionshot.orientation.target"' in camera
+assert '[NSNotificationCenter.defaultCenter removeObserver:self]' in camera
 assert 'UIInterfaceOrientationLandscapeLeft) videoOrientation = AVCaptureVideoOrientationLandscapeLeft' in camera
 assert 'UIInterfaceOrientationLandscapeRight) videoOrientation = AVCaptureVideoOrientationLandscapeRight' in camera
 mode_block = re.search(r'typedef NS_ENUM\(NSInteger, RSLongCaptureMode\) \{([^}]+)\}', header).group(1)
