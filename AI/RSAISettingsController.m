@@ -360,12 +360,16 @@ UIViewController *RSAICreatePhrasesController(void) { return [RSAIPhrasesControl
 - (instancetype)init { return [super initWithStyle:UITableViewStyleInsetGrouped]; }
 - (void)viewDidLoad { [super viewDidLoad]; self.title = @"AI"; }
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)table { return 2; }
-- (NSInteger)tableView:(UITableView *)table numberOfRowsInSection:(NSInteger)section { return section == 0 ? 5 : 4; }
+- (NSInteger)tableView:(UITableView *)table numberOfRowsInSection:(NSInteger)section { return section == 0 ? 6 : 4; }
 - (NSString *)tableView:(UITableView *)table titleForHeaderInSection:(NSInteger)section { return section == 0 ? @"AI 对话" : @"各入口显示的人设"; }
+- (NSString *)tableView:(UITableView *)table titleForFooterInSection:(NSInteger)section { return section == 0 ? @"复制后可供快捷指令、浏览器或其他插件直接打开 AI 对话窗口。" : nil; }
 - (UITableViewCell *)tableView:(UITableView *)table cellForRowAtIndexPath:(NSIndexPath *)path {
-    UITableViewCell *cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:nil];
-    cell.textLabel.text = path.section == 0 ? @[@"打开对话", @"对话设置", @"服务配置", @"人设", @"弹出式窗口"][path.row] : @[@"微信菜单", @"LINE 菜单", @"分词按钮长按菜单", @"Sileo 介绍页翻译"][path.row];
-    cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator; return cell;
+    BOOL copyURL = path.section == 0 && path.row == 1;
+    UITableViewCell *cell = [[UITableViewCell alloc] initWithStyle:copyURL ? UITableViewCellStyleSubtitle : UITableViewCellStyleDefault reuseIdentifier:nil];
+    cell.textLabel.text = path.section == 0 ? @[@"打开对话", @"复制对话调用地址", @"对话设置", @"服务配置", @"人设", @"弹出式窗口"][path.row] : @[@"微信菜单", @"LINE 菜单", @"分词按钮长按菜单", @"Sileo 介绍页翻译"][path.row];
+    if (copyURL) cell.detailTextLabel.text = @"prefs://root=regionshot_aiwindow";
+    else cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
+    return cell;
 }
 - (void)tableView:(UITableView *)table didSelectRowAtIndexPath:(NSIndexPath *)path {
     [table deselectRowAtIndexPath:path animated:YES];
@@ -373,10 +377,15 @@ UIViewController *RSAICreatePhrasesController(void) { return [RSAIPhrasesControl
     if (path.section == 1 && path.row == 3) page = RSCreateSileoSettings();
     else if (path.section == 1) page = RSInputCreatePersonaSelection(@[@"wechatHiddenPersonas", @"lineHiddenPersonas", @"clipboardHiddenPersonas"][path.row]);
     else if (path.row == 0) { notify_post("com.moxuan.regionshot/AIWindow"); return; }
-    else if (path.row == 1) { RSBehaviorSettings *options = [RSBehaviorSettings new]; options.groupIndex = RSOptionGroups().count - 1; page = options; }
-    else if (path.row == 2) page = [[RSAISettingsController alloc] initWithSaved:nil];
-    else if (path.row == 3) page = [RSAIPersonasController new];
-    else if (path.row == 4) page = RSInputCreateAIOptions();
+    else if (path.row == 1) {
+        UIPasteboard.generalPasteboard.string = @"prefs://root=regionshot_aiwindow";
+        UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"已复制" message:@"可粘贴到快捷指令、浏览器或其他插件中，直接打开 AI 对话窗口。" preferredStyle:UIAlertControllerStyleAlert];
+        [alert addAction:[UIAlertAction actionWithTitle:@"好" style:UIAlertActionStyleCancel handler:nil]]; [self presentViewController:alert animated:YES completion:nil]; return;
+    }
+    else if (path.row == 2) { RSBehaviorSettings *options = [RSBehaviorSettings new]; options.groupIndex = RSOptionGroups().count - 1; page = options; }
+    else if (path.row == 3) page = [[RSAISettingsController alloc] initWithSaved:nil];
+    else if (path.row == 4) page = [RSAIPersonasController new];
+    else if (path.row == 5) page = RSInputCreateAIOptions();
     else page = RSCreateSileoSettings();
     [self.navigationController pushViewController:page animated:YES];
 }

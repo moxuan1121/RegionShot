@@ -125,12 +125,15 @@ static RSChatCameraController *RSActiveCamera;
 - (void)viewDidLayoutSubviews {
     [super viewDidLayoutSubviews];
     self.preview.frame = self.card.bounds;
-    AVCaptureConnection *connection = self.preview.connection;
+    [self updateVideoOrientation];
+}
+- (void)updateVideoOrientation {
     UIInterfaceOrientation orientation = self.view.window.windowScene.interfaceOrientation;
-    if (!connection.isVideoOrientationSupported) return;
-    if (orientation == UIInterfaceOrientationLandscapeLeft) connection.videoOrientation = AVCaptureVideoOrientationLandscapeLeft;
-    else if (orientation == UIInterfaceOrientationLandscapeRight) connection.videoOrientation = AVCaptureVideoOrientationLandscapeRight;
-    else connection.videoOrientation = AVCaptureVideoOrientationPortrait;
+    AVCaptureVideoOrientation videoOrientation = AVCaptureVideoOrientationPortrait;
+    if (orientation == UIInterfaceOrientationLandscapeLeft) videoOrientation = AVCaptureVideoOrientationLandscapeLeft;
+    else if (orientation == UIInterfaceOrientationLandscapeRight) videoOrientation = AVCaptureVideoOrientationLandscapeRight;
+    for (AVCaptureConnection *connection in @[self.preview.connection ?: NSNull.null, [self.output connectionWithMediaType:AVMediaTypeVideo] ?: NSNull.null])
+        if ([connection isKindOfClass:AVCaptureConnection.class] && connection.isVideoOrientationSupported) connection.videoOrientation = videoOrientation;
 }
 - (AVCaptureDevice *)deviceAtPosition:(AVCaptureDevicePosition)position {
     return [AVCaptureDeviceDiscoverySession discoverySessionWithDeviceTypes:@[AVCaptureDeviceTypeBuiltInWideAngleCamera]
@@ -160,6 +163,7 @@ static RSChatCameraController *RSActiveCamera;
             camera.input = input;
             camera.output = output;
             camera.preview.session = session;
+            [camera updateVideoOrientation];
             camera.status.hidden = YES;
             camera.shutter.enabled = YES;
             camera.flip.enabled = YES;
@@ -168,6 +172,7 @@ static RSChatCameraController *RSActiveCamera;
 }
 - (void)takePhoto {
     if (!self.output || self.closing) return;
+    [self updateVideoOrientation];
     self.shutter.enabled = NO;
     [self.output capturePhotoWithSettings:[AVCapturePhotoSettings photoSettings] delegate:self];
 }
