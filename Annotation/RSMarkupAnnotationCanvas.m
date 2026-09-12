@@ -2,8 +2,6 @@
 
 @interface RSMarkupAnnotationCanvas ()
 @property (nonatomic) BOOL isDrawing;
-@property (nonatomic) CGPoint currentStart;
-@property (nonatomic) CGPoint currentEnd;
 @property (nonatomic, strong) NSMutableArray<NSValue *> *currentPathPoints;
 @property (nonatomic, strong) RSMarkupAnnotationItem *liveItem;   // item being drawn
 @end
@@ -14,7 +12,6 @@
     if ((self = [super initWithFrame:frame])) {
         self.backgroundColor = [UIColor clearColor];
         _items = [NSMutableArray array];
-        _currentPathPoints = [NSMutableArray array];
         _strokeColor = [UIColor systemRedColor];
         _lineWidth = 5.0;
         _drawMode = RSMarkupDrawModeArrow;
@@ -48,10 +45,7 @@
     if (self.drawMode == RSMarkupDrawModeText) return; // text handled by the VC
     CGPoint p = [touches.anyObject locationInView:self];
     self.isDrawing = YES;
-    self.currentStart = p;
-    self.currentEnd = p;
-    [self.currentPathPoints removeAllObjects];
-    [self.currentPathPoints addObject:[NSValue valueWithCGPoint:p]];
+    self.currentPathPoints = [NSMutableArray arrayWithObject:[NSValue valueWithCGPoint:p]];
 
     RSMarkupAnnotationItem *item = [RSMarkupAnnotationItem new];
     item.type = self.drawMode;
@@ -60,7 +54,7 @@
     item.startPoint = p;
     item.endPoint = p;
     self.liveItem = item;
-    item.pathPoints = [self.currentPathPoints mutableCopy];
+    item.pathPoints = self.currentPathPoints;
     [self.items addObject:item];
     [self setNeedsDisplay];
 }
@@ -68,11 +62,9 @@
 - (void)touchesMoved:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
     if (!self.isDrawing) return;
     CGPoint p = [touches.anyObject locationInView:self];
-    self.currentEnd = p;
     self.liveItem.endPoint = p;
     if (self.drawMode == RSMarkupDrawModeScribble || self.drawMode == RSMarkupDrawModeMosaic) {
         [self.currentPathPoints addObject:[NSValue valueWithCGPoint:p]];
-        self.liveItem.pathPoints = [self.currentPathPoints mutableCopy];
     }
     [self setNeedsDisplay];
 }

@@ -20,7 +20,9 @@ static RSHistoryStore *RSStore(void) {
     });
     return store;
 }
-@interface RSHistoryCell : UITableViewCell @end
+@interface RSHistoryCell : UITableViewCell
+@property(nonatomic, copy) NSString *representedIdentifier;
+@end
 @implementation RSHistoryCell
 - (void)layoutSubviews {
     [super layoutSubviews];
@@ -204,17 +206,23 @@ static RSHistoryController *RSActiveHistory;
 }
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section { return self.filtered.count; }
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)path {
-    UITableViewCell *cell = [[RSHistoryCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:nil];
+    static NSString *reuseIdentifier = @"RegionShotHistoryCell";
+    RSHistoryCell *cell = [tableView dequeueReusableCellWithIdentifier:reuseIdentifier];
+    if (!cell) cell = [[RSHistoryCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:reuseIdentifier];
     cell.backgroundColor = UIColor.clearColor;
     NSDictionary *entry = self.filtered[path.row]; NSString *identifier = entry[@"id"];
+    cell.representedIdentifier = identifier;
     cell.textLabel.text = entry[@"title"]; cell.detailTextLabel.text = [self dateText:entry]; cell.accessoryType = UITableViewCellAccessoryNone;
     cell.imageView.image = [self.thumbnails objectForKey:identifier] ?: [UIImage systemImageNamed:@"photo"];
     if (![self.thumbnails objectForKey:identifier]) {
-        __weak typeof(self) weakSelf = self; __weak UITableViewCell *weakCell = cell;
+        __weak typeof(self) weakSelf = self; __weak RSHistoryCell *weakCell = cell;
         dispatch_async(RSHistoryQueue(), ^{
             UIImage *image = [UIImage imageWithData:[RSStore() dataForID:identifier thumbnail:YES error:nil]];
             dispatch_async(dispatch_get_main_queue(), ^{
-                if (image) { [weakSelf.thumbnails setObject:image forKey:identifier]; weakCell.imageView.image = image; [weakCell setNeedsLayout]; }
+                if (image) {
+                    [weakSelf.thumbnails setObject:image forKey:identifier];
+                    if ([weakCell.representedIdentifier isEqual:identifier]) { weakCell.imageView.image = image; [weakCell setNeedsLayout]; }
+                }
             });
         });
     }

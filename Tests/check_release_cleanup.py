@@ -78,3 +78,9 @@ assert 'RSChatCameraController.isVisible' in chat.split('- (void)focusInput', 1)
 camera_action = chat.split('- (void)openCamera:', 1)[1].split('+ (void)showCameraInScene:', 1)[0]
 assert 'if (image) [weakSelf acceptImage:image]' in camera_action and camera_action.index('acceptImage:image') < camera_action.index('focusInput')
 assert 'completion(nil)' in camera
+sileo = (root / 'Input/RSSileo.xm').read_text(encoding='utf-8')
+assert '%hook UIView\n' not in sileo and 'viewDidLayoutSubviews' not in sileo
+history = (root / 'History/RSHistoryController.m').read_text(encoding='utf-8')
+assert 'dequeueReusableCellWithIdentifier' in history and 'representedIdentifier' in history
+canvas = (root / 'Annotation/RSMarkupAnnotationCanvas.m').read_text(encoding='utf-8')
+assert 'self.liveItem.pathPoints = [self.currentPathPoints mutableCopy]' not in canvas

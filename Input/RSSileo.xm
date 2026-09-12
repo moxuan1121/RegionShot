@@ -105,10 +105,6 @@ static void RSInstallSileoGesture(UIWindow *window) {
 %group RSSileoHooks
 %hook UIViewController
 - (void)viewDidAppear:(BOOL)animated { %orig; RSInstallSileoGesture(self.view.window); }
-- (void)viewDidLayoutSubviews { %orig; RSInstallSileoGesture(self.view.window); }
-%end
-%hook UIView
-- (void)didMoveToWindow { %orig; if (RSIsDepiction(self)) RSInstallSileoGesture(self.window); }
 %end
 %end
 %ctor {
