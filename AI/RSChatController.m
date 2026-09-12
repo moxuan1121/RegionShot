@@ -211,7 +211,9 @@ static NSUserDefaults *RSChatPreferences(void) {
     [button setImage:[UIImage systemImageNamed:symbol] forState:UIControlStateNormal];
     [button setTitle:[@" " stringByAppendingString:title] forState:UIControlStateNormal];
     button.titleLabel.font = [UIFont systemFontOfSize:13 weight:UIFontWeightMedium];
-    RSInstallMaterialBackground(button, 16); button.accessibilityLabel = title;
+    RSInstallMaterialBackground(button, 16);
+    [button bringSubviewToFront:button.imageView]; [button bringSubviewToFront:button.titleLabel];
+    button.accessibilityLabel = title;
     [button addTarget:self action:selector forControlEvents:UIControlEventTouchUpInside];
     [button.heightAnchor constraintEqualToConstant:32].active = YES;
     return button;
