@@ -211,8 +211,7 @@ static NSUserDefaults *RSChatPreferences(void) {
     [button setImage:[UIImage systemImageNamed:symbol] forState:UIControlStateNormal];
     [button setTitle:[@" " stringByAppendingString:title] forState:UIControlStateNormal];
     button.titleLabel.font = [UIFont systemFontOfSize:13 weight:UIFontWeightMedium];
-    button.backgroundColor = [UIColor.secondarySystemFillColor colorWithAlphaComponent:0.8];
-    button.layer.cornerRadius = 16; button.accessibilityLabel = title;
+    RSInstallMaterialBackground(button, 16); button.accessibilityLabel = title;
     [button addTarget:self action:selector forControlEvents:UIControlEventTouchUpInside];
     [button.heightAnchor constraintEqualToConstant:32].active = YES;
     return button;
@@ -306,7 +305,7 @@ static NSUserDefaults *RSChatPreferences(void) {
     bottom.spacing = 8;
     [content addArrangedSubview:bottom];
     UILayoutGuide *safe = self.view.safeAreaLayoutGuide;
-    NSLayoutConstraint *height = [self.card.heightAnchor constraintEqualToConstant:220];
+    NSLayoutConstraint *height = [self.card.heightAnchor constraintEqualToConstant:260];
     self.cardHeight = height;
     height.priority = UILayoutPriorityDefaultHigh;
     NSLayoutConstraint *center = [self.card.centerYAnchor constraintEqualToAnchor:safe.centerYAnchor];
@@ -490,7 +489,7 @@ static NSUserDefaults *RSChatPreferences(void) {
         withHorizontalFittingPriority:UILayoutPriorityRequired verticalFittingPriority:UILayoutPriorityFittingSizeLevel];
     CGFloat available = self.view.safeAreaLayoutGuide.layoutFrame.size.height;
     CGFloat maximum = available * [RSOption(@"AIChatMaxHeight") doubleValue] / 100.0;
-    CGFloat desired = MIN(maximum, MAX(180, size.height + 116 + (self.chip.hidden ? 0 : 80)));
+    CGFloat desired = MIN(maximum, MAX(220, size.height + 156 + (self.chip.hidden ? 0 : 80)));
     if (fabs(self.cardHeight.constant - desired) > 0.5) self.cardHeight.constant = desired;
 }
 

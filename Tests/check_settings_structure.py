@@ -30,6 +30,8 @@ assert '@"AIQuickPhrases"' in ai_settings and '@"短语"' in ai_settings
 for action in ('choosePhoto:', 'chooseFile:', 'openCamera:', 'showPhrases:'):
     assert action in chat
 assert 'RSAIQuickPhrases()' in chat
+assert 'constraintEqualToConstant:260' in chat and 'MAX(220, size.height + 156' in chat
+assert 'RSInstallMaterialBackground(button, 16)' in chat
 mode_block = re.search(r'typedef NS_ENUM\(NSInteger, RSLongCaptureMode\) \{([^}]+)\}', header).group(1)
 assert set(re.findall(r'(RSLongCaptureMode\w+)\s*=', mode_block)) == {
     'RSLongCaptureModeManual', 'RSLongCaptureModeButtonStep'}
