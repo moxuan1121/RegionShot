@@ -72,3 +72,6 @@ assert 'com.moxuan.regionshot/AICamera' in trigger
 external_camera = chat.split('+ (void)showCameraInScene:', 1)[1].split('- (void)showPhrases:', 1)[0]
 assert external_camera.index('RSOpeningExternalCamera = YES') < external_camera.index('[self showImage:nil scene:scene]')
 assert 'RSChatCameraController.isVisible' in chat.split('- (void)focusInput', 1)[1].split('- (void)updateHeading', 1)[0]
+camera_action = chat.split('- (void)openCamera:', 1)[1].split('+ (void)showCameraInScene:', 1)[0]
+assert 'if (image) [weakSelf acceptImage:image]' in camera_action and camera_action.index('acceptImage:image') < camera_action.index('focusInput')
+assert 'completion(nil)' in camera

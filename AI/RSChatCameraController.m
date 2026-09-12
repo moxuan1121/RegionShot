@@ -205,7 +205,11 @@ static RSChatCameraController *RSActiveCamera;
     self.shutter.enabled = NO;
     self.flip.enabled = NO;
 }
-- (void)cancel { [self close]; }
+- (void)cancel {
+    void (^completion)(UIImage *) = self.completion;
+    [self close];
+    if (completion) completion(nil);
+}
 - (void)close {
     if (self.closing) return;
     self.closing = YES;

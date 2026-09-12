@@ -755,7 +755,7 @@ static NSUserDefaults *RSChatPreferences(void) {
     __weak typeof(self) weakSelf = self;
     [RSChatCameraController showInScene:self.host.windowScene completion:^(UIImage *image) {
         if (!weakSelf.host) return;
-        [weakSelf acceptImage:image];
+        if (image) [weakSelf acceptImage:image];
         [weakSelf focusInput];
     }];
 }
