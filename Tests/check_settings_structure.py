@@ -23,9 +23,12 @@ injection = (root / 'RegionShot.plist').read_text(encoding='utf-8')
 swipe = (root / 'LongShot/RSLongSwipe.m').read_text(encoding='utf-8')
 assert '@"choiceValues":@[@2, @3]' in source
 assert 'choiceValues.count > index ? choiceValues[index] : @(index)' in behavior
-assert 'RSLongCaptureModeConservativeStep = 3' in header
+mode_block = re.search(r'typedef NS_ENUM\(NSInteger, RSLongCaptureMode\) \{([^}]+)\}', header).group(1)
+assert set(re.findall(r'(RSLongCaptureMode\w+)\s*=', mode_block)) == {
+    'RSLongCaptureModeManual', 'RSLongCaptureModeButtonStep'}
+assert 'mode == RSLongCaptureModeButtonStep ? RSLongCaptureModeButtonStep : RSLongCaptureModeManual' in controller
 assert '@"继续" action:@selector(continuePressed)' in controller
-assert 'self.mode == RSLongCaptureModeConservativeStep || self.stopped' in controller
+assert 'self.mode == RSLongCaptureModeButtonStep || self.stopped' in controller
 assert 'LongShot/RSLongSwipe.m' in makefile
 assert 'com.apple.UIKit' not in injection
 assert 'progress * progress * (3.0 - 2.0 * progress)' in swipe

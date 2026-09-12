@@ -43,7 +43,7 @@
 + (instancetype)startWithScene:(UIWindowScene *)scene mode:(RSLongCaptureMode)mode
                     completion:(void (^)(UIWindowScene *))completion cancel:(dispatch_block_t)cancel {
     RSLongCaptureController *window = scene ? [[self alloc] initWithWindowScene:scene] : [[self alloc] initWithFrame:UIScreen.mainScreen.bounds];
-    window.mode = mode;
+    window.mode = mode == RSLongCaptureModeButtonStep ? RSLongCaptureModeButtonStep : RSLongCaptureModeManual;
     window.resultHandler = completion; window.cancelHandler = cancel;
     [window configure]; RSApplyWindowOrientation(window, RSActiveOrientation(scene)); window.hidden = NO; [window beginSession];
     return window;
@@ -62,10 +62,10 @@
     self.statusLabel.font = [UIFont preferredFontForTextStyle:UIFontTextStyleFootnote];
     self.statusLabel.numberOfLines = 2; [self.panel addSubview:self.statusLabel];
     UIButton *cancel = [self button:@"取消" action:@selector(cancelPressed)];
-    self.captureButton = [self button:self.mode == RSLongCaptureModeConservativeStep ? @"结束" : @"截取" action:@selector(capturePressed)];
+    self.captureButton = [self button:self.mode == RSLongCaptureModeButtonStep ? @"结束" : @"截取" action:@selector(capturePressed)];
     [self.panel addSubview:cancel];
     cancel.tag = 1;
-    if (self.mode == RSLongCaptureModeConservativeStep) {
+    if (self.mode == RSLongCaptureModeButtonStep) {
         self.continueButton = [self button:@"继续" action:@selector(continuePressed)];
         self.continueButton.enabled = NO; self.continueButton.tag = 2;
         self.captureButton.tag = 3; [self.panel addSubview:self.continueButton];
@@ -147,7 +147,7 @@
     [self layoutIfNeeded];
     [self hideOtherRegionShotWindows];
     self.stitcher = [[RSLongStitcher alloc] initWithTopInset:self.rootViewController.view.safeAreaInsets.top];
-    self.statusLabel.text = self.mode == RSLongCaptureModeConservativeStep
+    self.statusLabel.text = self.mode == RSLongCaptureModeButtonStep
         ? @"正在记录首屏…" : @"缓慢向上滑动，结束后点击截取";
     [self startSampling];
     [CATransaction flush];
@@ -157,7 +157,7 @@
 }
 
 - (void)startSampling {
-    if (self.mode == RSLongCaptureModeConservativeStep || self.stopped || self.timer || self.finishedFileURL) return;
+    if (self.mode == RSLongCaptureModeButtonStep || self.stopped || self.timer || self.finishedFileURL) return;
     __weak typeof(self) weakSelf = self;
     self.timer = [NSTimer timerWithTimeInterval:0.25 repeats:YES block:^(NSTimer *timer) {
         [weakSelf manualTick];
@@ -215,7 +215,7 @@
                 self.statusLabel.text = result == RSLongAppendResultUncertain
                     ? @"接缝未匹配，请滑回上一段后缓慢上滑"
                     : [NSString stringWithFormat:@"已记录 %lu 段 · 约 %.1f 屏", (unsigned long)count, height];
-                if (self.mode == RSLongCaptureModeConservativeStep && !self.finishRequested) {
+                if (self.mode == RSLongCaptureModeButtonStep && !self.finishRequested) {
                     self.retryCurrentFrame = result == RSLongAppendResultUncertain;
                     [self.continueButton setTitle:self.retryCurrentFrame ? @"重试" : @"继续" forState:UIControlStateNormal];
                     self.continueButton.enabled = NO;
