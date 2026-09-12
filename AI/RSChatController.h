@@ -6,5 +6,6 @@
 + (void)showText:(NSString *)text scene:(UIWindowScene *)scene persona:(NSDictionary *)persona;
 + (void)showImage:(UIImage *)image scene:(UIWindowScene *)scene persona:(NSDictionary *)persona;
 + (void)showServiceSettings;
++ (void)minimizeForLock;
 - (void)minimize;
 @end

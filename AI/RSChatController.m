@@ -99,6 +99,11 @@ static NSUserDefaults *RSChatPreferences(void) {
 }
 @implementation RSChatController
 
++ (void)minimizeForLock {
+    RSChatController *chat = RSActiveChat;
+    if ([RSOption(@"AIMinimizeOnLock") boolValue] && chat.host && !chat.host.hidden && !chat.card.hidden && !chat.keyboardPresentation)
+        [chat minimize];
+}
 
 - (BOOL)shouldAutorotate { return NO; }
 - (UIInterfaceOrientationMask)supportedInterfaceOrientations { return UIInterfaceOrientationMaskAllButUpsideDown; }

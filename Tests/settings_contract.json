@@ -67,6 +67,10 @@
     "min": "@30",
     "max": "@95"
   },
+  "AIMinimizeOnLock": {
+    "key": "@\"AIMinimizeOnLock\"",
+    "default": "@YES"
+  },
   "AIFastResponse": {
     "key": "@\"AIFastResponse\"",
     "default": "@YES"

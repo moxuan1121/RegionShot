@@ -11,6 +11,7 @@ NSString *RSAIPersonaPrompt(BOOL imageQuestion);
 @end
 NSArray<NSDictionary *> *RSAIPersonas(void);
 NSArray<NSDictionary *> *RSAIQuickPhrases(void);
+UIViewController *RSAICreatePhrasesController(void);
 NS_ASSUME_NONNULL_END
 
 @interface RSAIMenuController : UITableViewController

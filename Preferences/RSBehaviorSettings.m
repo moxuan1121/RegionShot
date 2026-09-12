@@ -1,11 +1,14 @@
 #import "RSBehaviorSettings.h"
 #import "RSOptions.h"
+#import "../AI/RSAISettingsController.h"
 
 @implementation RSBehaviorSettings
 - (instancetype)init { if ((self = [super initWithStyle:UITableViewStyleInsetGrouped])) _groupIndex = NSNotFound; return self; }
 - (void)viewDidLoad { [super viewDidLoad]; self.title = self.groupIndex == NSNotFound ? @"功能设置" : RSOptionGroups()[self.groupIndex][@"title"]; RSReloadOptions(); }
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView { return self.groupIndex == NSNotFound ? RSOptionGroups().count - 1 : 1; }
-- (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section { return self.groupIndex == NSNotFound ? 1 : [RSOptionGroups()[self.groupIndex][@"items"] count]; }
+- (BOOL)isAIGroup { return self.groupIndex == RSOptionGroups().count - 1; }
+- (BOOL)isPhrasesPath:(NSIndexPath *)path { return self.isAIGroup && path.row == [RSOptionGroups()[self.groupIndex][@"items"] count]; }
+- (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section { return self.groupIndex == NSNotFound ? 1 : [RSOptionGroups()[self.groupIndex][@"items"] count] + (self.isAIGroup ? 1 : 0); }
 - (NSString *)tableView:(UITableView *)tableView titleForHeaderInSection:(NSInteger)section { return self.groupIndex == NSNotFound ? nil : RSOptionGroups()[self.groupIndex][@"title"]; }
 - (NSString *)tableView:(UITableView *)tableView titleForFooterInSection:(NSInteger)section { return self.groupIndex == NSNotFound ? nil : RSOptionGroups()[self.groupIndex][@"footer"]; }
 - (NSDictionary *)optionAt:(NSIndexPath *)path { return RSOptionGroups()[self.groupIndex][@"items"][path.row]; }
@@ -15,6 +18,10 @@
         category.textLabel.text = RSOptionGroups()[path.section][@"title"];
         category.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
         return category;
+    }
+    if ([self isPhrasesPath:path]) {
+        UITableViewCell *cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:nil];
+        cell.textLabel.text = @"短语"; cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator; return cell;
     }
     NSDictionary *option = [self optionAt:path];
     UITableViewCell *cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:nil];
@@ -54,6 +61,7 @@
         RSBehaviorSettings *page = [RSBehaviorSettings new]; page.groupIndex = path.section;
         [self.navigationController pushViewController:page animated:YES]; return;
     }
+    if ([self isPhrasesPath:path]) { [self.navigationController pushViewController:RSAICreatePhrasesController() animated:YES]; return; }
     NSDictionary *option = [self optionAt:path];
     if (option[@"readOnlyText"]) return;
     NSArray *choices = option[@"choices"];

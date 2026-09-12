@@ -28,6 +28,7 @@ NSArray<NSDictionary *> *RSOptionGroups(void) {
             @{@"key":@"HistoryMB", @"title":@"容量上限（MB）", @"default":@64, @"min":@16, @"max":@128} ]},
         @{@"title":@"AI 对话", @"footer":@"服务地址、模型和密钥在“服务配置”中设置。发送的图片和文字会提交到该服务。", @"items":@[
             @{@"key":@"AIChatMaxHeight", @"title":@"对话窗口高度上限（%）", @"default":@75, @"min":@30, @"max":@95},
+            @{@"key":@"AIMinimizeOnLock", @"title":@"锁屏时最小化为悬浮球", @"default":@YES},
             @{@"key":@"AIFastResponse", @"title":@"快速响应（通义兼容模型）", @"default":@YES},
             @{@"key":@"AIStream", @"title":@"流式输出", @"default":@YES},
             @{@"key":@"AIAutoImage", @"title":@"打开图片后自动发送", @"default":@NO},

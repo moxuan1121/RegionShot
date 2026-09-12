@@ -33,6 +33,10 @@ assert 'RSAIQuickPhrases()' in chat
 assert 'constraintEqualToConstant:260' in chat and 'MAX(220, size.height + 156' in chat
 assert 'RSInstallMaterialBackground(button, 16)' in chat
 assert 'bringSubviewToFront:button.imageView' in chat and 'bringSubviewToFront:button.titleLabel' in chat
+assert '+ (void)minimizeForLock' in chat and 'AIMinimizeOnLock' in chat
+assert '[RSChatController minimizeForLock]' in (root / 'Trigger.xm').read_text(encoding='utf-8')
+assert 'RSAICreatePhrasesController()' in behavior
+assert '@[@"打开对话", @"对话设置", @"服务配置", @"人设", @"弹出式窗口"]' in ai_settings
 mode_block = re.search(r'typedef NS_ENUM\(NSInteger, RSLongCaptureMode\) \{([^}]+)\}', header).group(1)
 assert set(re.findall(r'(RSLongCaptureMode\w+)\s*=', mode_block)) == {
     'RSLongCaptureModeManual', 'RSLongCaptureModeButtonStep'}

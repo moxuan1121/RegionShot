@@ -152,6 +152,7 @@ static BOOL RSPublishInputSettings(NSString *key) {
 - (void)edit:(NSUInteger)index { __weak typeof(self) weakSelf = self; RSAIPersonaEditor *editor = [[RSAIPersonaEditor alloc] initWithPhrase:self.phrases[index] save:^(NSDictionary *value) { weakSelf.phrases[index] = value; [weakSelf persist]; [weakSelf.tableView reloadData]; }]; [self.navigationController pushViewController:editor animated:YES]; }
 - (void)persist { [RSAIPreferences() setObject:self.phrases.copy forKey:@"AIQuickPhrases"]; [RSAIPreferences() synchronize]; }
 @end
+UIViewController *RSAICreatePhrasesController(void) { return [RSAIPhrasesController new]; }
 
 @interface RSAIPersonasController : UITableViewController
 @property (nonatomic, strong) NSMutableArray<NSDictionary *> *personas;
@@ -359,11 +360,11 @@ static BOOL RSPublishInputSettings(NSString *key) {
 - (instancetype)init { return [super initWithStyle:UITableViewStyleInsetGrouped]; }
 - (void)viewDidLoad { [super viewDidLoad]; self.title = @"AI"; }
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)table { return 2; }
-- (NSInteger)tableView:(UITableView *)table numberOfRowsInSection:(NSInteger)section { return section == 0 ? 6 : 4; }
+- (NSInteger)tableView:(UITableView *)table numberOfRowsInSection:(NSInteger)section { return section == 0 ? 5 : 4; }
 - (NSString *)tableView:(UITableView *)table titleForHeaderInSection:(NSInteger)section { return section == 0 ? @"AI 对话" : @"各入口显示的人设"; }
 - (UITableViewCell *)tableView:(UITableView *)table cellForRowAtIndexPath:(NSIndexPath *)path {
     UITableViewCell *cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:nil];
-    cell.textLabel.text = path.section == 0 ? @[@"打开对话", @"对话设置", @"服务配置", @"人设", @"短语", @"弹出式窗口"][path.row] : @[@"微信菜单", @"LINE 菜单", @"分词按钮长按菜单", @"Sileo 介绍页翻译"][path.row];
+    cell.textLabel.text = path.section == 0 ? @[@"打开对话", @"对话设置", @"服务配置", @"人设", @"弹出式窗口"][path.row] : @[@"微信菜单", @"LINE 菜单", @"分词按钮长按菜单", @"Sileo 介绍页翻译"][path.row];
     cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator; return cell;
 }
 - (void)tableView:(UITableView *)table didSelectRowAtIndexPath:(NSIndexPath *)path {
@@ -375,8 +376,7 @@ static BOOL RSPublishInputSettings(NSString *key) {
     else if (path.row == 1) { RSBehaviorSettings *options = [RSBehaviorSettings new]; options.groupIndex = RSOptionGroups().count - 1; page = options; }
     else if (path.row == 2) page = [[RSAISettingsController alloc] initWithSaved:nil];
     else if (path.row == 3) page = [RSAIPersonasController new];
-    else if (path.row == 4) page = [RSAIPhrasesController new];
-    else if (path.row == 5) page = RSInputCreateAIOptions();
+    else if (path.row == 4) page = RSInputCreateAIOptions();
     else page = RSCreateSileoSettings();
     [self.navigationController pushViewController:page animated:YES];
 }
