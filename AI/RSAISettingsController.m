@@ -58,6 +58,18 @@ NSArray<NSDictionary *> *RSAIPersonas(void) {
     [RSAIPreferences() setObject:result forKey:@"AIPersonas"];
     return result;
 }
+NSArray<NSDictionary *> *RSAIQuickPhrases(void) {
+    id saved = [RSAIPreferences() objectForKey:@"AIQuickPhrases"];
+    if (![saved isKindOfClass:NSArray.class]) return @[];
+    NSMutableArray *result = [NSMutableArray array];
+    for (id item in saved) {
+        if (![item isKindOfClass:NSDictionary.class]) continue;
+        NSString *title = item[@"name"], *prompt = item[@"prompt"];
+        if ([title isKindOfClass:NSString.class] && title.length && [prompt isKindOfClass:NSString.class] && prompt.length)
+            [result addObject:@{@"name":title, @"prompt":prompt}];
+    }
+    return result;
+}
 NSString *RSAIPersonaPrompt(BOOL imageQuestion) {
     NSString *scope = imageQuestion ? @"图片问答默认" : @"文字问答默认";
     for (NSDictionary *persona in RSAIPersonas()) if ([persona[@"scope"] isEqual:scope]) return persona[@"prompt"] ?: @"";
@@ -74,46 +86,71 @@ static BOOL RSPublishInputSettings(NSString *key) {
 @property (nonatomic, strong) UITextView *promptView;
 @property (nonatomic, strong) UISegmentedControl *presentation;
 @property (nonatomic, copy) NSDictionary *persona;
+@property (nonatomic) BOOL phrase;
 @property (nonatomic, copy) void (^saveHandler)(NSDictionary *persona);
 @end
 @implementation RSAIPersonaEditor
 - (instancetype)initWithPersona:(NSDictionary *)persona save:(void (^)(NSDictionary *))save {
     if ((self = [super init])) { _persona = persona; _saveHandler = save; self.title = @"编辑人设"; } return self;
 }
+- (instancetype)initWithPhrase:(NSDictionary *)phrase save:(void (^)(NSDictionary *))save {
+    if ((self = [super init])) { _persona = phrase; _saveHandler = save; _phrase = YES; self.title = @"编辑短语"; } return self;
+}
 - (void)viewDidLoad {
     [super viewDidLoad]; self.view.backgroundColor = UIColor.systemGroupedBackgroundColor;
     self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithTitle:@"保存" style:UIBarButtonItemStyleDone target:self action:@selector(save)];
-    self.nameField = [UITextField new]; self.nameField.placeholder = @"名称"; self.nameField.text = self.persona[@"name"];
+    self.nameField = [UITextField new]; self.nameField.placeholder = self.phrase ? @"标题" : @"名称"; self.nameField.text = self.persona[@"name"];
     self.nameField.font = [UIFont preferredFontForTextStyle:UIFontTextStyleBody]; self.nameField.backgroundColor = UIColor.secondarySystemGroupedBackgroundColor;
     self.nameField.layer.cornerRadius = 18; self.nameField.leftView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 18, 1)]; self.nameField.leftViewMode = UITextFieldViewModeAlways;
     self.promptView = [UITextView new]; self.promptView.text = self.persona[@"prompt"]; self.promptView.font = [UIFont preferredFontForTextStyle:UIFontTextStyleBody];
     self.promptView.backgroundColor = UIColor.secondarySystemGroupedBackgroundColor; self.promptView.layer.cornerRadius = 18;
     self.nameField.translatesAutoresizingMaskIntoConstraints = NO; self.promptView.translatesAutoresizingMaskIntoConstraints = NO;
     [self.view addSubview:self.nameField]; [self.view addSubview:self.promptView];
-    self.presentation = [[UISegmentedControl alloc] initWithItems:@[@"对话式窗口", @"弹出式窗口"]];
-    self.presentation.selectedSegmentIndex = [self.persona[@"presentation"] isEqual:@"keyboardai"] ? 1 : 0;
-    self.presentation.accessibilityLabel = @"AI 回答展示方式";
-    self.presentation.translatesAutoresizingMaskIntoConstraints = NO;
-    [self.view addSubview:self.presentation];
+    if (!self.phrase) {
+        self.presentation = [[UISegmentedControl alloc] initWithItems:@[@"对话式窗口", @"弹出式窗口"]];
+        self.presentation.selectedSegmentIndex = [self.persona[@"presentation"] isEqual:@"keyboardai"] ? 1 : 0;
+        self.presentation.accessibilityLabel = @"AI 回答展示方式";
+        self.presentation.translatesAutoresizingMaskIntoConstraints = NO;
+        [self.view addSubview:self.presentation];
+    }
     UILayoutGuide *safe = self.view.safeAreaLayoutGuide;
+    NSLayoutAnchor *promptTop = self.phrase ? self.nameField.bottomAnchor : self.presentation.bottomAnchor;
     [NSLayoutConstraint activateConstraints:@[[self.nameField.leadingAnchor constraintEqualToAnchor:safe.leadingAnchor constant:16],
         [self.nameField.trailingAnchor constraintEqualToAnchor:safe.trailingAnchor constant:-16], [self.nameField.topAnchor constraintEqualToAnchor:safe.topAnchor constant:16],
         [self.nameField.heightAnchor constraintEqualToConstant:72], [self.promptView.leadingAnchor constraintEqualToAnchor:self.nameField.leadingAnchor],
-        [self.promptView.trailingAnchor constraintEqualToAnchor:self.nameField.trailingAnchor], [self.presentation.topAnchor constraintEqualToAnchor:self.nameField.bottomAnchor constant:12], [self.presentation.leadingAnchor constraintEqualToAnchor:self.nameField.leadingAnchor], [self.presentation.trailingAnchor constraintEqualToAnchor:self.nameField.trailingAnchor], [self.presentation.heightAnchor constraintEqualToConstant:40], [self.promptView.topAnchor constraintEqualToAnchor:self.presentation.bottomAnchor constant:12],
+        [self.promptView.trailingAnchor constraintEqualToAnchor:self.nameField.trailingAnchor], [self.promptView.topAnchor constraintEqualToAnchor:promptTop constant:12],
         [self.promptView.bottomAnchor constraintEqualToAnchor:safe.bottomAnchor constant:-16]]];
+    if (self.presentation) [NSLayoutConstraint activateConstraints:@[[self.presentation.topAnchor constraintEqualToAnchor:self.nameField.bottomAnchor constant:12], [self.presentation.leadingAnchor constraintEqualToAnchor:self.nameField.leadingAnchor], [self.presentation.trailingAnchor constraintEqualToAnchor:self.nameField.trailingAnchor], [self.presentation.heightAnchor constraintEqualToConstant:40]]];
 }
 - (void)save {
     NSString *name = [self.nameField.text stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
     NSString *prompt = [self.promptView.text stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
     if (!name.length || !prompt.length || name.length > 100 || prompt.length > 8000) {
-        UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"无法保存人设" message:@"名称需 1–100 字符，人设内容需 1–8,000 字符。" preferredStyle:UIAlertControllerStyleAlert];
+        NSString *kind = self.phrase ? @"短语" : @"人设";
+        UIAlertController *alert = [UIAlertController alertControllerWithTitle:[@"无法保存" stringByAppendingString:kind] message:self.phrase ? @"标题需 1–100 字符，提示语需 1–8,000 字符。" : @"名称需 1–100 字符，人设内容需 1–8,000 字符。" preferredStyle:UIAlertControllerStyleAlert];
         [alert addAction:[UIAlertAction actionWithTitle:@"好" style:UIAlertActionStyleCancel handler:nil]]; [self presentViewController:alert animated:YES completion:nil]; return;
     }
     NSMutableDictionary *value = [self.persona mutableCopy] ?: [NSMutableDictionary dictionary];
-    value[@"presentation"] = self.presentation.selectedSegmentIndex == 1 ? @"keyboardai" : @"chat";
-    value[@"name"] = name; value[@"prompt"] = prompt; value[@"scope"] = value[@"scope"] ?: @"自定义人设"; value[@"builtin"] = value[@"builtin"] ?: @NO;
+    if (!self.phrase) value[@"presentation"] = self.presentation.selectedSegmentIndex == 1 ? @"keyboardai" : @"chat";
+    value[@"name"] = name; value[@"prompt"] = prompt;
+    if (!self.phrase) { value[@"scope"] = value[@"scope"] ?: @"自定义人设"; value[@"builtin"] = value[@"builtin"] ?: @NO; }
     if (self.saveHandler) self.saveHandler(value.copy); [self.navigationController popViewControllerAnimated:YES];
 }
+@end
+
+@interface RSAIPhrasesController : UITableViewController
+@property (nonatomic, strong) NSMutableArray<NSDictionary *> *phrases;
+@end
+@implementation RSAIPhrasesController
+- (instancetype)init { if ((self = [super initWithStyle:UITableViewStyleInsetGrouped])) self.title = @"短语"; return self; }
+- (void)viewDidLoad { [super viewDidLoad]; self.phrases = [RSAIQuickPhrases() mutableCopy]; self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemAdd target:self action:@selector(add)]; }
+- (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section { return self.phrases.count; }
+- (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)path { UITableViewCell *cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:nil]; cell.textLabel.text = self.phrases[path.row][@"name"]; cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator; return cell; }
+- (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)path { [tableView deselectRowAtIndexPath:path animated:YES]; [self edit:path.row]; }
+- (void)tableView:(UITableView *)tableView commitEditingStyle:(UITableViewCellEditingStyle)style forRowAtIndexPath:(NSIndexPath *)path { if (style != UITableViewCellEditingStyleDelete) return; [self.phrases removeObjectAtIndex:path.row]; [self persist]; [tableView deleteRowsAtIndexPaths:@[path] withRowAnimation:UITableViewRowAnimationAutomatic]; }
+- (void)add { __weak typeof(self) weakSelf = self; RSAIPersonaEditor *editor = [[RSAIPersonaEditor alloc] initWithPhrase:@{@"name":@"新建短语", @"prompt":@""} save:^(NSDictionary *value) { [weakSelf.phrases addObject:value]; [weakSelf persist]; [weakSelf.tableView reloadData]; }]; [self.navigationController pushViewController:editor animated:YES]; }
+- (void)edit:(NSUInteger)index { __weak typeof(self) weakSelf = self; RSAIPersonaEditor *editor = [[RSAIPersonaEditor alloc] initWithPhrase:self.phrases[index] save:^(NSDictionary *value) { weakSelf.phrases[index] = value; [weakSelf persist]; [weakSelf.tableView reloadData]; }]; [self.navigationController pushViewController:editor animated:YES]; }
+- (void)persist { [RSAIPreferences() setObject:self.phrases.copy forKey:@"AIQuickPhrases"]; [RSAIPreferences() synchronize]; }
 @end
 
 @interface RSAIPersonasController : UITableViewController
@@ -322,11 +359,11 @@ static BOOL RSPublishInputSettings(NSString *key) {
 - (instancetype)init { return [super initWithStyle:UITableViewStyleInsetGrouped]; }
 - (void)viewDidLoad { [super viewDidLoad]; self.title = @"AI"; }
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)table { return 2; }
-- (NSInteger)tableView:(UITableView *)table numberOfRowsInSection:(NSInteger)section { return section == 0 ? 5 : 4; }
+- (NSInteger)tableView:(UITableView *)table numberOfRowsInSection:(NSInteger)section { return section == 0 ? 6 : 4; }
 - (NSString *)tableView:(UITableView *)table titleForHeaderInSection:(NSInteger)section { return section == 0 ? @"AI 对话" : @"各入口显示的人设"; }
 - (UITableViewCell *)tableView:(UITableView *)table cellForRowAtIndexPath:(NSIndexPath *)path {
     UITableViewCell *cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:nil];
-    cell.textLabel.text = path.section == 0 ? @[@"打开对话", @"对话设置", @"服务配置", @"人设", @"弹出式窗口"][path.row] : @[@"微信菜单", @"LINE 菜单", @"分词按钮长按菜单", @"Sileo 介绍页翻译"][path.row];
+    cell.textLabel.text = path.section == 0 ? @[@"打开对话", @"对话设置", @"服务配置", @"人设", @"短语", @"弹出式窗口"][path.row] : @[@"微信菜单", @"LINE 菜单", @"分词按钮长按菜单", @"Sileo 介绍页翻译"][path.row];
     cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator; return cell;
 }
 - (void)tableView:(UITableView *)table didSelectRowAtIndexPath:(NSIndexPath *)path {
@@ -338,7 +375,8 @@ static BOOL RSPublishInputSettings(NSString *key) {
     else if (path.row == 1) { RSBehaviorSettings *options = [RSBehaviorSettings new]; options.groupIndex = RSOptionGroups().count - 1; page = options; }
     else if (path.row == 2) page = [[RSAISettingsController alloc] initWithSaved:nil];
     else if (path.row == 3) page = [RSAIPersonasController new];
-    else if (path.row == 4) page = RSInputCreateAIOptions();
+    else if (path.row == 4) page = [RSAIPhrasesController new];
+    else if (path.row == 5) page = RSInputCreateAIOptions();
     else page = RSCreateSileoSettings();
     [self.navigationController pushViewController:page animated:YES];
 }

@@ -29,8 +29,8 @@ chat = (root / 'AI/RSChatController.m').read_text(encoding='utf-8')
 assert '能否解析此文件取决于' not in chat
 assert 'size.unsignedLongLongValue <= 64 * 1024 * 1024' in chat
 assert 'data.length > 64 * 1024 * 1024' in chat
-attachments = chat.split('- (void)attachments {', 1)[1].split('- (void)acceptImage:', 1)[0]
-assert attachments.index('@"照片"') < attachments.index('@"文件"') < attachments.index('@"相机"')
+composer = chat.split('UIStackView *composerActions', 1)[1].split('[content addArrangedSubview:composerActions]', 1)[0]
+assert composer.index('@"照片"') < composer.index('@"文件"') < composer.index('@"相机"') < composer.index('@"短语"')
 for name in ('Input/RSInputInterface.m', 'KeyboardAI/RSKAInterface.m'):
     panel = (root / name).read_text(encoding='utf-8')
     assert '[self observePanelEvents];' in panel

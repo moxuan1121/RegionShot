@@ -10,6 +10,7 @@ NSString *RSAIPersonaPrompt(BOOL imageQuestion);
 - (instancetype)initWithSaved:(nullable dispatch_block_t)saved;
 @end
 NSArray<NSDictionary *> *RSAIPersonas(void);
+NSArray<NSDictionary *> *RSAIQuickPhrases(void);
 NS_ASSUME_NONNULL_END
 
 @interface RSAIMenuController : UITableViewController

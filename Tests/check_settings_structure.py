@@ -23,6 +23,13 @@ injection = (root / 'RegionShot.plist').read_text(encoding='utf-8')
 swipe = (root / 'LongShot/RSLongSwipe.m').read_text(encoding='utf-8')
 assert '@"choiceValues":@[@2, @3]' in source
 assert 'choiceValues.count > index ? choiceValues[index] : @(index)' in behavior
+assert '[value unsignedIntegerValue]' not in behavior
+ai_settings = (root / 'AI/RSAISettingsController.m').read_text(encoding='utf-8')
+chat = (root / 'AI/RSChatController.m').read_text(encoding='utf-8')
+assert '@"AIQuickPhrases"' in ai_settings and '@"短语"' in ai_settings
+for action in ('choosePhoto:', 'chooseFile:', 'openCamera:', 'showPhrases:'):
+    assert action in chat
+assert 'RSAIQuickPhrases()' in chat
 mode_block = re.search(r'typedef NS_ENUM\(NSInteger, RSLongCaptureMode\) \{([^}]+)\}', header).group(1)
 assert set(re.findall(r'(RSLongCaptureMode\w+)\s*=', mode_block)) == {
     'RSLongCaptureModeManual', 'RSLongCaptureModeButtonStep'}

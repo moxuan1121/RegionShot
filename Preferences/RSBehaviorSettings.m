@@ -31,9 +31,11 @@
     } else {
         NSArray *choices = option[@"choices"];
         NSArray *choiceValues = option[@"choiceValues"];
-        NSUInteger index = choiceValues.count ? [choiceValues indexOfObject:value] : [value unsignedIntegerValue];
-        if (index == NSNotFound && choiceValues.count) index = 0;
-        cell.detailTextLabel.text = choices.count > index ? choices[index] : [value description];
+        if (choices.count) {
+            NSUInteger index = choiceValues.count ? [choiceValues indexOfObject:value] : (NSUInteger)[value integerValue];
+            if (index == NSNotFound && choiceValues.count) index = 0;
+            cell.detailTextLabel.text = choices.count > index ? choices[index] : [value description];
+        } else cell.detailTextLabel.text = [value description];
         cell.detailTextLabel.numberOfLines = 2; cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
     }
     return cell;

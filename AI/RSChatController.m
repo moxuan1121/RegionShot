@@ -206,6 +206,17 @@ static NSUserDefaults *RSChatPreferences(void) {
     [button.heightAnchor constraintEqualToConstant:36].active = YES;
     return button;
 }
+- (UIButton *)composerButton:(NSString *)symbol title:(NSString *)title action:(SEL)selector {
+    UIButton *button = [UIButton buttonWithType:UIButtonTypeSystem];
+    [button setImage:[UIImage systemImageNamed:symbol] forState:UIControlStateNormal];
+    [button setTitle:[@" " stringByAppendingString:title] forState:UIControlStateNormal];
+    button.titleLabel.font = [UIFont systemFontOfSize:13 weight:UIFontWeightMedium];
+    button.backgroundColor = [UIColor.secondarySystemFillColor colorWithAlphaComponent:0.8];
+    button.layer.cornerRadius = 16; button.accessibilityLabel = title;
+    [button addTarget:self action:selector forControlEvents:UIControlEventTouchUpInside];
+    [button.heightAnchor constraintEqualToConstant:32].active = YES;
+    return button;
+}
 - (void)viewDidLoad {
     [super viewDidLoad];
     [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(screenRotated:) name:@"com.moxuan.regionshot.orientation.target" object:nil];
@@ -283,9 +294,14 @@ static NSUserDefaults *RSChatPreferences(void) {
     [self.sendButton.widthAnchor constraintEqualToConstant:56].active = YES;
     [self.sendButton.heightAnchor constraintEqualToConstant:40].active = YES;
     [self.sendButton addTarget:self action:@selector(send) forControlEvents:UIControlEventTouchUpInside];
-    UIButton *attach = [self button:@"plus" title:@"添加附件" action:@selector(attachments)];
-    attach.backgroundColor = UIColor.systemBlueColor; attach.tintColor = UIColor.whiteColor; attach.layer.cornerRadius = 18;
-    UIStackView *bottom = [[UIStackView alloc] initWithArrangedSubviews:@[self.input, attach, self.sendButton]];
+    UIStackView *composerActions = [[UIStackView alloc] initWithArrangedSubviews:@[
+        [self composerButton:@"photo" title:@"照片" action:@selector(choosePhoto:)],
+        [self composerButton:@"doc" title:@"文件" action:@selector(chooseFile:)],
+        [self composerButton:@"camera" title:@"相机" action:@selector(openCamera:)],
+        [self composerButton:@"text.bubble" title:@"短语" action:@selector(showPhrases:)]]];
+    composerActions.spacing = 8; composerActions.distribution = UIStackViewDistributionFillEqually;
+    [content addArrangedSubview:composerActions];
+    UIStackView *bottom = [[UIStackView alloc] initWithArrangedSubviews:@[self.input, self.sendButton]];
     bottom.alignment = UIStackViewAlignmentCenter;
     bottom.spacing = 8;
     [content addArrangedSubview:bottom];
@@ -715,29 +731,36 @@ static NSUserDefaults *RSChatPreferences(void) {
     self.sendButton.accessibilityLabel = @"发送";
 }
 - (void)clearAttachment { self.attachment = nil; self.fileAttachment = nil; self.fileName = nil; self.chip.accessibilityLabel = nil; self.chip.image = nil; self.chip.hidden = YES; }
-- (void)attachments {
-    UIAlertController *sheet = [UIAlertController alertControllerWithTitle:@"添加附件" message:nil preferredStyle:UIAlertControllerStyleActionSheet];
-    [sheet addAction:[UIAlertAction actionWithTitle:@"照片" style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
-        PHPickerConfiguration *config = [PHPickerConfiguration new]; config.filter = PHPickerFilter.imagesFilter; config.selectionLimit = 1;
-        PHPickerViewController *picker = [[PHPickerViewController alloc] initWithConfiguration:config]; picker.delegate = self;
-        [self presentViewController:picker animated:YES completion:nil];
-    }]];
-    [sheet addAction:[UIAlertAction actionWithTitle:@"文件" style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
-        UIDocumentPickerViewController *picker = [[UIDocumentPickerViewController alloc] initForOpeningContentTypes:@[UTTypeItem] asCopy:YES];
-        picker.delegate = self; [self presentViewController:picker animated:YES completion:nil];
-    }]];
-    [sheet addAction:[UIAlertAction actionWithTitle:@"相机" style:UIAlertActionStyleDefault handler:^(__unused UIAlertAction *action) {
-        [self hideKeyboard];
-        __weak typeof(self) weakSelf = self;
-        [RSChatCameraController showInScene:self.host.windowScene completion:^(UIImage *image) {
-            if (!weakSelf.host) return;
-            [weakSelf acceptImage:image];
-            [weakSelf focusInput];
-        }];
-    }]];
+- (void)choosePhoto:(UIButton *)sender {
+    PHPickerConfiguration *config = [PHPickerConfiguration new]; config.filter = PHPickerFilter.imagesFilter; config.selectionLimit = 1;
+    PHPickerViewController *picker = [[PHPickerViewController alloc] initWithConfiguration:config]; picker.delegate = self;
+    [self presentViewController:picker animated:YES completion:nil];
+}
+- (void)chooseFile:(UIButton *)sender {
+    UIDocumentPickerViewController *picker = [[UIDocumentPickerViewController alloc] initForOpeningContentTypes:@[UTTypeItem] asCopy:YES];
+    picker.delegate = self; [self presentViewController:picker animated:YES completion:nil];
+}
+- (void)openCamera:(UIButton *)sender {
+    [self hideKeyboard];
+    __weak typeof(self) weakSelf = self;
+    [RSChatCameraController showInScene:self.host.windowScene completion:^(UIImage *image) {
+        if (!weakSelf.host) return;
+        [weakSelf acceptImage:image];
+        [weakSelf focusInput];
+    }];
+}
+- (void)showPhrases:(UIButton *)sender {
+    NSArray<NSDictionary *> *phrases = RSAIQuickPhrases();
+    UIAlertController *sheet = [UIAlertController alertControllerWithTitle:@"短语" message:phrases.count ? nil : @"请先在 RegionShot 设置的 AI 页面添加短语。" preferredStyle:UIAlertControllerStyleActionSheet];
+    __weak typeof(self) weakSelf = self;
+    for (NSDictionary *phrase in phrases) {
+        NSString *title = phrase[@"name"], *prompt = phrase[@"prompt"];
+        [sheet addAction:[UIAlertAction actionWithTitle:title style:UIAlertActionStyleDefault handler:^(__unused UIAlertAction *action) {
+            weakSelf.input.text = prompt; [weakSelf textViewDidChange:weakSelf.input]; [weakSelf focusInput];
+        }]];
+    }
     [sheet addAction:[UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:nil]];
-    sheet.popoverPresentationController.sourceView = self.input;
-    sheet.popoverPresentationController.sourceRect = self.input.bounds;
+    sheet.popoverPresentationController.sourceView = sender; sheet.popoverPresentationController.sourceRect = sender.bounds;
     [self presentViewController:sheet animated:YES completion:nil];
 }
 - (void)acceptImage:(UIImage *)image {
