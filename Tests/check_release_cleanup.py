@@ -69,3 +69,6 @@ assert 'bezierPathWithOvalInRect:self.ball.bounds' in chat
 assert 'CGRectGetMaxX(safe) - radius - 16' not in chat
 assert '+ (void)showCameraInScene:' in chat
 assert 'com.moxuan.regionshot/AICamera' in trigger
+external_camera = chat.split('+ (void)showCameraInScene:', 1)[1].split('- (void)showPhrases:', 1)[0]
+assert external_camera.index('RSOpeningExternalCamera = YES') < external_camera.index('[self showImage:nil scene:scene]')
+assert 'RSChatCameraController.isVisible' in chat.split('- (void)focusInput', 1)[1].split('- (void)updateHeading', 1)[0]

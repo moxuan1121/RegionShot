@@ -23,6 +23,7 @@
 static RSChatCameraController *RSActiveCamera;
 
 @implementation RSChatCameraController
++ (BOOL)isVisible { return RSActiveCamera != nil; }
 + (void)showInScene:(UIWindowScene *)scene completion:(void (^)(UIImage *))completion {
     if (!scene || RSActiveCamera) return;
     RSChatCameraController *camera = [RSChatCameraController new];

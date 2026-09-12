@@ -91,6 +91,7 @@
 @end
 
 static RSChatController *RSActiveChat;
+static BOOL RSOpeningExternalCamera;
 static NSUserDefaults *RSChatPreferences(void) {
     static NSUserDefaults *prefs;
     static dispatch_once_t once;
@@ -355,11 +356,12 @@ static NSUserDefaults *RSChatPreferences(void) {
     [self focusInput];
 }
 - (void)focusInput {
+    if (RSOpeningExternalCamera || RSChatCameraController.isVisible) return;
     __weak typeof(self) weakSelf = self;
     void (^focus)(void) = ^{
         RSChatController *chat = weakSelf;
         if (chat && !chat.card.hidden && !chat.host.hidden && chat.host.isKeyWindow &&
-            !chat.presentedViewController && !chat.keyboardPresentation)
+            !chat.presentedViewController && !chat.keyboardPresentation && !RSChatCameraController.isVisible)
             [chat.input becomeFirstResponder];
     };
     id<UIViewControllerTransitionCoordinator> transition = self.transitionCoordinator;
@@ -758,8 +760,10 @@ static NSUserDefaults *RSChatPreferences(void) {
     }];
 }
 + (void)showCameraInScene:(UIWindowScene *)scene {
+    RSOpeningExternalCamera = YES;
     [self showImage:nil scene:scene];
     [RSActiveChat openCamera:nil];
+    RSOpeningExternalCamera = NO;
 }
 - (void)showPhrases:(UIButton *)sender {
     NSArray<NSDictionary *> *phrases = RSAIQuickPhrases();
