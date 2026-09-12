@@ -6,8 +6,8 @@
 - (instancetype)init { if ((self = [super initWithStyle:UITableViewStyleInsetGrouped])) _groupIndex = NSNotFound; return self; }
 - (void)viewDidLoad { [super viewDidLoad]; self.title = self.groupIndex == NSNotFound ? @"功能设置" : RSOptionGroups()[self.groupIndex][@"title"]; RSReloadOptions(); }
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView { return self.groupIndex == NSNotFound ? RSOptionGroups().count - 1 : 1; }
-- (BOOL)isAIGroup { return self.groupIndex == RSOptionGroups().count - 1; }
-- (BOOL)isPhrasesPath:(NSIndexPath *)path { return self.isAIGroup && path.row == [RSOptionGroups()[self.groupIndex][@"items"] count]; }
+- (BOOL)isAIGroup { return self.groupIndex == (NSInteger)RSOptionGroups().count - 1; }
+- (BOOL)isPhrasesPath:(NSIndexPath *)path { return self.isAIGroup && path.row == (NSInteger)[RSOptionGroups()[self.groupIndex][@"items"] count]; }
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section { return self.groupIndex == NSNotFound ? 1 : [RSOptionGroups()[self.groupIndex][@"items"] count] + (self.isAIGroup ? 1 : 0); }
 - (NSString *)tableView:(UITableView *)tableView titleForHeaderInSection:(NSInteger)section { return self.groupIndex == NSNotFound ? nil : RSOptionGroups()[self.groupIndex][@"title"]; }
 - (NSString *)tableView:(UITableView *)tableView titleForFooterInSection:(NSInteger)section { return self.groupIndex == NSNotFound ? nil : RSOptionGroups()[self.groupIndex][@"footer"]; }
