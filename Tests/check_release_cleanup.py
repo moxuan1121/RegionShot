@@ -49,6 +49,11 @@ assert 'UIBlurEffectStyleSystemMaterial' in material
 for name in ('Input/RSInputInterface.m', 'KeyboardAI/RSKAInterface.m',
              'AI/RSChatController.m', 'History/RSHistoryController.m'):
     assert 'RSInstallMaterialBackground' in (root / name).read_text(encoding='utf-8'), name
+animation = (root / 'Geometry/RSWindowAnimation.h').read_text(encoding='utf-8')
+assert 'backdrop.backgroundColor = UIColor.clearColor' in animation
+assert 'backdrop.backgroundColor = backgroundColor' in animation
+for name in ('AI/RSChatController.m', 'History/RSHistoryController.m'):
+    assert 'RSOpenWindowSurfaceOverBackdrop' in (root / name).read_text(encoding='utf-8'), name
 camera = (root / 'AI/RSChatCameraController.m').read_text(encoding='utf-8')
 assert 'UIPinchGestureRecognizer' in camera and 'videoZoomFactor = zoom' in camera
 assert 'RSInstallMaterialBackground(self.card, 20)' in camera

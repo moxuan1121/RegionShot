@@ -145,10 +145,10 @@ static NSUserDefaults *RSChatPreferences(void) {
     window.rootViewController = controller;
     RSActiveChat = controller;
     RSApplyWindowOrientation(window, RSActiveOrientation(scene));
+    [controller loadViewIfNeeded];
     [window makeKeyAndVisible];
     RSApplyWindowOrientation(window, RSActiveOrientation(scene));
-    [controller loadViewIfNeeded];
-    RSOpenWindowSurface(controller.card);
+    RSOpenWindowSurfaceOverBackdrop(controller.card, controller.view, [UIColor colorWithWhite:0 alpha:0.28]);
     if (image && [RSOption(@"AIAutoImage") boolValue]) [controller send];
 }
 + (void)showImage:(UIImage *)image scene:(UIWindowScene *)scene persona:(NSDictionary *)persona {
@@ -441,7 +441,7 @@ static NSUserDefaults *RSChatPreferences(void) {
     self.view.backgroundColor = [UIColor colorWithWhite:0 alpha:0.28];
     [self.host makeKeyAndVisible];
     if (focusInput) [self focusInput];
-    if (wasHidden) RSOpenWindowSurface(self.card);
+    if (wasHidden) RSOpenWindowSurfaceOverBackdrop(self.card, self.view, [UIColor colorWithWhite:0 alpha:0.28]);
     if (wasHidden) [[[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleLight] impactOccurred];
 }
 - (void)panBall:(UIPanGestureRecognizer *)pan {

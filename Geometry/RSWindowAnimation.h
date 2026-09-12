@@ -1,14 +1,16 @@
 #import <UIKit/UIKit.h>
-#import <QuartzCore/QuartzCore.h>
-static inline void RSOpenWindowSurface(UIView *surface) {
+static inline void RSOpenWindowSurfaceOverBackdrop(UIView *surface, UIView *backdrop, UIColor *backgroundColor) {
     if (!surface) return;
     [surface.superview layoutIfNeeded];
-    surface.alpha = 1;
-    CABasicAnimation *fade = [CABasicAnimation animationWithKeyPath:@"opacity"];
-    fade.fromValue = @0; fade.toValue = @1; fade.duration = 0.65;
-    fade.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
-    [surface.layer addAnimation:fade forKey:@"rs.open.fade"];
-
+    surface.alpha = 0;
+    if (backdrop) backdrop.backgroundColor = UIColor.clearColor;
+    [UIView animateWithDuration:0.65 delay:0 options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionCurveEaseInOut animations:^{
+        surface.alpha = 1;
+        if (backdrop) backdrop.backgroundColor = backgroundColor;
+    } completion:nil];
+}
+static inline void RSOpenWindowSurface(UIView *surface) {
+    RSOpenWindowSurfaceOverBackdrop(surface, nil, nil);
 }
 static inline void RSCloseWindowSurface(UIWindow *window, UIView *surface) {
     if (!window) return;

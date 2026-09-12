@@ -125,7 +125,7 @@ static RSHistoryController *RSActiveHistory;
     controller.host.backgroundColor = UIColor.clearColor;
     controller.host.rootViewController = panel;
     RSActiveHistory = controller; RSApplyWindowOrientation(controller.host, RSActiveOrientation(scene)); [controller.host makeKeyAndVisible]; RSApplyWindowOrientation(controller.host, RSActiveOrientation(scene));
-    RSOpenWindowSurface(panel.navigation.view);
+    RSOpenWindowSurfaceOverBackdrop(panel.navigation.view, panel.view, [UIColor colorWithWhite:0 alpha:0.35]);
 }
 - (void)viewDidLoad {
     [super viewDidLoad]; self.title = @"截图历史";
