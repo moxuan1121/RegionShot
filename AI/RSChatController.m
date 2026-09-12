@@ -757,6 +757,10 @@ static NSUserDefaults *RSChatPreferences(void) {
         [weakSelf focusInput];
     }];
 }
++ (void)showCameraInScene:(UIWindowScene *)scene {
+    [self showImage:nil scene:scene];
+    [RSActiveChat openCamera:nil];
+}
 - (void)showPhrases:(UIButton *)sender {
     NSArray<NSDictionary *> *phrases = RSAIQuickPhrases();
     UIAlertController *sheet = [UIAlertController alertControllerWithTitle:@"短语" message:phrases.count ? nil : @"请先在 RegionShot 设置的 AI 页面添加短语。" preferredStyle:UIAlertControllerStyleActionSheet];

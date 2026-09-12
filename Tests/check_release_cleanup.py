@@ -67,3 +67,5 @@ assert '- (void)restoreFromBall { [self restoreFocusingInput:NO]; }' in chat
 assert 'self.ball.backgroundColor = UIColor.systemBlueColor' in chat
 assert 'bezierPathWithOvalInRect:self.ball.bounds' in chat
 assert 'CGRectGetMaxX(safe) - radius - 16' not in chat
+assert '+ (void)showCameraInScene:' in chat
+assert 'com.moxuan.regionshot/AICamera' in trigger

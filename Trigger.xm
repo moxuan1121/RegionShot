@@ -193,6 +193,9 @@ static void RSPreferenceEvent(CFNotificationCenterRef center, void *observer, CF
     if (CFEqual(name, CFSTR("com.moxuan.regionshot/AIWindow"))) {
         dispatch_async(dispatch_get_main_queue(), ^{ [RSChatController showImage:nil scene:nil]; }); return;
     }
+    if (CFEqual(name, CFSTR("com.moxuan.regionshot/AICamera"))) {
+        dispatch_async(dispatch_get_main_queue(), ^{ [RSChatController showCameraInScene:nil]; }); return;
+    }
     if (CFEqual(name, CFSTR("com.moxuan.regionshot/AISettings"))) {
         dispatch_async(dispatch_get_main_queue(), ^{ [RSChatController showServiceSettings]; });
         return;
@@ -249,6 +252,7 @@ static void RSPreferenceEvent(CFNotificationCenterRef center, void *observer, CF
         CFNotificationCenterRef center = CFNotificationCenterGetDarwinNotifyCenter();
         CFNotificationCenterAddObserver(center, NULL, RSPreferenceEvent, CFSTR("com.apple.springboard.lockcomplete"), NULL, CFNotificationSuspensionBehaviorDeliverImmediately);
         CFNotificationCenterAddObserver(center, NULL, RSPreferenceEvent, CFSTR("com.moxuan.regionshot/AIWindow"), NULL, CFNotificationSuspensionBehaviorDeliverImmediately);
+        CFNotificationCenterAddObserver(center, NULL, RSPreferenceEvent, CFSTR("com.moxuan.regionshot/AICamera"), NULL, CFNotificationSuspensionBehaviorDeliverImmediately);
         CFNotificationCenterAddObserver(center, NULL, RSPreferenceEvent, CFSTR("com.jontelang.snapper3.history"), NULL, CFNotificationSuspensionBehaviorDeliverImmediately);
         CFNotificationCenterRef (*distributedCenter)(void) = (CFNotificationCenterRef (*)(void))dlsym(RTLD_DEFAULT, "CFNotificationCenterGetDistributedCenter");
         CFNotificationCenterRef snapperCenter = distributedCenter ? distributedCenter() : NULL;
