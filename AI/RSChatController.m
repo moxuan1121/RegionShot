@@ -420,7 +420,7 @@ static NSUserDefaults *RSChatPreferences(void) {
     if (!self.ballPositioned) {
         CGRect safe = UIEdgeInsetsInsetRect(self.view.bounds, self.view.safeAreaInsets);
         CGFloat radius = self.ball.bounds.size.width / 2;
-        self.ball.center = CGPointMake(CGRectGetMaxX(safe) - radius - 16, CGRectGetMinY(safe) + safe.size.height * 0.67);
+        self.ball.center = CGPointMake(CGRectGetMaxX(safe) - radius, CGRectGetMinY(safe) + safe.size.height * 0.67);
         self.ballPositioned = YES;
     }
     self.ball.hidden = NO;
