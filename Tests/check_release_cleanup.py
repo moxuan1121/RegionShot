@@ -29,6 +29,8 @@ chat = (root / 'AI/RSChatController.m').read_text(encoding='utf-8')
 assert '能否解析此文件取决于' not in chat
 assert 'size.unsignedLongLongValue <= 64 * 1024 * 1024' in chat
 assert 'data.length > 64 * 1024 * 1024' in chat
+send = chat.split('- (void)send {', 1)[1].split('- (void)startRequest {', 1)[0]
+assert send.index('[self startRequest]') < send.index('[self scrollToBottomAnimated:YES]')
 composer = chat.split('UIStackView *composerActions', 1)[1].split('[content addArrangedSubview:composerActions]', 1)[0]
 assert composer.index('@"照片"') < composer.index('@"文件"') < composer.index('@"相机"') < composer.index('@"短语"')
 for name in ('Input/RSInputInterface.m', 'KeyboardAI/RSKAInterface.m'):

@@ -500,6 +500,11 @@ static NSUserDefaults *RSChatPreferences(void) {
     if (fabs(self.cardHeight.constant - desired) > 0.5) self.cardHeight.constant = desired;
 }
 
+- (void)scrollToBottomAnimated:(BOOL)animated {
+    [self.view layoutIfNeeded];
+    [self.scroll setContentOffset:CGPointMake(0, MAX(0, self.scroll.contentSize.height - self.scroll.bounds.size.height)) animated:animated];
+}
+
 - (UITextView *)addRow:(NSString *)text image:(UIImage *)image assistant:(BOOL)assistant index:(NSUInteger)index {
     RSChatBubble *row = [RSChatBubble new]; row.assistant = assistant; row.hasImage = image != nil; row.axis = UILayoutConstraintAxisVertical; row.spacing = 2;
     row.backgroundColor = assistant ? UIColor.systemGray5Color : (image && !text.length ? [UIColor.systemBlueColor colorWithAlphaComponent:0.10] : UIColor.systemBlueColor);
@@ -597,6 +602,7 @@ static NSUserDefaults *RSChatPreferences(void) {
     [self.history addObject:[@{@"role":@"user", @"content":content} mutableCopy]];
     self.input.text = @""; [self textViewDidChange:self.input]; [self clearAttachment]; [self hideKeyboard];
     [self startRequest];
+    [self scrollToBottomAnimated:YES];
 }
 - (void)startRequest {
     if (!self.excludedHistory) self.excludedHistory = [NSMutableIndexSet indexSet];
@@ -679,11 +685,7 @@ static NSUserDefaults *RSChatPreferences(void) {
     if (self.keyboardPresentation) { RSKAUpdateAnswer(self.answer, NO, nil); self.history.lastObject[@"content"] = self.answer.copy; return; }
     [self.view setNeedsLayout]; self.reply.text = self.answer;
     self.history.lastObject[@"content"] = self.answer.copy;
-    if (atBottom && !self.card.hidden) {
-        [self.chat layoutIfNeeded];
-        [self.scroll layoutIfNeeded];
-        [self.scroll setContentOffset:CGPointMake(0, MAX(0, self.scroll.contentSize.height - self.scroll.bounds.size.height)) animated:NO];
-    }
+    if (atBottom && !self.card.hidden) [self scrollToBottomAnimated:NO];
 }
 - (void)URLSession:(NSURLSession *)session dataTask:(NSURLSessionDataTask *)task didReceiveResponse:(NSURLResponse *)response
  completionHandler:(void (^)(NSURLSessionResponseDisposition))completionHandler {
