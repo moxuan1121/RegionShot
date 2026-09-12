@@ -14,8 +14,12 @@
     if (landscape != (self.view.bounds.size.width > self.view.bounds.size.height)) return;
     self.centerImages = NO;
     CGPoint center = CGPointMake(CGRectGetMidX(self.view.bounds), CGRectGetMidY(self.view.bounds));
-    for (UIView *view in self.view.subviews)
-        if ([view isKindOfClass:RSFloatingImageView.class]) view.center = center;
+    [UIView animateWithDuration:UIAccessibilityIsReduceMotionEnabled() ? 0 : 0.3 delay:0
+        options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction | UIViewAnimationOptionCurveEaseInOut
+        animations:^{
+            for (UIView *view in self.view.subviews)
+                if ([view isKindOfClass:RSFloatingImageView.class]) view.center = center;
+        } completion:nil];
 }
 - (BOOL)shouldAutorotate { return NO; }
 - (BOOL)autorotate { return NO; }
@@ -62,7 +66,9 @@
     if (!RSValidInterfaceOrientation((int)orientation)) return;
     if (controller.targetOrientation == orientation) return;
     controller.targetOrientation = orientation; controller.centerImages = YES;
-    RSApplyWindowOrientation(self, orientation);
+    if ([self respondsToSelector:@selector(_setRotatableViewOrientation:updateStatusBar:duration:force:)])
+        [self _setRotatableViewOrientation:orientation updateStatusBar:NO duration:UIAccessibilityIsReduceMotionEnabled() ? 0 : 0.3 force:YES];
+    else RSApplyWindowOrientation(self, orientation);
     [controller.view setNeedsLayout]; [controller.view layoutIfNeeded];
 }
 - (void)updateOrientation {
