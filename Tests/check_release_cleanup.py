@@ -76,7 +76,7 @@ assert trigger.count('com.moxuan.regionshot/AIWindowURL') == 2 and '[RSChatContr
 desktop_focus = chat.split('- (void)armDesktopKeyRecovery {', 1)[1].split('- (void)updateHeading', 1)[0]
 assert desktop_focus.count('UIWindowDidBecomeKeyNotification') == 1
 assert desktop_focus.index('[chat stopDesktopKeyRecovery]') < desktop_focus.index('[chat.host makeKeyAndVisible]')
-assert 'dispatch_async' not in desktop_focus
+assert desktop_focus.index('dispatch_async(dispatch_get_main_queue()') < desktop_focus.index('[chat.host makeKeyAndVisible]')
 assert 'UIKeyboardDidHideNotification' not in chat and 'stabilizingInitialFocus' not in chat
 assert 'action:@selector(backgroundTapped)' in chat
 background_tap = chat.split('- (void)backgroundTapped {', 1)[1].split('- (void)minimize {', 1)[0]
