@@ -1,6 +1,5 @@
 #import <UIKit/UIKit.h>
 #import <objc/runtime.h>
-#include <notify.h>
 #include <string.h>
 #include <dlfcn.h>
 #include <atomic>
@@ -29,16 +28,7 @@ static BOOL RSTargetOrientationInstalled;
 static __thread NSUInteger RSOriginalDepth;
 static std::atomic<bool> RSNativeScreenshotPending(false);
 static NSUInteger RSNativeScreenshotGeneration;
-static BOOL RSWasLocked;
 static CFAbsoluteTime RSLastUnlock;
-
-static void RSUpdateLockState(int token) {
-    uint64_t state = 0;
-    if (notify_get_state(token, &state) != NOTIFY_STATUS_OK) return;
-    BOOL locked = state != 0;
-    if (locked) RSWasLocked = YES;
-    else if (RSWasLocked) { RSWasLocked = NO; RSLastUnlock = CFAbsoluteTimeGetCurrent(); }
-}
 static void RSReload(void) {
     RSReloadOptions();
     NSUserDefaults *prefs = [[NSUserDefaults alloc] initWithSuiteName:@"com.moxuan.regionshot"];
@@ -182,6 +172,14 @@ static char RSStatusBarGestureKey;
 }
 %end
 %end
+%group RSUnlockLifecycle
+%hook CSCoverSheetViewController
+- (void)finishUIUnlockFromSource:(int)source {
+    %orig(source);
+    RSLastUnlock = CFAbsoluteTimeGetCurrent();
+}
+%end
+%end
 static BOOL RSCompatible(Class cls, NSString *name, const char *argumentTypes) {
     Method method = cls ? class_getInstanceMethod(cls, NSSelectorFromString(name)) : NULL;
     if (!method || method_getNumberOfArguments(method) != (argumentTypes ? 3u : 2u)) return NO;
@@ -196,17 +194,13 @@ static BOOL RSCompatible(Class cls, NSString *name, const char *argumentTypes) {
 static void RSPreferenceEvent(CFNotificationCenterRef center, void *observer, CFStringRef name,
                               const void *object, CFDictionaryRef info) {
     if (CFEqual(name, CFSTR("com.apple.springboard.lockcomplete"))) {
-        dispatch_async(dispatch_get_main_queue(), ^{ RSWasLocked = YES; [RSRegionShotManager.sharedManager cancelCapture]; [RSChatController minimizeForLock]; }); return;
+        dispatch_async(dispatch_get_main_queue(), ^{ [RSRegionShotManager.sharedManager cancelCapture]; [RSChatController minimizeForLock]; }); return;
     }
     if ((CFEqual(name, CFSTR("com.moxuan.regionshot/History")) || CFEqual(name, CFSTR("com.jontelang.snapper3.history")))) {
         dispatch_async(dispatch_get_main_queue(), ^{ [RSRegionShotManager.sharedManager showHistory]; }); return;
     }
     if (CFEqual(name, CFSTR("com.moxuan.regionshot/AIWindow"))) {
         dispatch_async(dispatch_get_main_queue(), ^{
-            if (RSWasLocked) {
-                RSWasLocked = NO;
-                RSLastUnlock = CFAbsoluteTimeGetCurrent();
-            }
             CFTimeInterval elapsed = RSLastUnlock ? CFAbsoluteTimeGetCurrent() - RSLastUnlock : 4;
             NSTimeInterval delay = elapsed >= 0 && elapsed < 3.5 ? MAX(0.65, 3.5 - elapsed) : 0;
             [RSChatController showImage:nil scene:nil initialKeyboardDelay:delay];
@@ -238,6 +232,8 @@ static void RSPreferenceEvent(CFNotificationCenterRef center, void *observer, CF
         }];
 
         if ([NSClassFromString(@"_UIStatusBar") isSubclassOfClass:UIView.class]) { %init(RSStatusBarEntry); }
+        Class coverSheet = NSClassFromString(@"CSCoverSheetViewController");
+        if (RSCompatible(coverSheet, @"finishUIUnlockFromSource:", "i")) { %init(RSUnlockLifecycle); }
         Class gestures = NSClassFromString(@"SBSystemGestureManager");
         Method receiveTouch = class_getInstanceMethod(gestures, NSSelectorFromString(@"shouldSystemGestureReceiveTouchWithLocation:"));
         char returnType[16] = {0}, argumentType[128] = {0};
@@ -269,9 +265,6 @@ static void RSPreferenceEvent(CFNotificationCenterRef center, void *observer, CF
         if (keys) { %init(RSHardwareEntry); }
         if (capturer) { %init(RSCapturerEntry); }
         CFNotificationCenterRef center = CFNotificationCenterGetDarwinNotifyCenter();
-        int lockToken = 0;
-        if (notify_register_dispatch("com.apple.springboard.lockstate", &lockToken, dispatch_get_main_queue(), ^(int token) { RSUpdateLockState(token); }) == NOTIFY_STATUS_OK)
-            RSUpdateLockState(lockToken);
         CFNotificationCenterAddObserver(center, NULL, RSPreferenceEvent, CFSTR("com.apple.springboard.lockcomplete"), NULL, CFNotificationSuspensionBehaviorDeliverImmediately);
         CFNotificationCenterAddObserver(center, NULL, RSPreferenceEvent, CFSTR("com.moxuan.regionshot/AIWindow"), NULL, CFNotificationSuspensionBehaviorDeliverImmediately);
         CFNotificationCenterAddObserver(center, NULL, RSPreferenceEvent, CFSTR("com.moxuan.regionshot/AICamera"), NULL, CFNotificationSuspensionBehaviorDeliverImmediately);
