@@ -19,6 +19,9 @@
 @interface SBCombinationHardwareButtonActions : NSObject
 - (void)performTakeScreenshotAction;
 @end
+@interface SBLockScreenManager : NSObject
+- (BOOL)_finishUIUnlockFromSource:(int)source withOptions:(id)options;
+@end
 @interface SSScreenCapturer : NSObject
 - (void)takeScreenshotWithPresentationOptions:(id)options;
 @end
@@ -28,6 +31,9 @@ static BOOL RSTargetOrientationInstalled;
 static __thread NSUInteger RSOriginalDepth;
 static std::atomic<bool> RSNativeScreenshotPending(false);
 static NSUInteger RSNativeScreenshotGeneration;
+static CFAbsoluteTime RSLastUnlock;
+static BOOL RSDelayFirstAIWindow;
+static NSUInteger RSUnlockGeneration;
 static void RSReload(void) {
     RSReloadOptions();
     NSUserDefaults *prefs = [[NSUserDefaults alloc] initWithSuiteName:@"com.moxuan.regionshot"];
@@ -171,6 +177,25 @@ static char RSStatusBarGestureKey;
 }
 %end
 %end
+%group RSUnlockLifecycle
+%hook SBLockScreenManager
+- (BOOL)_finishUIUnlockFromSource:(int)source withOptions:(id)options {
+    BOOL result = %orig(source, options);
+    RSLastUnlock = CFAbsoluteTimeGetCurrent();
+    RSDelayFirstAIWindow = YES;
+    RSUnlockGeneration++;
+    return result;
+}
+%end
+%end
+static BOOL RSUnlockCompatible(Class cls) {
+    Method method = class_getInstanceMethod(cls, NSSelectorFromString(@"_finishUIUnlockFromSource:withOptions:"));
+    if (!method || method_getNumberOfArguments(method) != 4) return NO;
+    char type[16] = {0}; method_getReturnType(method, type, sizeof(type));
+    if (type[0] != 'B' && type[0] != 'c') return NO;
+    method_getArgumentType(method, 2, type, sizeof(type)); if (type[0] != 'i') return NO;
+    method_getArgumentType(method, 3, type, sizeof(type)); return type[0] == '@';
+}
 static BOOL RSCompatible(Class cls, NSString *name, const char *argumentTypes) {
     Method method = cls ? class_getInstanceMethod(cls, NSSelectorFromString(name)) : NULL;
     if (!method || method_getNumberOfArguments(method) != (argumentTypes ? 3u : 2u)) return NO;
@@ -185,13 +210,21 @@ static BOOL RSCompatible(Class cls, NSString *name, const char *argumentTypes) {
 static void RSPreferenceEvent(CFNotificationCenterRef center, void *observer, CFStringRef name,
                               const void *object, CFDictionaryRef info) {
     if (CFEqual(name, CFSTR("com.apple.springboard.lockcomplete"))) {
-        dispatch_async(dispatch_get_main_queue(), ^{ [RSRegionShotManager.sharedManager cancelCapture]; [RSChatController minimizeForLock]; }); return;
+        dispatch_async(dispatch_get_main_queue(), ^{ RSDelayFirstAIWindow = NO; RSUnlockGeneration++; [RSRegionShotManager.sharedManager cancelCapture]; [RSChatController minimizeForLock]; }); return;
     }
     if ((CFEqual(name, CFSTR("com.moxuan.regionshot/History")) || CFEqual(name, CFSTR("com.jontelang.snapper3.history")))) {
         dispatch_async(dispatch_get_main_queue(), ^{ [RSRegionShotManager.sharedManager showHistory]; }); return;
     }
     if (CFEqual(name, CFSTR("com.moxuan.regionshot/AIWindow"))) {
-        dispatch_async(dispatch_get_main_queue(), ^{ [RSChatController showImage:nil scene:nil]; }); return;
+        dispatch_async(dispatch_get_main_queue(), ^{
+            CFTimeInterval age = CFAbsoluteTimeGetCurrent() - RSLastUnlock;
+            BOOL delay = RSDelayFirstAIWindow && age >= 0 && age < 3.0;
+            RSDelayFirstAIWindow = NO;
+            NSUInteger generation = RSUnlockGeneration;
+            void (^show)(void) = ^{ if (generation == RSUnlockGeneration) [RSChatController showImage:nil scene:nil]; };
+            if (delay) dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.8 * NSEC_PER_SEC)), dispatch_get_main_queue(), show);
+            else show();
+        }); return;
     }
     if (CFEqual(name, CFSTR("com.moxuan.regionshot/AICamera"))) {
         dispatch_async(dispatch_get_main_queue(), ^{ [RSChatController showCameraInScene:nil]; }); return;
@@ -219,6 +252,8 @@ static void RSPreferenceEvent(CFNotificationCenterRef center, void *observer, CF
         }];
 
         if ([NSClassFromString(@"_UIStatusBar") isSubclassOfClass:UIView.class]) { %init(RSStatusBarEntry); }
+        Class lockManager = NSClassFromString(@"SBLockScreenManager");
+        if (RSUnlockCompatible(lockManager)) { %init(RSUnlockLifecycle); }
         Class gestures = NSClassFromString(@"SBSystemGestureManager");
         Method receiveTouch = class_getInstanceMethod(gestures, NSSelectorFromString(@"shouldSystemGestureReceiveTouchWithLocation:"));
         char returnType[16] = {0}, argumentType[128] = {0};
