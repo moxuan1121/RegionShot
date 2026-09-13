@@ -89,6 +89,10 @@
 @property (nonatomic, strong) NSMutableIndexSet *excludedHistory;
 @property (nonatomic, copy) NSString *fileName;
 @property (nonatomic) BOOL awaitingInitialAppearance;
+@property (nonatomic) BOOL stabilizingInitialFocus;
+- (void)beginInitialFocus;
+- (void)stopInitialFocusRecovery;
+- (BOOL)canRecoverInitialFocus;
 @end
 
 static RSChatController *RSActiveChat;
@@ -154,8 +158,7 @@ static NSUserDefaults *RSChatPreferences(void) {
     RSOpenWindowSurfaceOverBackdropCompletion(controller.card, controller.view, [UIColor colorWithWhite:0 alpha:0.28], ^{
         controller.awaitingInitialAppearance = NO;
         if (!controller.host || controller.host.hidden || controller.card.hidden || RSChatCameraController.isVisible) return;
-        [controller.host makeKeyAndVisible];
-        [controller focusInput];
+        [controller beginInitialFocus];
     });
     if (image && [RSOption(@"AIAutoImage") boolValue]) [controller send];
 }
@@ -234,6 +237,8 @@ static NSUserDefaults *RSChatPreferences(void) {
 - (void)viewDidLoad {
     [super viewDidLoad];
     [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(screenRotated:) name:@"com.moxuan.regionshot.orientation.target" object:nil];
+    [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(windowBecameKey:) name:UIWindowDidBecomeKeyNotification object:nil];
+    [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(keyboardDidHide:) name:UIKeyboardDidHideNotification object:nil];
     self.view.backgroundColor = [UIColor colorWithWhite:0 alpha:0.28];
     UITapGestureRecognizer *single = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(backgroundTapped)];
     UITapGestureRecognizer *doubleTap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(close)];
@@ -355,6 +360,7 @@ static NSUserDefaults *RSChatPreferences(void) {
     [self.view addSubview:self.ball];
     [self applyAppearance];
 }
+- (void)dealloc { [NSNotificationCenter.defaultCenter removeObserver:self]; }
 - (BOOL)gestureRecognizer:(UIGestureRecognizer *)gesture shouldReceiveTouch:(UITouch *)touch {
     return !self.card.hidden && !self.presentedViewController && touch.view == self.view;
 }
@@ -376,6 +382,34 @@ static NSUserDefaults *RSChatPreferences(void) {
         if (!context.isCancelled) focus();
     }]) return;
     dispatch_async(dispatch_get_main_queue(), focus);
+}
+- (void)beginInitialFocus {
+    self.stabilizingInitialFocus = YES;
+    [self.host makeKeyAndVisible];
+    [self focusInput];
+    __weak typeof(self) weakSelf = self;
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, NSEC_PER_SEC), dispatch_get_main_queue(), ^{ weakSelf.stabilizingInitialFocus = NO; });
+}
+- (void)stopInitialFocusRecovery { self.stabilizingInitialFocus = NO; }
+- (BOOL)canRecoverInitialFocus {
+    return self.stabilizingInitialFocus && self.host && !self.host.hidden && !self.card.hidden &&
+        !self.presentedViewController && !self.keyboardPresentation && !RSChatCameraController.isVisible;
+}
+- (void)windowBecameKey:(NSNotification *)note {
+    if (note.object == self.host || ![self canRecoverInitialFocus]) return;
+    dispatch_async(dispatch_get_main_queue(), ^{
+        if (![self canRecoverInitialFocus]) return;
+        [self.host makeKeyAndVisible];
+        [self focusInput];
+    });
+}
+- (void)keyboardDidHide:(NSNotification *)note {
+    if (![self canRecoverInitialFocus]) return;
+    dispatch_async(dispatch_get_main_queue(), ^{
+        if (![self canRecoverInitialFocus]) return;
+        if (!self.host.isKeyWindow) [self.host makeKeyAndVisible];
+        [self focusInput];
+    });
 }
 - (void)updateHeading { self.heading.text = self.imageConversation ? @"图片问答" : @"AI 对话"; self.ball.accessibilityLabel = [@"恢复" stringByAppendingString:self.heading.text ?: @"AI 对话"]; }
 - (void)applyAppearance {
@@ -422,7 +456,7 @@ static NSUserDefaults *RSChatPreferences(void) {
     return YES;
 }
 - (void)textViewDidChange:(UITextView *)textView { if (textView == self.input) self.placeholder.hidden = textView.text.length > 0; }
-- (void)hideKeyboard { [self.view endEditing:YES]; }
+- (void)hideKeyboard { [self stopInitialFocusRecovery]; [self.view endEditing:YES]; }
 - (void)backgroundTapped {
     BOOL hasContent = self.history.count || self.input.text.length || self.attachment || self.fileAttachment;
     if (hasContent) [self minimize]; else [self close];
