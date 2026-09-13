@@ -88,3 +88,5 @@ history = (root / 'History/RSHistoryController.m').read_text(encoding='utf-8')
 assert 'dequeueReusableCellWithIdentifier' in history and 'representedIdentifier' in history
 canvas = (root / 'Annotation/RSMarkupAnnotationCanvas.m').read_text(encoding='utf-8')
 assert 'self.liveItem.pathPoints = [self.currentPathPoints mutableCopy]' not in canvas
+url_hooks = (root / 'Preferences/RSURLHooks.xm').read_text(encoding='utf-8')
+assert '0.8 * NSEC_PER_SEC' in url_hooks and 'objc_msgSend)(chat, show' in url_hooks

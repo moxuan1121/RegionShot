@@ -12,9 +12,11 @@ static BOOL RSHandleURL(id url) {
         // In SpringBoard dispatch directly; do not depend on a second injected URL dylib.
         Class chat = NSClassFromString(@"RSChatController");
         SEL show = NSSelectorFromString(@"showImage:scene:");
-        if ([notification hasSuffix:@"/AIWindow"] && [chat respondsToSelector:show])
-            ((void (*)(id, SEL, id, id))objc_msgSend)(chat, show, nil, nil);
-        else notify_post(notification.UTF8String);
+        if ([notification hasSuffix:@"/AIWindow"] && [chat respondsToSelector:show]) {
+            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.8 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+                ((void (*)(id, SEL, id, id))objc_msgSend)(chat, show, nil, nil);
+            });
+        } else notify_post(notification.UTF8String);
     });
     return YES;
 }
