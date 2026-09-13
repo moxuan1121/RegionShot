@@ -228,7 +228,7 @@ static NSUserDefaults *RSChatPreferences(void) {
     [super viewDidLoad];
     [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(screenRotated:) name:@"com.moxuan.regionshot.orientation.target" object:nil];
     self.view.backgroundColor = [UIColor colorWithWhite:0 alpha:0.28];
-    UITapGestureRecognizer *single = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(minimize)];
+    UITapGestureRecognizer *single = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(backgroundTapped)];
     UITapGestureRecognizer *doubleTap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(close)];
     doubleTap.numberOfTapsRequired = 2;
     single.delegate = self; doubleTap.delegate = self;
@@ -416,6 +416,10 @@ static NSUserDefaults *RSChatPreferences(void) {
 }
 - (void)textViewDidChange:(UITextView *)textView { if (textView == self.input) self.placeholder.hidden = textView.text.length > 0; }
 - (void)hideKeyboard { [self.view endEditing:YES]; }
+- (void)backgroundTapped {
+    BOOL hasContent = self.history.count || self.input.text.length || self.attachment || self.fileAttachment;
+    if (hasContent) [self minimize]; else [self close];
+}
 - (void)minimize {
     [self hideKeyboard];
     self.card.hidden = YES;

@@ -70,6 +70,10 @@ assert '- (void)restoreFromBall { [self restoreFocusingInput:NO]; }' in chat
 assert 'self.ball.backgroundColor = UIColor.systemBlueColor' in chat
 assert 'bezierPathWithOvalInRect:self.ball.bounds' in chat
 assert 'CGRectGetMaxX(safe) - radius - 16' not in chat
+assert 'action:@selector(backgroundTapped)' in chat
+background_tap = chat.split('- (void)backgroundTapped {', 1)[1].split('- (void)minimize {', 1)[0]
+assert 'self.history.count || self.input.text.length || self.attachment || self.fileAttachment' in background_tap
+assert 'if (hasContent) [self minimize]; else [self close];' in background_tap
 assert '+ (void)showCameraInScene:' in chat
 assert 'com.moxuan.regionshot/AICamera' in trigger
 external_camera = chat.split('+ (void)showCameraInScene:', 1)[1].split('- (void)showPhrases:', 1)[0]
