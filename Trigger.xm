@@ -203,6 +203,10 @@ static void RSPreferenceEvent(CFNotificationCenterRef center, void *observer, CF
     }
     if (CFEqual(name, CFSTR("com.moxuan.regionshot/AIWindow"))) {
         dispatch_async(dispatch_get_main_queue(), ^{
+            if (RSWasLocked) {
+                RSWasLocked = NO;
+                RSLastUnlock = CFAbsoluteTimeGetCurrent();
+            }
             CFTimeInterval elapsed = RSLastUnlock ? CFAbsoluteTimeGetCurrent() - RSLastUnlock : 4;
             NSTimeInterval delay = elapsed >= 0 && elapsed < 3.5 ? MAX(0.65, 3.5 - elapsed) : 0;
             [RSChatController showImage:nil scene:nil initialKeyboardDelay:delay];
