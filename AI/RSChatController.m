@@ -391,11 +391,9 @@ static NSUserDefaults *RSChatPreferences(void) {
         RSChatController *chat = weakSelf;
         if (!chat || note.object == chat.host) return;
         [chat stopDesktopKeyRecovery];
-        dispatch_async(dispatch_get_main_queue(), ^{
-            if (!chat.host || chat.host.hidden || chat.card.hidden || chat.presentedViewController) return;
-            [chat.host makeKeyAndVisible];
-            [chat focusInput];
-        });
+        if (!chat.host || chat.host.hidden || chat.card.hidden || chat.presentedViewController) return;
+        [chat.host makeKeyAndVisible];
+        [chat focusInput];
     }];
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 2 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
         RSChatController *chat = weakSelf;
