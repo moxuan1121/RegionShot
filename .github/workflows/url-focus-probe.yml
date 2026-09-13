@@ -1,0 +1,21 @@
+name: Build URL focus probe
+
+on:
+  push:
+    branches: [url-focus-probe]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v5
+      - run: brew install ldid
+      - run: xcrun -sdk iphoneos clang -fobjc-arc -dynamiclib -arch arm64e -miphoneos-version-min=15.0 -framework Foundation -framework UIKit Tools/RSURLFocusProbe.m -o RSURLFocusProbe.dylib
+      - run: ldid -S RSURLFocusProbe.dylib
+      - uses: actions/upload-artifact@v4
+        with:
+          name: RSURLFocusProbe
+          path: RSURLFocusProbe.dylib
