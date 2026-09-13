@@ -88,3 +88,6 @@ history = (root / 'History/RSHistoryController.m').read_text(encoding='utf-8')
 assert 'dequeueReusableCellWithIdentifier' in history and 'representedIdentifier' in history
 canvas = (root / 'Annotation/RSMarkupAnnotationCanvas.m').read_text(encoding='utf-8')
 assert 'self.liveItem.pathPoints = [self.currentPathPoints mutableCopy]' not in canvas
+url_hooks = (root / 'Preferences/RSURLHooks.xm').read_text(encoding='utf-8')
+assert 'notify_post(notification.UTF8String)' in url_hooks and 'objc_msgSend)(chat, show' not in url_hooks
+assert '0.8 * NSEC_PER_SEC' in trigger.split('com.moxuan.regionshot/AIWindow', 1)[1].split('com.moxuan.regionshot/AICamera', 1)[0]

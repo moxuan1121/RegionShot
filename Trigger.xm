@@ -191,7 +191,9 @@ static void RSPreferenceEvent(CFNotificationCenterRef center, void *observer, CF
         dispatch_async(dispatch_get_main_queue(), ^{ [RSRegionShotManager.sharedManager showHistory]; }); return;
     }
     if (CFEqual(name, CFSTR("com.moxuan.regionshot/AIWindow"))) {
-        dispatch_async(dispatch_get_main_queue(), ^{ [RSChatController showImage:nil scene:nil]; }); return;
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.8 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+            [RSChatController showImage:nil scene:nil];
+        }); return;
     }
     if (CFEqual(name, CFSTR("com.moxuan.regionshot/AICamera"))) {
         dispatch_async(dispatch_get_main_queue(), ^{ [RSChatController showCameraInScene:nil]; }); return;
