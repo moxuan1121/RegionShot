@@ -1,6 +1,6 @@
 #import <UIKit/UIKit.h>
-#import <objc/message.h>
 #import <objc/runtime.h>
+#include <notify.h>
 #include <string.h>
 #include <dlfcn.h>
 #include <atomic>
@@ -32,12 +32,12 @@ static NSUInteger RSNativeScreenshotGeneration;
 static BOOL RSWasLocked;
 static CFAbsoluteTime RSLastUnlock;
 
-static BOOL RSDeviceIsLocked(void) {
-    Class cls = NSClassFromString(@"SBLockScreenManager");
-    SEL shared = NSSelectorFromString(@"sharedInstance"), locked = NSSelectorFromString(@"isUILocked");
-    if (![cls respondsToSelector:shared]) return YES;
-    id manager = ((id (*)(id, SEL))objc_msgSend)(cls, shared);
-    return ![manager respondsToSelector:locked] || ((BOOL (*)(id, SEL))objc_msgSend)(manager, locked);
+static void RSUpdateLockState(int token) {
+    uint64_t state = 0;
+    if (notify_get_state(token, &state) != NOTIFY_STATUS_OK) return;
+    BOOL locked = state != 0;
+    if (locked) RSWasLocked = YES;
+    else if (RSWasLocked) { RSWasLocked = NO; RSLastUnlock = CFAbsoluteTimeGetCurrent(); }
 }
 static void RSReload(void) {
     RSReloadOptions();
@@ -195,14 +195,6 @@ static BOOL RSCompatible(Class cls, NSString *name, const char *argumentTypes) {
 }
 static void RSPreferenceEvent(CFNotificationCenterRef center, void *observer, CFStringRef name,
                               const void *object, CFDictionaryRef info) {
-    if (CFEqual(name, CFSTR("com.apple.springboard.lockstate"))) {
-        dispatch_async(dispatch_get_main_queue(), ^{
-            BOOL locked = RSDeviceIsLocked();
-            if (locked) RSWasLocked = YES;
-            else if (RSWasLocked) { RSWasLocked = NO; RSLastUnlock = CFAbsoluteTimeGetCurrent(); }
-        });
-        return;
-    }
     if (CFEqual(name, CFSTR("com.apple.springboard.lockcomplete"))) {
         dispatch_async(dispatch_get_main_queue(), ^{ RSWasLocked = YES; [RSRegionShotManager.sharedManager cancelCapture]; [RSChatController minimizeForLock]; }); return;
     }
@@ -273,8 +265,9 @@ static void RSPreferenceEvent(CFNotificationCenterRef center, void *observer, CF
         if (keys) { %init(RSHardwareEntry); }
         if (capturer) { %init(RSCapturerEntry); }
         CFNotificationCenterRef center = CFNotificationCenterGetDarwinNotifyCenter();
-        RSWasLocked = RSDeviceIsLocked();
-        CFNotificationCenterAddObserver(center, NULL, RSPreferenceEvent, CFSTR("com.apple.springboard.lockstate"), NULL, CFNotificationSuspensionBehaviorDeliverImmediately);
+        int lockToken = 0;
+        if (notify_register_dispatch("com.apple.springboard.lockstate", &lockToken, dispatch_get_main_queue(), ^(int token) { RSUpdateLockState(token); }) == NOTIFY_STATUS_OK)
+            RSUpdateLockState(lockToken);
         CFNotificationCenterAddObserver(center, NULL, RSPreferenceEvent, CFSTR("com.apple.springboard.lockcomplete"), NULL, CFNotificationSuspensionBehaviorDeliverImmediately);
         CFNotificationCenterAddObserver(center, NULL, RSPreferenceEvent, CFSTR("com.moxuan.regionshot/AIWindow"), NULL, CFNotificationSuspensionBehaviorDeliverImmediately);
         CFNotificationCenterAddObserver(center, NULL, RSPreferenceEvent, CFSTR("com.moxuan.regionshot/AICamera"), NULL, CFNotificationSuspensionBehaviorDeliverImmediately);
