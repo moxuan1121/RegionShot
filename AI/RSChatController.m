@@ -88,6 +88,7 @@
 @property (nonatomic, strong) NSDictionary *fileAttachment;
 @property (nonatomic, strong) NSMutableIndexSet *excludedHistory;
 @property (nonatomic, copy) NSString *fileName;
+@property (nonatomic) BOOL awaitingInitialAppearance;
 @end
 
 static RSChatController *RSActiveChat;
@@ -136,6 +137,7 @@ static NSUserDefaults *RSChatPreferences(void) {
     controller.attachment = image;
     controller.history = [NSMutableArray array];
     controller.rows = [NSMutableArray array];
+    controller.awaitingInitialAppearance = YES;
     for (UIWindow *window in scene.windows) if (window.isKeyWindow) controller.previousKey = window;
     RSChatWindow *window = scene ? [[RSChatWindow alloc] initWithWindowScene:scene]
                                 : [[RSChatWindow alloc] initWithFrame:UIScreen.mainScreen.bounds];
@@ -149,7 +151,12 @@ static NSUserDefaults *RSChatPreferences(void) {
     [controller loadViewIfNeeded];
     [window makeKeyAndVisible];
     RSApplyWindowOrientation(window, RSActiveOrientation(scene));
-    RSOpenWindowSurfaceOverBackdrop(controller.card, controller.view, [UIColor colorWithWhite:0 alpha:0.28]);
+    RSOpenWindowSurfaceOverBackdropCompletion(controller.card, controller.view, [UIColor colorWithWhite:0 alpha:0.28], ^{
+        controller.awaitingInitialAppearance = NO;
+        if (!controller.host || controller.host.hidden || controller.card.hidden || RSChatCameraController.isVisible) return;
+        [controller.host makeKeyAndVisible];
+        [controller focusInput];
+    });
     if (image && [RSOption(@"AIAutoImage") boolValue]) [controller send];
 }
 + (void)showImage:(UIImage *)image scene:(UIWindowScene *)scene persona:(NSDictionary *)persona {
@@ -353,7 +360,7 @@ static NSUserDefaults *RSChatPreferences(void) {
 }
 - (void)viewDidAppear:(BOOL)animated {
     [super viewDidAppear:animated];
-    [self focusInput];
+    if (!self.awaitingInitialAppearance) [self focusInput];
 }
 - (void)focusInput {
     if (RSOpeningExternalCamera || RSChatCameraController.isVisible) return;
