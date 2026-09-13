@@ -70,6 +70,13 @@ assert '- (void)restoreFromBall { [self restoreFocusingInput:NO]; }' in chat
 assert 'self.ball.backgroundColor = UIColor.systemBlueColor' in chat
 assert 'bezierPathWithOvalInRect:self.ball.bounds' in chat
 assert 'CGRectGetMaxX(safe) - radius - 16' not in chat
+url_hooks = (root / 'Preferences/RSURLHooks.xm').read_text(encoding='utf-8')
+assert 'AIWindowURL' in url_hooks and 'showImage:scene:' not in url_hooks
+assert trigger.count('com.moxuan.regionshot/AIWindowURL') == 2 and '[RSChatController showURLWindow]' in trigger
+desktop_focus = chat.split('- (void)armDesktopKeyRecovery {', 1)[1].split('- (void)updateHeading', 1)[0]
+assert desktop_focus.count('UIWindowDidBecomeKeyNotification') == 1
+assert desktop_focus.index('[chat stopDesktopKeyRecovery]') < desktop_focus.index('[chat.host makeKeyAndVisible]')
+assert 'UIKeyboardDidHideNotification' not in chat and 'stabilizingInitialFocus' not in chat
 assert 'action:@selector(backgroundTapped)' in chat
 background_tap = chat.split('- (void)backgroundTapped {', 1)[1].split('- (void)minimize {', 1)[0]
 assert 'self.history.count || self.input.text.length || self.attachment || self.fileAttachment' in background_tap

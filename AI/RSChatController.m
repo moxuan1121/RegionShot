@@ -12,6 +12,7 @@
 #import "../Preferences/RSOptions.h"
 #import <PhotosUI/PhotosUI.h>
 #import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
+#import <objc/message.h>
 
 @interface RSChatWindow : UIWindow
 @property (nonatomic, weak) UIView *activeSurface;
@@ -88,6 +89,10 @@
 @property (nonatomic, strong) NSDictionary *fileAttachment;
 @property (nonatomic, strong) NSMutableIndexSet *excludedHistory;
 @property (nonatomic, copy) NSString *fileName;
+@property (nonatomic, strong) id desktopKeyObserver;
+@property (nonatomic) NSUInteger desktopKeyGeneration;
+- (void)armDesktopKeyRecovery;
+- (void)stopDesktopKeyRecovery;
 @end
 
 static RSChatController *RSActiveChat;
@@ -151,6 +156,14 @@ static NSUserDefaults *RSChatPreferences(void) {
     RSApplyWindowOrientation(window, RSActiveOrientation(scene));
     RSOpenWindowSurfaceOverBackdrop(controller.card, controller.view, [UIColor colorWithWhite:0 alpha:0.28]);
     if (image && [RSOption(@"AIAutoImage") boolValue]) [controller send];
+}
++ (void)showURLWindow {
+    id frontmost = nil;
+    SEL selector = NSSelectorFromString(@"_accessibilityFrontMostApplication");
+    if ([UIApplication.sharedApplication respondsToSelector:selector])
+        frontmost = ((id (*)(id, SEL))objc_msgSend)(UIApplication.sharedApplication, selector);
+    [self showImage:nil scene:nil];
+    if (!frontmost && [RSOption(@"AIDesktopKeyboardFix") boolValue]) [RSActiveChat armDesktopKeyRecovery];
 }
 + (void)showImage:(UIImage *)image scene:(UIWindowScene *)scene persona:(NSDictionary *)persona {
     if (!image || !persona) return;
@@ -370,6 +383,34 @@ static NSUserDefaults *RSChatPreferences(void) {
     }]) return;
     dispatch_async(dispatch_get_main_queue(), focus);
 }
+- (void)armDesktopKeyRecovery {
+    [self stopDesktopKeyRecovery];
+    NSUInteger generation = self.desktopKeyGeneration;
+    __weak typeof(self) weakSelf = self;
+    self.desktopKeyObserver = [NSNotificationCenter.defaultCenter addObserverForName:UIWindowDidBecomeKeyNotification object:nil queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification *note) {
+        RSChatController *chat = weakSelf;
+        if (!chat || note.object == chat.host) return;
+        [chat stopDesktopKeyRecovery];
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if (!chat.host || chat.host.hidden || chat.card.hidden || chat.presentedViewController) return;
+            [chat.host makeKeyAndVisible];
+            [chat focusInput];
+        });
+    }];
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 2 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
+        RSChatController *chat = weakSelf;
+        if (chat && chat.desktopKeyGeneration == generation) [chat stopDesktopKeyRecovery];
+    });
+}
+- (void)stopDesktopKeyRecovery {
+    self.desktopKeyGeneration++;
+    if (self.desktopKeyObserver) [NSNotificationCenter.defaultCenter removeObserver:self.desktopKeyObserver];
+    self.desktopKeyObserver = nil;
+}
+- (void)dealloc {
+    [self stopDesktopKeyRecovery];
+    [NSNotificationCenter.defaultCenter removeObserver:self];
+}
 - (void)updateHeading { self.heading.text = self.imageConversation ? @"图片问答" : @"AI 对话"; self.ball.accessibilityLabel = [@"恢复" stringByAppendingString:self.heading.text ?: @"AI 对话"]; }
 - (void)applyAppearance {
     self.overrideUserInterfaceStyle = (UIUserInterfaceStyle)[RSOption(@"AITheme") integerValue];
@@ -421,6 +462,7 @@ static NSUserDefaults *RSChatPreferences(void) {
     if (hasContent) [self minimize]; else [self close];
 }
 - (void)minimize {
+    [self stopDesktopKeyRecovery];
     [self hideKeyboard];
     self.card.hidden = YES;
     if (!self.ballPositioned) {
@@ -462,6 +504,7 @@ static NSUserDefaults *RSChatPreferences(void) {
     [pan setTranslation:CGPointZero inView:self.view];
 }
 - (void)close {
+    [self stopDesktopKeyRecovery];
     [self.session invalidateAndCancel];
     self.task = nil;
     self.session = nil;

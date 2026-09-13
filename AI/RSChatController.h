@@ -7,6 +7,7 @@
 + (void)showImage:(UIImage *)image scene:(UIWindowScene *)scene persona:(NSDictionary *)persona;
 + (void)showServiceSettings;
 + (void)showCameraInScene:(UIWindowScene *)scene;
++ (void)showURLWindow;
 + (void)minimizeForLock;
 - (void)minimize;
 @end

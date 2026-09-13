@@ -71,6 +71,10 @@
     "key": "@\"AIMinimizeOnLock\"",
     "default": "@YES"
   },
+  "AIDesktopKeyboardFix": {
+    "key": "@\"AIDesktopKeyboardFix\"",
+    "default": "@YES"
+  },
   "AIFastResponse": {
     "key": "@\"AIFastResponse\"",
     "default": "@YES"
