@@ -76,6 +76,8 @@ assert 'self.history.count || self.input.text.length || self.attachment || self.
 assert 'if (hasContent) [self minimize]; else [self close];' in background_tap
 assert '+ (void)showCameraInScene:' in chat
 assert 'com.moxuan.regionshot/AICamera' in trigger
+url_hooks = (root / 'Preferences/RSURLHooks.xm').read_text(encoding='utf-8')
+assert 'notify_post(notification.UTF8String)' in url_hooks and 'showImage:scene:' not in url_hooks
 external_camera = chat.split('+ (void)showCameraInScene:', 1)[1].split('- (void)showPhrases:', 1)[0]
 assert external_camera.index('RSOpeningExternalCamera = YES') < external_camera.index('[self showImage:nil scene:scene]')
 assert 'RSChatCameraController.isVisible' in chat.split('- (void)focusInput', 1)[1].split('- (void)updateHeading', 1)[0]
