@@ -78,6 +78,7 @@ assert desktop_focus.count('UIWindowDidBecomeKeyNotification') == 1
 assert desktop_focus.index('[chat stopDesktopKeyRecovery]') < desktop_focus.index('[chat.host makeKeyAndVisible]')
 assert desktop_focus.index('dispatch_async(dispatch_get_main_queue()') < desktop_focus.index('[chat.host makeKeyAndVisible]')
 assert 'UIKeyboardDidHideNotification' not in chat and 'stabilizingInitialFocus' not in chat
+assert 'AIDesktopKeyboardFix' not in chat and 'AIDesktopKeyboardFix' not in (root / 'Preferences/RSOptions.m').read_text(encoding='utf-8')
 assert 'action:@selector(backgroundTapped)' in chat
 background_tap = chat.split('- (void)backgroundTapped {', 1)[1].split('- (void)minimize {', 1)[0]
 assert 'self.history.count || self.input.text.length || self.attachment || self.fileAttachment' in background_tap

@@ -163,7 +163,7 @@ static NSUserDefaults *RSChatPreferences(void) {
     if ([UIApplication.sharedApplication respondsToSelector:selector])
         frontmost = ((id (*)(id, SEL))objc_msgSend)(UIApplication.sharedApplication, selector);
     [self showImage:nil scene:nil];
-    if (!frontmost && [RSOption(@"AIDesktopKeyboardFix") boolValue]) [RSActiveChat armDesktopKeyRecovery];
+    if (!frontmost) [RSActiveChat armDesktopKeyRecovery];
 }
 + (void)showImage:(UIImage *)image scene:(UIWindowScene *)scene persona:(NSDictionary *)persona {
     if (!image || !persona) return;
