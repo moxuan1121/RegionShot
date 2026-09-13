@@ -2,6 +2,7 @@
 
 @interface RSChatController : UIViewController
 + (void)showImage:(UIImage *)image scene:(UIWindowScene *)scene;
++ (void)showImage:(UIImage *)image scene:(UIWindowScene *)scene initialKeyboardDelay:(NSTimeInterval)delay;
 + (void)showText:(NSString *)text scene:(UIWindowScene *)scene sendImmediately:(BOOL)send;
 + (void)showText:(NSString *)text scene:(UIWindowScene *)scene persona:(NSDictionary *)persona;
 + (void)showImage:(UIImage *)image scene:(UIWindowScene *)scene persona:(NSDictionary *)persona;

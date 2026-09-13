@@ -1,6 +1,5 @@
 #import <UIKit/UIKit.h>
-static inline void RSOpenWindowSurfaceOverBackdropCompletion(UIView *surface, UIView *backdrop, UIColor *backgroundColor,
-                                                              void (^completion)(void)) {
+static inline void RSOpenWindowSurfaceOverBackdrop(UIView *surface, UIView *backdrop, UIColor *backgroundColor) {
     if (!surface) return;
     [surface.superview layoutIfNeeded];
     surface.alpha = 0;
@@ -8,10 +7,7 @@ static inline void RSOpenWindowSurfaceOverBackdropCompletion(UIView *surface, UI
     [UIView animateWithDuration:0.65 delay:0 options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionCurveEaseInOut animations:^{
         surface.alpha = 1;
         if (backdrop) backdrop.backgroundColor = backgroundColor;
-    } completion:^(__unused BOOL finished) { if (completion) completion(); }];
-}
-static inline void RSOpenWindowSurfaceOverBackdrop(UIView *surface, UIView *backdrop, UIColor *backgroundColor) {
-    RSOpenWindowSurfaceOverBackdropCompletion(surface, backdrop, backgroundColor, nil);
+    } completion:nil];
 }
 static inline void RSOpenWindowSurface(UIView *surface) {
     RSOpenWindowSurfaceOverBackdrop(surface, nil, nil);
