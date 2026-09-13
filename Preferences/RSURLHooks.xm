@@ -1,5 +1,6 @@
 #import <UIKit/UIKit.h>
 #import <objc/runtime.h>
+#import <objc/message.h>
 #include <string.h>
 #import <notify.h>
 #import "RSURLRoute.h"
@@ -7,7 +8,14 @@ static BOOL RSHandleURL(id url) {
     NSString *notification = RSURLNotification(url);
     if (!notification) return NO;
 
-    notify_post(notification.UTF8String);
+    dispatch_async(dispatch_get_main_queue(), ^{
+        // In SpringBoard dispatch directly; do not depend on a second injected URL dylib.
+        Class chat = NSClassFromString(@"RSChatController");
+        SEL show = NSSelectorFromString(@"showImage:scene:");
+        if ([notification hasSuffix:@"/AIWindow"] && [chat respondsToSelector:show])
+            ((void (*)(id, SEL, id, id))objc_msgSend)(chat, show, nil, nil);
+        else notify_post(notification.UTF8String);
+    });
     return YES;
 }
 // Verified against ShellX 3.0.1's external URL registration at 0x189208.

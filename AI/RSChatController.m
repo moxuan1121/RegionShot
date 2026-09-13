@@ -88,10 +88,6 @@
 @property (nonatomic, strong) NSDictionary *fileAttachment;
 @property (nonatomic, strong) NSMutableIndexSet *excludedHistory;
 @property (nonatomic, copy) NSString *fileName;
-@property (nonatomic) BOOL awaitingInitialAppearance;
-@property (nonatomic) NSUInteger focusDelayGeneration;
-- (void)focusAfterDelay:(NSTimeInterval)delay;
-- (void)restoreFocusingInput:(BOOL)focusInput;
 @end
 
 static RSChatController *RSActiveChat;
@@ -119,9 +115,6 @@ static NSUserDefaults *RSChatPreferences(void) {
     [self.view setNeedsLayout]; [self.view layoutIfNeeded];
 }
 + (void)showImage:(UIImage *)image scene:(UIWindowScene *)scene {
-    [self showImage:image scene:scene initialKeyboardDelay:0];
-}
-+ (void)showImage:(UIImage *)image scene:(UIWindowScene *)scene initialKeyboardDelay:(NSTimeInterval)delay {
     NSAssert(NSThread.isMainThread, @"Chat UI requires main thread");
     [RSChatPreferences() synchronize];
     RSKAClosePanel();
@@ -130,10 +123,7 @@ static NSUserDefaults *RSChatPreferences(void) {
     if (RSActiveChat) {
         RSActiveChat.imageConversation = image != nil;
         [RSActiveChat updateHeading];
-        if (delay > 0) {
-            [RSActiveChat restoreFocusingInput:NO];
-            [RSActiveChat focusAfterDelay:delay];
-        } else [RSActiveChat restore];
+        [RSActiveChat restore];
         [RSActiveChat clearAttachment];
         RSActiveChat.attachment = image;
         RSActiveChat.chip.image = image;
@@ -146,7 +136,6 @@ static NSUserDefaults *RSChatPreferences(void) {
     controller.attachment = image;
     controller.history = [NSMutableArray array];
     controller.rows = [NSMutableArray array];
-    controller.awaitingInitialAppearance = delay > 0;
     for (UIWindow *window in scene.windows) if (window.isKeyWindow) controller.previousKey = window;
     RSChatWindow *window = scene ? [[RSChatWindow alloc] initWithWindowScene:scene]
                                 : [[RSChatWindow alloc] initWithFrame:UIScreen.mainScreen.bounds];
@@ -161,7 +150,6 @@ static NSUserDefaults *RSChatPreferences(void) {
     [window makeKeyAndVisible];
     RSApplyWindowOrientation(window, RSActiveOrientation(scene));
     RSOpenWindowSurfaceOverBackdrop(controller.card, controller.view, [UIColor colorWithWhite:0 alpha:0.28]);
-    if (delay > 0) [controller focusAfterDelay:delay];
     if (image && [RSOption(@"AIAutoImage") boolValue]) [controller send];
 }
 + (void)showImage:(UIImage *)image scene:(UIWindowScene *)scene persona:(NSDictionary *)persona {
@@ -360,13 +348,12 @@ static NSUserDefaults *RSChatPreferences(void) {
     [self.view addSubview:self.ball];
     [self applyAppearance];
 }
-- (void)dealloc { [NSNotificationCenter.defaultCenter removeObserver:self]; }
 - (BOOL)gestureRecognizer:(UIGestureRecognizer *)gesture shouldReceiveTouch:(UITouch *)touch {
     return !self.card.hidden && !self.presentedViewController && touch.view == self.view;
 }
 - (void)viewDidAppear:(BOOL)animated {
     [super viewDidAppear:animated];
-    if (!self.awaitingInitialAppearance) [self focusInput];
+    [self focusInput];
 }
 - (void)focusInput {
     if (RSOpeningExternalCamera || RSChatCameraController.isVisible) return;
@@ -382,20 +369,6 @@ static NSUserDefaults *RSChatPreferences(void) {
         if (!context.isCancelled) focus();
     }]) return;
     dispatch_async(dispatch_get_main_queue(), focus);
-}
-- (void)focusAfterDelay:(NSTimeInterval)delay {
-    NSUInteger generation = ++self.focusDelayGeneration;
-    self.awaitingInitialAppearance = YES;
-    __weak typeof(self) weakSelf = self;
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(delay * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-        RSChatController *chat = weakSelf;
-        if (!chat.awaitingInitialAppearance || chat.focusDelayGeneration != generation) return;
-        chat.awaitingInitialAppearance = NO;
-        if (!chat.host || chat.host.hidden || chat.card.hidden || chat.presentedViewController ||
-            chat.keyboardPresentation || RSChatCameraController.isVisible) return;
-        [chat.host makeKeyAndVisible];
-        [chat focusInput];
-    });
 }
 - (void)updateHeading { self.heading.text = self.imageConversation ? @"图片问答" : @"AI 对话"; self.ball.accessibilityLabel = [@"恢复" stringByAppendingString:self.heading.text ?: @"AI 对话"]; }
 - (void)applyAppearance {
@@ -442,7 +415,7 @@ static NSUserDefaults *RSChatPreferences(void) {
     return YES;
 }
 - (void)textViewDidChange:(UITextView *)textView { if (textView == self.input) self.placeholder.hidden = textView.text.length > 0; }
-- (void)hideKeyboard { self.focusDelayGeneration++; self.awaitingInitialAppearance = NO; [self.view endEditing:YES]; }
+- (void)hideKeyboard { [self.view endEditing:YES]; }
 - (void)backgroundTapped {
     BOOL hasContent = self.history.count || self.input.text.length || self.attachment || self.fileAttachment;
     if (hasContent) [self minimize]; else [self close];

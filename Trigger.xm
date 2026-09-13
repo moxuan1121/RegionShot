@@ -19,10 +19,6 @@
 @interface SBCombinationHardwareButtonActions : NSObject
 - (void)performTakeScreenshotAction;
 @end
-@interface SBLockScreenManager : NSObject
-- (void)startUIUnlockFromSource:(int)source withOptions:(id)options;
-- (BOOL)_finishUIUnlockFromSource:(int)source withOptions:(id)options;
-@end
 @interface SSScreenCapturer : NSObject
 - (void)takeScreenshotWithPresentationOptions:(id)options;
 @end
@@ -32,9 +28,6 @@ static BOOL RSTargetOrientationInstalled;
 static __thread NSUInteger RSOriginalDepth;
 static std::atomic<bool> RSNativeScreenshotPending(false);
 static NSUInteger RSNativeScreenshotGeneration;
-static CFAbsoluteTime RSLastUnlock;
-static BOOL RSUnlockInProgress;
-static BOOL RSPendingAIWindow;
 static void RSReload(void) {
     RSReloadOptions();
     NSUserDefaults *prefs = [[NSUserDefaults alloc] initWithSuiteName:@"com.moxuan.regionshot"];
@@ -178,33 +171,6 @@ static char RSStatusBarGestureKey;
 }
 %end
 %end
-%group RSUnlockLifecycle
-%hook SBLockScreenManager
-- (void)startUIUnlockFromSource:(int)source withOptions:(id)options {
-    RSUnlockInProgress = YES;
-    %orig(source, options);
-}
-- (BOOL)_finishUIUnlockFromSource:(int)source withOptions:(id)options {
-    BOOL result = %orig(source, options);
-    RSUnlockInProgress = NO;
-    RSLastUnlock = CFAbsoluteTimeGetCurrent();
-    if (RSPendingAIWindow) {
-        RSPendingAIWindow = NO;
-        dispatch_async(dispatch_get_main_queue(), ^{ [RSChatController showImage:nil scene:nil initialKeyboardDelay:0.65]; });
-    }
-    return result;
-}
-%end
-%end
-static BOOL RSUnlockLifecycleCompatible(Class cls) {
-    Method start = class_getInstanceMethod(cls, NSSelectorFromString(@"startUIUnlockFromSource:withOptions:"));
-    Method finish = class_getInstanceMethod(cls, NSSelectorFromString(@"_finishUIUnlockFromSource:withOptions:"));
-    if (!start || !finish || method_getNumberOfArguments(start) != 4 || method_getNumberOfArguments(finish) != 4) return NO;
-    char type[16] = {0}; method_getReturnType(start, type, sizeof(type)); if (type[0] != 'v') return NO;
-    method_getReturnType(finish, type, sizeof(type)); if (type[0] != 'B' && type[0] != 'c') return NO;
-    method_getArgumentType(start, 2, type, sizeof(type)); if (type[0] != 'i') return NO;
-    method_getArgumentType(start, 3, type, sizeof(type)); return type[0] == '@';
-}
 static BOOL RSCompatible(Class cls, NSString *name, const char *argumentTypes) {
     Method method = cls ? class_getInstanceMethod(cls, NSSelectorFromString(name)) : NULL;
     if (!method || method_getNumberOfArguments(method) != (argumentTypes ? 3u : 2u)) return NO;
@@ -219,18 +185,13 @@ static BOOL RSCompatible(Class cls, NSString *name, const char *argumentTypes) {
 static void RSPreferenceEvent(CFNotificationCenterRef center, void *observer, CFStringRef name,
                               const void *object, CFDictionaryRef info) {
     if (CFEqual(name, CFSTR("com.apple.springboard.lockcomplete"))) {
-        dispatch_async(dispatch_get_main_queue(), ^{ RSUnlockInProgress = NO; RSPendingAIWindow = NO; [RSRegionShotManager.sharedManager cancelCapture]; [RSChatController minimizeForLock]; }); return;
+        dispatch_async(dispatch_get_main_queue(), ^{ [RSRegionShotManager.sharedManager cancelCapture]; [RSChatController minimizeForLock]; }); return;
     }
     if ((CFEqual(name, CFSTR("com.moxuan.regionshot/History")) || CFEqual(name, CFSTR("com.jontelang.snapper3.history")))) {
         dispatch_async(dispatch_get_main_queue(), ^{ [RSRegionShotManager.sharedManager showHistory]; }); return;
     }
     if (CFEqual(name, CFSTR("com.moxuan.regionshot/AIWindow"))) {
-        dispatch_async(dispatch_get_main_queue(), ^{
-            if (RSUnlockInProgress) { RSPendingAIWindow = YES; return; }
-            CFTimeInterval elapsed = RSLastUnlock ? CFAbsoluteTimeGetCurrent() - RSLastUnlock : 4;
-            NSTimeInterval delay = elapsed >= 0 && elapsed < 3.5 ? MAX(0.65, 3.5 - elapsed) : 0;
-            [RSChatController showImage:nil scene:nil initialKeyboardDelay:delay];
-        }); return;
+        dispatch_async(dispatch_get_main_queue(), ^{ [RSChatController showImage:nil scene:nil]; }); return;
     }
     if (CFEqual(name, CFSTR("com.moxuan.regionshot/AICamera"))) {
         dispatch_async(dispatch_get_main_queue(), ^{ [RSChatController showCameraInScene:nil]; }); return;
@@ -258,8 +219,6 @@ static void RSPreferenceEvent(CFNotificationCenterRef center, void *observer, CF
         }];
 
         if ([NSClassFromString(@"_UIStatusBar") isSubclassOfClass:UIView.class]) { %init(RSStatusBarEntry); }
-        Class lockManager = NSClassFromString(@"SBLockScreenManager");
-        if (RSUnlockLifecycleCompatible(lockManager)) { %init(RSUnlockLifecycle); }
         Class gestures = NSClassFromString(@"SBSystemGestureManager");
         Method receiveTouch = class_getInstanceMethod(gestures, NSSelectorFromString(@"shouldSystemGestureReceiveTouchWithLocation:"));
         char returnType[16] = {0}, argumentType[128] = {0};
