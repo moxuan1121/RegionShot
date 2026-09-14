@@ -15,6 +15,7 @@
         _strokeColor = [UIColor systemRedColor];
         _lineWidth = 5.0;
         _drawMode = RSMarkupDrawModeArrow;
+        self.multipleTouchEnabled = YES;
     }
     return self;
 }
@@ -42,6 +43,10 @@
 #pragma mark - Touch handling
 
 - (void)touchesBegan:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
+    if (event.allTouches.count > 1) {
+        [self cancelCurrentStroke];
+        return;
+    }
     if (self.drawMode == RSMarkupDrawModeText) return; // text handled by the VC
     CGPoint p = [touches.anyObject locationInView:self];
     self.isDrawing = YES;
@@ -56,10 +61,13 @@
     self.liveItem = item;
     item.pathPoints = self.currentPathPoints;
     [self.items addObject:item];
-    [self setNeedsDisplay];
 }
 
 - (void)touchesMoved:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
+    if (event.allTouches.count > 1) {
+        [self cancelCurrentStroke];
+        return;
+    }
     if (!self.isDrawing) return;
     CGPoint p = [touches.anyObject locationInView:self];
     self.liveItem.endPoint = p;

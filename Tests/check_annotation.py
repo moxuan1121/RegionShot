@@ -15,6 +15,8 @@ assert "self.zoomView.panGestureRecognizer.minimumNumberOfTouches = 2" in editor
 assert "return self.zoomContentView" in editor
 assert "[self.canvas cancelCurrentStroke]" in editor
 assert "- (void)cancelCurrentStroke" in canvas
+assert "self.multipleTouchEnabled = YES" in canvas
+assert canvas.count("event.allTouches.count > 1") == 2
 assert "[self layoutToolbarButtons];" in editor.split("- (void)viewDidLayoutSubviews")[1].split("- (CGRect)imageDisplayRect")[0]
 assert "forceDestroyOnRotation" not in editor
 assert "Snapper3.h" not in editor
