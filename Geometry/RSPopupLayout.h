@@ -5,6 +5,7 @@ static inline CGFloat RSPopupContentHeight(UIStackView *stack, UIView *content, 
     CGFloat body = 0;
     if ([content isKindOfClass:UICollectionView.class]) {
         UICollectionView *list = (id)content;
+        list.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentNever;
         list.bounds = CGRectMake(0, 0, width, MAX(1, available));
         [list.collectionViewLayout invalidateLayout];
         [list layoutIfNeeded];
