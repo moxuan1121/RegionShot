@@ -76,11 +76,16 @@
     [self setNeedsDisplay];
 }
 
-- (void)touchesCancelled:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
+- (void)cancelCurrentStroke {
     if (self.liveItem) [self.items removeObjectIdenticalTo:self.liveItem];
-    [self setNeedsDisplay];
     self.isDrawing = NO;
     self.liveItem = nil;
+    self.currentPathPoints = nil;
+    [self setNeedsDisplay];
+}
+
+- (void)touchesCancelled:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
+    [self cancelCurrentStroke];
 }
 
 #pragma mark - Edit ops

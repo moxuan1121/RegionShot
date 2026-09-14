@@ -9,6 +9,12 @@ assert "case RSMarkupDrawModeText:" in canvas
 assert "item.textAnnotation = a" in editor
 assert "CGImageGetWidth(self.sourceImage.CGImage)" in canvas
 assert "resizeDrawingToSize:disp.size" in editor
+assert "UIScrollViewDelegate" in editor
+assert "self.zoomView.maximumZoomScale = 6.0" in editor
+assert "self.zoomView.panGestureRecognizer.minimumNumberOfTouches = 2" in editor
+assert "return self.zoomContentView" in editor
+assert "[self.canvas cancelCurrentStroke]" in editor
+assert "- (void)cancelCurrentStroke" in canvas
 assert "[self layoutToolbarButtons];" in editor.split("- (void)viewDidLayoutSubviews")[1].split("- (CGRect)imageDisplayRect")[0]
 assert "forceDestroyOnRotation" not in editor
 assert "Snapper3.h" not in editor

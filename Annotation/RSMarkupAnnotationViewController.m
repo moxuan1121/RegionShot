@@ -5,8 +5,10 @@
 #import <Photos/Photos.h>
 #import <objc/runtime.h>
 
-@interface RSMarkupAnnotationViewController () <UIGestureRecognizerDelegate>
+@interface RSMarkupAnnotationViewController () <UIGestureRecognizerDelegate, UIScrollViewDelegate>
 @property (nonatomic, strong) UIImage *sourceImage;
+@property (nonatomic, strong) UIScrollView *zoomView;
+@property (nonatomic, strong) UIView *zoomContentView;
 @property (nonatomic, strong) UIImageView *imageView;
 @property (nonatomic, strong) RSMarkupAnnotationCanvas *canvas;
 @property (nonatomic, strong) UIView *toolbar;
@@ -64,15 +66,29 @@
     self.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithTitle:@"取消" style:UIBarButtonItemStylePlain target:self action:@selector(closeAnimated)];
     self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithTitle:@"完成" style:UIBarButtonItemStyleDone target:self action:@selector(finish)];
 
+    self.zoomView = [[UIScrollView alloc] initWithFrame:CGRectZero];
+    self.zoomView.delegate = self;
+    self.zoomView.minimumZoomScale = 1.0;
+    self.zoomView.maximumZoomScale = 6.0;
+    self.zoomView.bouncesZoom = YES;
+    self.zoomView.showsHorizontalScrollIndicator = NO;
+    self.zoomView.showsVerticalScrollIndicator = NO;
+    self.zoomView.delaysContentTouches = NO;
+    self.zoomView.panGestureRecognizer.minimumNumberOfTouches = 2;
+    [self.view addSubview:self.zoomView];
+
+    self.zoomContentView = [[UIView alloc] initWithFrame:CGRectZero];
+    [self.zoomView addSubview:self.zoomContentView];
+
     self.imageView = [[UIImageView alloc] initWithImage:self.sourceImage];
     self.imageView.contentMode = UIViewContentModeScaleAspectFit;
     self.imageView.layer.borderColor = [UIColor colorWithWhite:1 alpha:0.4].CGColor;
     self.imageView.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
-    [self.view addSubview:self.imageView];
+    [self.zoomContentView addSubview:self.imageView];
 
-    self.canvas = [[RSMarkupAnnotationCanvas alloc] initWithFrame:self.view.bounds];
+    self.canvas = [[RSMarkupAnnotationCanvas alloc] initWithFrame:CGRectZero];
     self.canvas.sourceImage = self.sourceImage;
-    [self.view addSubview:self.canvas];
+    [self.zoomContentView addSubview:self.canvas];
 
     UITapGestureRecognizer *tap = [[UITapGestureRecognizer alloc]
         initWithTarget:self action:@selector(handleTextPlacement:)];
@@ -96,15 +112,20 @@
     [super viewDidLayoutSubviews];
     CGRect b = self.view.bounds;
     CGFloat toolH = 96 + self.view.safeAreaInsets.bottom;
-    self.imageView.frame = CGRectMake(0, self.view.safeAreaInsets.top,
-                                      b.size.width,
-                                      b.size.height - toolH - self.view.safeAreaInsets.top);
-    // canvas matches the image's *displayed* rect so marks line up with pixels
-    CGRect disp = [self imageDisplayRect];
-    self.imageView.frame = disp;
-    [self.canvas resizeDrawingToSize:disp.size];
-    self.canvas.frame = disp;
-    self.canvas.imageDisplayRect = CGRectMake(0,0,disp.size.width,disp.size.height);
+    CGRect box = CGRectMake(0, self.view.safeAreaInsets.top, b.size.width,
+                            b.size.height - toolH - self.view.safeAreaInsets.top);
+    CGRect disp = [self imageDisplayRectInBox:box];
+    CGSize oldSize = self.zoomContentView.bounds.size;
+    if (!CGSizeEqualToSize(oldSize, disp.size)) {
+        self.zoomView.zoomScale = 1.0;
+        [self.canvas resizeDrawingToSize:disp.size];
+        self.zoomView.contentSize = disp.size;
+        self.zoomContentView.frame = (CGRect){CGPointZero, disp.size};
+        self.imageView.frame = self.zoomContentView.bounds;
+        self.canvas.frame = self.zoomContentView.bounds;
+        self.canvas.imageDisplayRect = self.zoomContentView.bounds;
+    }
+    self.zoomView.frame = disp;
     self.toolbar.frame = CGRectMake(0, b.size.height - toolH, b.size.width, toolH);
     [self layoutToolbarButtons];
     self.colorPicker.frame = CGRectMake(10, b.size.height - toolH - 108,
@@ -129,15 +150,24 @@
     self.widthSlider.frame = CGRectMake(slX, y, slW, 30);
 }
 
-// Compute where an aspect-fit image actually lands inside imageView.
-- (CGRect)imageDisplayRect {
+// Compute where an aspect-fit image lands in the editor's available box.
+- (CGRect)imageDisplayRectInBox:(CGRect)box {
     CGSize img = self.sourceImage.size;
-    CGRect box = self.imageView.frame;
     if (img.width <= 0 || img.height <= 0) return box;
     CGFloat s = MIN(box.size.width/img.width, box.size.height/img.height);
     CGSize d = CGSizeMake(img.width*s, img.height*s);
     return CGRectMake(box.origin.x + (box.size.width-d.width)/2,
                       box.origin.y + (box.size.height-d.height)/2, d.width, d.height);
+}
+
+#pragma mark - Detail zoom
+
+- (UIView *)viewForZoomingInScrollView:(UIScrollView *)scrollView {
+    return self.zoomContentView;
+}
+
+- (void)scrollViewWillBeginZooming:(UIScrollView *)scrollView withView:(UIView *)view {
+    [self.canvas cancelCurrentStroke];
 }
 
 #pragma mark - Toolbar

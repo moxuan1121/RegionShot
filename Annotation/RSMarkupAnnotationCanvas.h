@@ -14,6 +14,7 @@
 @property (nonatomic, strong) NSMutableArray<RSMarkupAnnotationItem *> *items;
 
 - (void)resizeDrawingToSize:(CGSize)size;
+- (void)cancelCurrentStroke;     // discard an unfinished mark before zooming
 - (void)undo;                    // remove last mark
 - (void)clearAll;                // remove everything
 - (UIImage *)renderedImage;      // composite source + marks -> new UIImage
