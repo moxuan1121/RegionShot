@@ -73,6 +73,12 @@ assert 'CGRectGetMaxX(safe) - radius - 16' not in chat
 url_hooks = (root / 'Preferences/RSURLHooks.xm').read_text(encoding='utf-8')
 assert 'AIWindowURL' in url_hooks and 'showImage:scene:' not in url_hooks
 assert trigger.count('com.moxuan.regionshot/AIWindowURL') == 2 and '[RSChatController showURLWindow]' in trigger
+clipboard = (root / 'Input/RSInputClipboard.m').read_text(encoding='utf-8')
+capture = clipboard.split('- (void)capture {', 1)[1].split('@end', 1)[0]
+assert 'RSKAIsPanelVisible()' not in capture
+keyboard_panel = (root / 'KeyboardAI/RSKAInterface.m').read_text(encoding='utf-8')
+open_tokens = keyboard_panel.split('void RSKAOpenTokens(NSString *text) {', 1)[1].split('void RSKAClosePanel', 1)[0]
+assert open_tokens.index('[RSKASharedPanel() close]') < open_tokens.index('[panel show]')
 desktop_focus = chat.split('- (void)armDesktopKeyRecovery {', 1)[1].split('- (void)updateHeading', 1)[0]
 assert desktop_focus.count('UIWindowDidBecomeKeyNotification') == 1
 assert desktop_focus.index('[chat stopDesktopKeyRecovery]') < desktop_focus.index('[chat.host makeKeyAndVisible]')

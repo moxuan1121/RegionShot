@@ -161,7 +161,7 @@ static UIColor *RSInputHexColor(NSString *hex) {
         self.changeCount = pasteboard.changeCount;
         [self hide];
         self.options = RSInputPromptOptions(RSInputConfig());
-        if (RSInputLocked() || RSKAIsPanelVisible() || ![self.options[@"enabled"] boolValue] ||
+        if (RSInputLocked() || ![self.options[@"enabled"] boolValue] ||
             [pasteboard containsPasteboardTypes:@[@"com.moxuan.regionshot.input.internal"]]) return;
         NSString *text = pasteboard.string;
         if (!text.length || text.length > 24000) return;
