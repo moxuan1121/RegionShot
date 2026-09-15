@@ -21,6 +21,7 @@
 @property (nonatomic, strong) UILabel *thickLabel;
 @property (nonatomic, strong) NSMutableArray<UIButton *> *presetButtons;
 @property (nonatomic, strong) UISlider *widthSlider;
+@property (nonatomic, strong) UITapGestureRecognizer *textTap;
 @end
 
 @implementation RSMarkupAnnotationViewController
@@ -88,11 +89,12 @@
 
     self.canvas = [[RSMarkupAnnotationCanvas alloc] initWithFrame:CGRectZero];
     self.canvas.sourceImage = self.sourceImage;
-    __weak typeof(self) weakSelf = self;
-    self.canvas.textPlacementHandler = ^(CGPoint point) {
-        [weakSelf showTextEditAtPoint:point text:@"" editIndex:-1];
-    };
     [self.zoomContentView addSubview:self.canvas];
+
+    self.textTap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(handleTextPlacement:)];
+    self.textTap.enabled = NO;
+    self.textTap.cancelsTouchesInView = NO;
+    [self.zoomView addGestureRecognizer:self.textTap];
 
     [self setupToolbar];
     [self setupWidthBar];   // 1.6 新增：预设线宽条
@@ -231,6 +233,7 @@
 
 - (void)updateModeButtons {
     NSArray<NSNumber *> *modes = @[@0,@1,@2,@3,@4,@5,@7,@6];
+    self.textTap.enabled = self.isAddingText;
     for (NSUInteger i = 0; i < self.modeButtons.count; i++)
         self.modeButtons[i].tintColor = modes[i].integerValue == self.canvas.drawMode ? UIColor.systemYellowColor : UIColor.whiteColor;
 }
@@ -320,6 +323,11 @@
 
 #pragma mark - Text placement
 
+- (void)handleTextPlacement:(UITapGestureRecognizer *)gesture {
+    if (!self.isAddingText || gesture.state != UIGestureRecognizerStateEnded) return;
+    [self showTextEditAtPoint:[gesture locationInView:self.canvas] text:@"" editIndex:-1];
+}
+
 - (void)showTextEditAtPoint:(CGPoint)point text:(NSString *)text editIndex:(NSInteger)idx {
     RSMarkupTextEditViewController *vc = [RSMarkupTextEditViewController new];
     vc.initialText = text;
@@ -335,7 +343,8 @@
         [ws.canvas.items addObject:item]; [ws.canvas setNeedsDisplay];
         [ws showToast:@"已添加文字"];
     };
-    [self presentViewController:vc animated:YES completion:nil];
+    UIViewController *presenter = self.navigationController.parentViewController ?: self.navigationController ?: self;
+    [presenter presentViewController:vc animated:YES completion:nil];
 }
 
 #pragma mark - Edit ops
@@ -408,12 +417,6 @@
         [UIView animateWithDuration:0.3 delay:1.0 options:0 animations:^{ t.alpha = 0; }
             completion:^(BOOL f2){ [t removeFromSuperview]; }];
     }];
-}
-
-#pragma mark - Gesture delegate
-
-- (BOOL)gestureRecognizer:(UIGestureRecognizer *)g shouldReceiveTouch:(UITouch *)touch {
-    return self.isAddingText;  // only intercept taps in text mode
 }
 
 - (void)dealloc { [[NSNotificationCenter defaultCenter] removeObserver:self]; }

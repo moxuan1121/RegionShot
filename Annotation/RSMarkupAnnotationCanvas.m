@@ -4,7 +4,6 @@
 @property (nonatomic) BOOL isDrawing;
 @property (nonatomic, strong) NSMutableArray<NSValue *> *currentPathPoints;
 @property (nonatomic, strong) RSMarkupAnnotationItem *liveItem;   // item being drawn
-@property (nonatomic) BOOL textTouchEligible;
 @end
 
 @implementation RSMarkupAnnotationCanvas
@@ -48,11 +47,7 @@
         [self cancelCurrentStroke];
         return;
     }
-    if (self.drawMode == RSMarkupDrawModeText) {
-        self.textTouchEligible = YES;
-        return;
-    }
-    self.textTouchEligible = NO;
+    if (self.drawMode == RSMarkupDrawModeText) return;
     CGPoint p = [touches.anyObject locationInView:self];
     self.isDrawing = YES;
     self.currentPathPoints = [NSMutableArray arrayWithObject:[NSValue valueWithCGPoint:p]];
@@ -83,13 +78,7 @@
 }
 
 - (void)touchesEnded:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
-    if (self.drawMode == RSMarkupDrawModeText) {
-        BOOL shouldPlace = self.textTouchEligible && event.allTouches.count == 1;
-        self.textTouchEligible = NO;
-        if (shouldPlace && self.textPlacementHandler)
-            self.textPlacementHandler([touches.anyObject locationInView:self]);
-        return;
-    }
+    if (self.drawMode == RSMarkupDrawModeText) return;
     [self touchesMoved:touches withEvent:event];
     self.isDrawing = NO;
     self.liveItem = nil;
@@ -101,7 +90,6 @@
     self.isDrawing = NO;
     self.liveItem = nil;
     self.currentPathPoints = nil;
-    self.textTouchEligible = NO;
     [self setNeedsDisplay];
 }
 

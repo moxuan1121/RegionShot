@@ -12,7 +12,6 @@
 @property (nonatomic, strong) UIColor *strokeColor;
 @property (nonatomic) CGFloat lineWidth;
 @property (nonatomic, strong) NSMutableArray<RSMarkupAnnotationItem *> *items;
-@property (nonatomic, copy) void (^textPlacementHandler)(CGPoint point);
 
 - (void)resizeDrawingToSize:(CGSize)size;
 - (void)cancelCurrentStroke;     // discard an unfinished mark before zooming
