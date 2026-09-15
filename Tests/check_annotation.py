@@ -18,9 +18,9 @@ assert "- (void)cancelCurrentStroke" in canvas
 assert "self.multipleTouchEnabled = YES" in canvas
 assert canvas.count("event.allTouches.count > 1") == 2
 assert "UITapGestureRecognizer *textTap" in editor
-assert "[self.zoomView addGestureRecognizer:self.textTap]" in editor
+assert "[self.canvas addGestureRecognizer:self.textTap]" in editor
 assert "self.textTap.enabled = self.isAddingText" in editor
-assert "self.navigationController.parentViewController ?: self.navigationController ?: self" in editor
+assert "[self presentViewController:vc animated:YES completion:nil]" in editor
 assert "[self layoutToolbarButtons];" in editor.split("- (void)viewDidLayoutSubviews")[1].split("- (CGRect)imageDisplayRect")[0]
 assert "forceDestroyOnRotation" not in editor
 assert "Snapper3.h" not in editor
@@ -33,7 +33,11 @@ for path in ["Input/RSInputInterface.m", "KeyboardAI/RSKAInterface.m"]:
 assert "lockcomplete" in read("Trigger.xm")
 assert "if (!record) snap.center" in read("Manager/RSRegionShotManager.m")
 
-assert "addChildViewController:navigation" in read("Selection/RSSelectionWindow.m")
+selection_window = read("Selection/RSSelectionWindow.m")
+edit_selection = selection_window.split("- (void)editSelection", 1)[1].split("- (void)show", 1)[0]
+assert "UIModalPresentationFullScreen" in edit_selection
+assert "presentViewController:navigation" in edit_selection
+assert "addChildViewController:navigation" not in edit_selection
 hooks = read("Selection/RSFreezeSystemHooks.xm")
 assert "acquireSystemGestureDisableAssertion" not in read("Selection/RSSelectionWindow.m")
 assert "lockUIFromSource:" in hooks and "cancelCapture]; %orig;" in hooks

@@ -229,21 +229,15 @@ BOOL RSStageWeChatScanImage(UIImage *image) {
     [RSRegionShotManager.sharedManager closeAllSnaps];
     self.toolbarScroll.hidden = YES;
     self.selectionView.hidden = YES;
-    UIViewController *host = self.rootViewController;
-    [host addChildViewController:navigation];
-    navigation.view.frame = host.view.bounds;
-    navigation.view.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-    navigation.view.backgroundColor = UIColor.clearColor;
-    [host.view addSubview:navigation.view];
-    [navigation didMoveToParentViewController:host];
+    navigation.modalPresentationStyle = UIModalPresentationFullScreen;
     __weak UINavigationController *weakNavigation = navigation;
     editor.dismissEditor = ^{
         UINavigationController *page = weakNavigation;
-        [page willMoveToParentViewController:nil];
-        [page.view removeFromSuperview];
-        [page removeFromParentViewController];
-        [RSRegionShotManager.sharedManager cancelCapture];
+        [page dismissViewControllerAnimated:YES completion:^{
+            [RSRegionShotManager.sharedManager cancelCapture];
+        }];
     };
+    [self.rootViewController presentViewController:navigation animated:YES completion:nil];
 }
 
 - (void)show {

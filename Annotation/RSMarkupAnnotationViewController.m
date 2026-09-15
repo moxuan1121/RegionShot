@@ -94,7 +94,7 @@
     self.textTap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(handleTextPlacement:)];
     self.textTap.enabled = NO;
     self.textTap.cancelsTouchesInView = NO;
-    [self.zoomView addGestureRecognizer:self.textTap];
+    [self.canvas addGestureRecognizer:self.textTap];
 
     [self setupToolbar];
     [self setupWidthBar];   // 1.6 新增：预设线宽条
@@ -343,8 +343,7 @@
         [ws.canvas.items addObject:item]; [ws.canvas setNeedsDisplay];
         [ws showToast:@"已添加文字"];
     };
-    UIViewController *presenter = self.navigationController.parentViewController ?: self.navigationController ?: self;
-    [presenter presentViewController:vc animated:YES completion:nil];
+    [self presentViewController:vc animated:YES completion:nil];
 }
 
 #pragma mark - Edit ops
