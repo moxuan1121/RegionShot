@@ -74,7 +74,11 @@
 
 - (void)viewDidAppear:(BOOL)animated {
     [super viewDidAppear:animated];
-    [self ensureTextKeyboard];
+    self.isKeyboardVisible = NO;
+    [self.view layoutIfNeeded];
+    self.panel.center = CGPointMake(self.view.bounds.size.width / 2.0,
+                                    self.view.bounds.size.height / 2.0);
+    dispatch_async(dispatch_get_main_queue(), ^{ [self ensureTextKeyboard]; });
 }
 
 - (void)ensureTextKeyboard { [self.field becomeFirstResponder]; }
@@ -88,6 +92,7 @@
 
 - (void)keyboardWillShow:(NSNotification *)n {
     self.isKeyboardVisible = YES;
+    [self.view layoutIfNeeded];
     CGRect kb = [n.userInfo[UIKeyboardFrameEndUserInfoKey] CGRectValue];
     kb = [self.view convertRect:kb fromView:nil];
     CGFloat targetY = MAX(self.view.safeAreaInsets.top + 80, CGRectGetMinY(kb) - 92);
