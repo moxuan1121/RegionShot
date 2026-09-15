@@ -85,7 +85,9 @@
 
 - (void)viewDidLayoutSubviews {
     [super viewDidLayoutSubviews];
-    if (!self.isKeyboardVisible)
+    CGFloat minX = CGRectGetWidth(self.panel.bounds) / 2.0;
+    CGFloat maxX = self.view.bounds.size.width - minX;
+    if (!self.isKeyboardVisible || self.panel.center.x < minX || self.panel.center.x > maxX)
         self.panel.center = CGPointMake(self.view.bounds.size.width/2,
                                         self.view.bounds.size.height/2);
 }
@@ -99,6 +101,11 @@
     [UIView animateWithDuration:0.25 animations:^{
         self.panel.center = CGPointMake(self.view.bounds.size.width/2, targetY);
     }];
+    dispatch_async(dispatch_get_main_queue(), ^{
+        if (!self.view.window) return;
+        CGFloat minX = CGRectGetWidth(self.panel.bounds) / 2.0;
+        self.panel.center = CGPointMake(MAX(minX, self.view.bounds.size.width / 2.0), targetY);
+    });
 }
 
 - (void)keyboardWillHide:(NSNotification *)n { self.isKeyboardVisible = NO; }
