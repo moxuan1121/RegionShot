@@ -17,6 +17,11 @@ assert "[self.canvas cancelCurrentStroke]" in editor
 assert "- (void)cancelCurrentStroke" in canvas
 assert "self.multipleTouchEnabled = YES" in canvas
 assert canvas.count("event.allTouches.count > 1") == 2
+text_began = canvas.split("- (void)touchesBegan")[1].split("- (void)touchesMoved")[0]
+text_ended = canvas.split("- (void)touchesEnded")[1].split("- (void)cancelCurrentStroke")[0]
+assert "textTouchEligible = YES" in text_began and "textPlacementHandler" not in text_began
+assert "textTouchEligible && event.allTouches.count == 1" in text_ended
+assert "self.textPlacementHandler" in text_ended
 assert "[self layoutToolbarButtons];" in editor.split("- (void)viewDidLayoutSubviews")[1].split("- (CGRect)imageDisplayRect")[0]
 assert "forceDestroyOnRotation" not in editor
 assert "Snapper3.h" not in editor
