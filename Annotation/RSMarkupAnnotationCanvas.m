@@ -20,7 +20,7 @@
         _drawMode = RSMarkupDrawModeArrow;
         self.multipleTouchEnabled = YES;
         _textMoveGesture = [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(moveText:)];
-        _textMoveGesture.maximumNumberOfTouches = 1;
+        _textMoveGesture.numberOfTouchesRequired = 1;
         _textMoveGesture.delegate = self;
         [self addGestureRecognizer:_textMoveGesture];
     }
