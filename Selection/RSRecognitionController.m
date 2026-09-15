@@ -61,9 +61,10 @@
                             [UIApplication.sharedApplication openURL:webURL options:@{} completionHandler:nil];
                             return;
                         }
-                        [UIApplication.sharedApplication openURL:wechatURL options:@{} completionHandler:^(BOOL success) {
-                            if (!success) [UIApplication.sharedApplication openURL:webURL options:@{} completionHandler:nil];
-                        }];
+                        // WeChat may report the handoff asynchronously while switching apps.
+                        // A false callback here does not mean the URL was unhandled; falling
+                        // back to Safari would undo the user's WeChat routing choice.
+                        [UIApplication.sharedApplication openURL:wechatURL options:@{} completionHandler:nil];
                     }];
                     return;
                 }
