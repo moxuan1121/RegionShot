@@ -18,7 +18,7 @@ static NSString *RSWeChatScanImagePath(void) {
     return jbroot(@"/var/mobile/Library/Caches/com.moxuan.regionshot.wechat-scan.png");
 }
 
-static BOOL RSStageWeChatScanImage(UIImage *image) {
+BOOL RSStageWeChatScanImage(UIImage *image) {
     NSData *data = UIImagePNGRepresentation(image);
     NSString *path = RSWeChatScanImagePath();
     if (!data.length || ![data writeToFile:path options:NSDataWritingAtomic error:nil]) return NO;

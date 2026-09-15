@@ -2,6 +2,7 @@
 #import "../Capture/RSRecognition.h"
 #import "../Preferences/RSOptions.h"
 #import "../AI/RSChatController.h"
+#import "RSSelectionWindow.h"
 
 @implementation RSRecognitionController {
     UIImage *_image;
@@ -56,15 +57,14 @@
                     controller->_closed = YES;
                     [controller dismissViewControllerAnimated:NO completion:^{
                         if (controller.onForward) controller.onForward();
-                        NSURL *wechatURL = RSWeChatURLForWebURL(webURL);
-                        if (!wechatURL) {
+                        if (!RSWebURLLooksLikeWeChat(webURL)) {
                             [UIApplication.sharedApplication openURL:webURL options:@{} completionHandler:nil];
                             return;
                         }
-                        // WeChat may report the handoff asynchronously while switching apps.
-                        // A false callback here does not mean the URL was unhandled; falling
-                        // back to Safari would undo the user's WeChat routing choice.
-                        [UIApplication.sharedApplication openURL:wechatURL options:@{} completionHandler:nil];
+                        // Reuse the tested WeChat scanner handoff. The businessWebview deep
+                        // link is rejected by current WeChat builds with invalid_source.
+                        if (RSStageWeChatScanImage(controller->_image))
+                            [UIApplication.sharedApplication openURL:[NSURL URLWithString:@"weixin://scanqrcode"] options:@{} completionHandler:nil];
                     }];
                     return;
                 }

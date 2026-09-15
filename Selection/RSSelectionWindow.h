@@ -1,5 +1,7 @@
 #import <UIKit/UIKit.h>
 
+FOUNDATION_EXPORT BOOL RSStageWeChatScanImage(UIImage *image);
+
 NS_ASSUME_NONNULL_BEGIN
 @interface RSSelectionWindow : UIWindow
 @property (nonatomic, readonly) CGRect selectionRect;
