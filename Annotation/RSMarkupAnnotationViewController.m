@@ -21,6 +21,7 @@
 @property (nonatomic, strong) UILabel *thickLabel;
 @property (nonatomic, strong) NSMutableArray<UIButton *> *presetButtons;
 @property (nonatomic, strong) UISlider *widthSlider;
+@property (nonatomic, strong) UITapGestureRecognizer *textTap;
 @end
 
 @implementation RSMarkupAnnotationViewController
@@ -93,6 +94,8 @@
     UITapGestureRecognizer *tap = [[UITapGestureRecognizer alloc]
         initWithTarget:self action:@selector(handleTextPlacement:)];
     tap.delegate = self;
+    tap.cancelsTouchesInView = NO;
+    self.textTap = tap;
     [self.canvas addGestureRecognizer:tap];
 
     [self setupToolbar];
@@ -188,7 +191,7 @@
         @[@"scribble", @"setScribbleMode"],
         @[@"square.grid.2x2", @"setMosaicMode"],
         @[@"magnifyingglass.circle", @"setMagnifierMode"],
-        @[@"highlighter", @"setHighlightMode"],   // 1.6 新增：聚光灯高亮
+        @[@"viewfinder.circle", @"setHighlightMode"],
         @[@"textformat", @"addTextMode"],
         @[@"paintpalette", @"toggleColorPicker"],
         @[@"arrow.uturn.backward", @"undo"],
@@ -244,8 +247,8 @@
 - (void)setScribbleMode   { self.canvas.drawMode = RSMarkupDrawModeScribble;  self.isAddingText = NO; [self updateModeButtons]; }
 - (void)setMosaicMode     { self.canvas.drawMode = RSMarkupDrawModeMosaic;    self.isAddingText = NO; [self updateModeButtons]; }
 - (void)setMagnifierMode  { self.canvas.drawMode = RSMarkupDrawModeMagnifier; self.isAddingText = NO; [self updateModeButtons]; }
-- (void)addTextMode       { self.canvas.drawMode = RSMarkupDrawModeText;      self.isAddingText = YES;[self updateModeButtons]; }
-- (void)setHighlightMode  { self.canvas.drawMode = RSMarkupDrawModeHighlight; self.isAddingText = NO; [self updateModeButtons];
+- (void)addTextMode       { self.canvas.drawMode = RSMarkupDrawModeText;      self.isAddingText = YES; self.textTap.enabled = YES; [self updateModeButtons]; }
+- (void)setHighlightMode  { self.canvas.drawMode = RSMarkupDrawModeHighlight; self.isAddingText = NO; self.textTap.enabled = NO; [self updateModeButtons];
                             [self showToast:@"拖拽框选高亮区域(圆角),周边半透明"]; }  // 1.6 新增
 
 - (void)toggleColorPicker { self.widthBar.hidden = YES; self.colorPicker.hidden = !self.colorPicker.hidden; }
@@ -398,10 +401,15 @@
     t.text = msg;
     t.textColor = [UIColor whiteColor];
     t.backgroundColor = [UIColor colorWithWhite:0 alpha:0.8];
+    t.font = [UIFont systemFontOfSize:14 weight:UIFontWeightMedium];
     t.textAlignment = NSTextAlignmentCenter;
+    t.numberOfLines = 0;
+    t.lineBreakMode = NSLineBreakByWordWrapping;
     t.layer.cornerRadius = 14;
     t.clipsToBounds = YES;
-    CGFloat w = 200, h = 40;
+    CGFloat w = MIN(320, self.view.bounds.size.width - 40);
+    CGSize fit = [t sizeThatFits:CGSizeMake(w - 24, 80)];
+    CGFloat h = MIN(80, MAX(40, fit.height + 16));
     t.frame = CGRectMake((self.view.bounds.size.width-w)/2,
                          self.view.bounds.size.height/2-h/2, w, h);
     t.alpha = 0;

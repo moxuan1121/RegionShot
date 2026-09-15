@@ -35,6 +35,10 @@ int main(void) {
         assert(RSWebURLLooksLikeWeChat([NSURL URLWithString:@"https://example.com/wx-guide"]) == NO);
         assert([RSWeChatURLForWebURL([NSURL URLWithString:@"weixin://scanqrcode"]).scheme isEqualToString:@"weixin"]);
         assert([RSBarcodeWebURL(@"weixin://scanqrcode").scheme isEqualToString:@"weixin"]);
+        NSURL *alipayPage = [NSURL URLWithString:@"https://qr.alipay.com/c1x12345"];
+        assert(RSWebURLLooksLikeAlipay(alipayPage));
+        assert([RSAlipayURLForWebURL(alipayPage).scheme isEqualToString:@"alipays"]);
+        assert([RSBarcodeWebURL(@"alipays://platformapi/startapp?appId=20000067").scheme isEqualToString:@"alipays"]);
         assert(RSBarcodeWebURL(@"普通二维码文本") == nil);
         assert([RSContainedWebURL(@"请访问 https://example.com/path 获取详情").host isEqualToString:@"example.com"]);
         assert(RSContainedWebURL(@"这里没有网址") == nil);

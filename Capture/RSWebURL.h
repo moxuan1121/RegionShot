@@ -42,11 +42,33 @@ static inline BOOL RSWebURLLooksLikeWeChat(NSURL *url) {
     return NO;
 }
 
+static inline BOOL RSWebURLLooksLikeAlipay(NSURL *url) {
+    if (!url) return NO;
+    NSString *scheme = url.scheme.lowercaseString;
+    if ([scheme isEqualToString:@"alipay"] || [scheme isEqualToString:@"alipays"]) return YES;
+    NSString *value = url.absoluteString.lowercaseString;
+    for (NSString *token in @[@"alipay", @"qr.alipay.com", @"render.alipay.com", @"mobilecodec.alipay.com"])
+        if ([value containsString:token]) return YES;
+    return NO;
+}
+
 static inline NSURL *RSWeChatURLForWebURL(NSURL *url) {
     if (!RSWebURLLooksLikeWeChat(url)) return nil;
     NSString *scheme = url.scheme.lowercaseString;
     if ([scheme isEqualToString:@"weixin"] || [scheme isEqualToString:@"wechat"]) return url;
     NSURLComponents *components = [NSURLComponents componentsWithString:@"weixin://dl/businessWebview/link/"];
     components.queryItems = @[[NSURLQueryItem queryItemWithName:@"url" value:url.absoluteString]];
+    return components.URL;
+}
+
+static inline NSURL *RSAlipayURLForWebURL(NSURL *url) {
+    if (!RSWebURLLooksLikeAlipay(url)) return nil;
+    NSString *scheme = url.scheme.lowercaseString;
+    if ([scheme isEqualToString:@"alipay"] || [scheme isEqualToString:@"alipays"]) return url;
+    NSURLComponents *components = [NSURLComponents componentsWithString:@"alipays://platformapi/startapp"];
+    components.queryItems = @[
+        [NSURLQueryItem queryItemWithName:@"appId" value:@"20000067"],
+        [NSURLQueryItem queryItemWithName:@"url" value:url.absoluteString]
+    ];
     return components.URL;
 }

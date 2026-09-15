@@ -9,7 +9,8 @@ static inline NSURL *RSBarcodeWebURL(NSString *text) {
     NSURL *url = [NSURL URLWithString:value];
     NSString *scheme = url.scheme.lowercaseString;
     return url && value.length &&
-        ([scheme isEqualToString:@"weixin"] || [scheme isEqualToString:@"wechat"]) ? url : nil;
+        ([scheme isEqualToString:@"weixin"] || [scheme isEqualToString:@"wechat"] ||
+         [scheme isEqualToString:@"alipay"] || [scheme isEqualToString:@"alipays"]) ? url : nil;
 }
 
 static inline VNDetectBarcodesRequest *RSBarcodeRequest(void) {

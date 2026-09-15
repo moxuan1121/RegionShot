@@ -22,6 +22,7 @@
     _text.font = [UIFont preferredFontForTextStyle:UIFontTextStyleBody];
     _text.adjustsFontForContentSizeCategory = YES;
     _text.text = @"正在识别…";
+    _text.hidden = YES;
     _text.backgroundColor = UIColor.systemBackgroundColor;
     self.view = _text;
     self.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithTitle:@"返回" style:UIBarButtonItemStylePlain target:self action:@selector(close)];
@@ -57,19 +58,26 @@
                     controller->_closed = YES;
                     [controller dismissViewControllerAnimated:NO completion:^{
                         if (controller.onForward) controller.onForward();
-                        if (!RSWebURLLooksLikeWeChat(webURL)) {
+                        if (RSWebURLLooksLikeWeChat(webURL)) {
+                            if (RSStageWeChatScanImage(controller->_image))
+                                [UIApplication.sharedApplication openURL:[NSURL URLWithString:@"weixin://scanqrcode"] options:@{} completionHandler:nil];
+                            return;
+                        }
+                        NSURL *alipayURL = RSAlipayURLForWebURL(webURL);
+                        if (alipayURL) {
+                            [UIApplication.sharedApplication openURL:alipayURL options:@{} completionHandler:nil];
+                            return;
+                        }
+                        if (!RSWebURLLooksLikeAlipay(webURL)) {
                             [UIApplication.sharedApplication openURL:webURL options:@{} completionHandler:nil];
                             return;
                         }
-                        // Reuse the tested WeChat scanner handoff. The businessWebview deep
-                        // link is rejected by current WeChat builds with invalid_source.
-                        if (RSStageWeChatScanImage(controller->_image))
-                            [UIApplication.sharedApplication openURL:[NSURL URLWithString:@"weixin://scanqrcode"] options:@{} completionHandler:nil];
                     }];
                     return;
                 }
                 controller->_text.text = error ? error.localizedDescription : strings.count ?
                     [strings componentsJoinedByString:@"\n\n"] : @"没有识别到内容，请调整选区后重试。";
+                controller->_text.hidden = NO;
                 controller.navigationItem.rightBarButtonItem.enabled = strings.count > 0 && !error;
                 controller->_hasResult = strings.count > 0 && !error;
                 controller->_text.editable = controller->_hasResult;
