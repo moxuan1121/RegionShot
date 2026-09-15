@@ -18,12 +18,13 @@
 - (void)viewDidLoad {
     [super viewDidLoad];
     self.title = @"二维码 / 条码";
+    self.navigationController.navigationBarHidden = YES;
     _text = [UITextView new]; _text.editable = NO;
     _text.font = [UIFont preferredFontForTextStyle:UIFontTextStyleBody];
     _text.adjustsFontForContentSizeCategory = YES;
     _text.text = @"正在识别…";
     _text.hidden = YES;
-    _text.backgroundColor = UIColor.systemBackgroundColor;
+    _text.backgroundColor = UIColor.clearColor;
     self.view = _text;
     self.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithTitle:@"返回" style:UIBarButtonItemStylePlain target:self action:@selector(close)];
     self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithTitle:@"复制" style:UIBarButtonItemStylePlain target:self action:@selector(copyText)];
@@ -78,6 +79,8 @@
                 controller->_text.text = error ? error.localizedDescription : strings.count ?
                     [strings componentsJoinedByString:@"\n\n"] : @"没有识别到内容，请调整选区后重试。";
                 controller->_text.hidden = NO;
+                controller->_text.backgroundColor = UIColor.systemBackgroundColor;
+                controller.navigationController.navigationBarHidden = NO;
                 controller.navigationItem.rightBarButtonItem.enabled = strings.count > 0 && !error;
                 controller->_hasResult = strings.count > 0 && !error;
                 controller->_text.editable = controller->_hasResult;

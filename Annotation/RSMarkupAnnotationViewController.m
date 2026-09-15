@@ -96,7 +96,7 @@
     tap.delegate = self;
     tap.cancelsTouchesInView = NO;
     self.textTap = tap;
-    [self.canvas addGestureRecognizer:tap];
+    [self.zoomView addGestureRecognizer:tap];
 
     [self setupToolbar];
     [self setupWidthBar];   // 1.6 新增：预设线宽条
@@ -235,6 +235,7 @@
 
 - (void)updateModeButtons {
     NSArray<NSNumber *> *modes = @[@0,@1,@2,@3,@4,@5,@7,@6];
+    self.textTap.enabled = self.isAddingText;
     for (NSUInteger i = 0; i < self.modeButtons.count; i++)
         self.modeButtons[i].tintColor = modes[i].integerValue == self.canvas.drawMode ? UIColor.systemYellowColor : UIColor.whiteColor;
 }
@@ -247,8 +248,8 @@
 - (void)setScribbleMode   { self.canvas.drawMode = RSMarkupDrawModeScribble;  self.isAddingText = NO; [self updateModeButtons]; }
 - (void)setMosaicMode     { self.canvas.drawMode = RSMarkupDrawModeMosaic;    self.isAddingText = NO; [self updateModeButtons]; }
 - (void)setMagnifierMode  { self.canvas.drawMode = RSMarkupDrawModeMagnifier; self.isAddingText = NO; [self updateModeButtons]; }
-- (void)addTextMode       { self.canvas.drawMode = RSMarkupDrawModeText;      self.isAddingText = YES; self.textTap.enabled = YES; [self updateModeButtons]; }
-- (void)setHighlightMode  { self.canvas.drawMode = RSMarkupDrawModeHighlight; self.isAddingText = NO; self.textTap.enabled = NO; [self updateModeButtons];
+- (void)addTextMode       { self.canvas.drawMode = RSMarkupDrawModeText;      self.isAddingText = YES; [self updateModeButtons]; }
+- (void)setHighlightMode  { self.canvas.drawMode = RSMarkupDrawModeHighlight; self.isAddingText = NO; [self updateModeButtons];
                             [self showToast:@"拖拽框选高亮区域(圆角),周边半透明"]; }  // 1.6 新增
 
 - (void)toggleColorPicker { self.widthBar.hidden = YES; self.colorPicker.hidden = !self.colorPicker.hidden; }
