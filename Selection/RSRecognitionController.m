@@ -56,7 +56,14 @@
                     controller->_closed = YES;
                     [controller dismissViewControllerAnimated:NO completion:^{
                         if (controller.onForward) controller.onForward();
-                        [UIApplication.sharedApplication openURL:webURL options:@{} completionHandler:nil];
+                        NSURL *wechatURL = RSWeChatURLForWebURL(webURL);
+                        if (!wechatURL) {
+                            [UIApplication.sharedApplication openURL:webURL options:@{} completionHandler:nil];
+                            return;
+                        }
+                        [UIApplication.sharedApplication openURL:wechatURL options:@{} completionHandler:^(BOOL success) {
+                            if (!success) [UIApplication.sharedApplication openURL:webURL options:@{} completionHandler:nil];
+                        }];
                     }];
                     return;
                 }

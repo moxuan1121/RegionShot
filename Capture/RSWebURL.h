@@ -31,3 +31,22 @@ static inline NSURL *RSWebURL(NSString *text) {
     return match && NSEqualRanges(match.range, NSMakeRange(0, value.length)) &&
         ([scheme isEqualToString:@"http"] || [scheme isEqualToString:@"https"]) ? match.URL : nil;
 }
+
+static inline BOOL RSWebURLLooksLikeWeChat(NSURL *url) {
+    if (!url) return NO;
+    NSString *scheme = url.scheme.lowercaseString;
+    if ([scheme isEqualToString:@"weixin"] || [scheme isEqualToString:@"wechat"]) return YES;
+    NSString *value = url.absoluteString.lowercaseString;
+    for (NSString *token in @[@"wechat", @"weixin", @"wechatpay", @"wxpay", @"pay.weixin.", @"weixin.qq.com"])
+        if ([value containsString:token]) return YES;
+    return NO;
+}
+
+static inline NSURL *RSWeChatURLForWebURL(NSURL *url) {
+    if (!RSWebURLLooksLikeWeChat(url)) return nil;
+    NSString *scheme = url.scheme.lowercaseString;
+    if ([scheme isEqualToString:@"weixin"] || [scheme isEqualToString:@"wechat"]) return url;
+    NSURLComponents *components = [NSURLComponents componentsWithString:@"weixin://dl/businessWebview/link/"];
+    components.queryItems = @[[NSURLQueryItem queryItemWithName:@"url" value:url.absoluteString]];
+    return components.URL;
+}

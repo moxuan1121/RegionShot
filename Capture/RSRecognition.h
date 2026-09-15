@@ -3,7 +3,13 @@
 #import "RSWebURL.h"
 
 static inline NSURL *RSBarcodeWebURL(NSString *text) {
-    return RSWebURL(text);
+    NSURL *web = RSWebURL(text);
+    if (web) return web;
+    NSString *value = [text stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+    NSURL *url = [NSURL URLWithString:value];
+    NSString *scheme = url.scheme.lowercaseString;
+    return url && value.length &&
+        ([scheme isEqualToString:@"weixin"] || [scheme isEqualToString:@"wechat"]) ? url : nil;
 }
 
 static inline VNDetectBarcodesRequest *RSBarcodeRequest(void) {

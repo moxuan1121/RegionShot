@@ -27,6 +27,14 @@ int main(void) {
         assert([RSBarcodeWebURL(@"www.example.com.cn/path").host isEqualToString:@"www.example.com.cn"]);
         assert([RSBarcodeWebURL(@"example.jp").host isEqualToString:@"example.jp"]);
         assert([RSBarcodeWebURL(@"example.co.jp/path").host isEqualToString:@"example.co.jp"]);
+        NSURL *wechatPage = [NSURL URLWithString:@"https://pay.weixin.qq.com/mall/order?id=1"];
+        assert(RSWebURLLooksLikeWeChat(wechatPage));
+        NSURL *wechatURL = RSWeChatURLForWebURL(wechatPage);
+        assert([wechatURL.scheme isEqualToString:@"weixin"]);
+        assert([wechatURL.absoluteString containsString:@"businessWebview"]);
+        assert(RSWebURLLooksLikeWeChat([NSURL URLWithString:@"https://example.com/wx-guide"]) == NO);
+        assert([RSWeChatURLForWebURL([NSURL URLWithString:@"weixin://scanqrcode"]).scheme isEqualToString:@"weixin"]);
+        assert([RSBarcodeWebURL(@"weixin://scanqrcode").scheme isEqualToString:@"weixin"]);
         assert(RSBarcodeWebURL(@"普通二维码文本") == nil);
         assert([RSContainedWebURL(@"请访问 https://example.com/path 获取详情").host isEqualToString:@"example.com"]);
         assert(RSContainedWebURL(@"这里没有网址") == nil);
