@@ -21,7 +21,6 @@
 @property (nonatomic, strong) UILabel *thickLabel;
 @property (nonatomic, strong) NSMutableArray<UIButton *> *presetButtons;
 @property (nonatomic, strong) UISlider *widthSlider;
-@property (nonatomic, strong) UITapGestureRecognizer *textTap;
 @end
 
 @implementation RSMarkupAnnotationViewController
@@ -89,14 +88,11 @@
 
     self.canvas = [[RSMarkupAnnotationCanvas alloc] initWithFrame:CGRectZero];
     self.canvas.sourceImage = self.sourceImage;
+    __weak typeof(self) weakSelf = self;
+    self.canvas.textPlacementHandler = ^(CGPoint point) {
+        [weakSelf showTextEditAtPoint:point text:@"" editIndex:-1];
+    };
     [self.zoomContentView addSubview:self.canvas];
-
-    UITapGestureRecognizer *tap = [[UITapGestureRecognizer alloc]
-        initWithTarget:self action:@selector(handleTextPlacement:)];
-    tap.delegate = self;
-    tap.cancelsTouchesInView = NO;
-    self.textTap = tap;
-    [self.zoomView addGestureRecognizer:tap];
 
     [self setupToolbar];
     [self setupWidthBar];   // 1.6 新增：预设线宽条
@@ -235,7 +231,6 @@
 
 - (void)updateModeButtons {
     NSArray<NSNumber *> *modes = @[@0,@1,@2,@3,@4,@5,@7,@6];
-    self.textTap.enabled = self.isAddingText;
     for (NSUInteger i = 0; i < self.modeButtons.count; i++)
         self.modeButtons[i].tintColor = modes[i].integerValue == self.canvas.drawMode ? UIColor.systemYellowColor : UIColor.whiteColor;
 }
@@ -324,12 +319,6 @@
 }
 
 #pragma mark - Text placement
-
-- (void)handleTextPlacement:(UITapGestureRecognizer *)g {
-    if (!self.isAddingText) return;
-    CGPoint p = [g locationInView:self.canvas];
-    [self showTextEditAtPoint:p text:@"" editIndex:-1];
-}
 
 - (void)showTextEditAtPoint:(CGPoint)point text:(NSString *)text editIndex:(NSInteger)idx {
     RSMarkupTextEditViewController *vc = [RSMarkupTextEditViewController new];

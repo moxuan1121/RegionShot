@@ -47,7 +47,10 @@
         [self cancelCurrentStroke];
         return;
     }
-    if (self.drawMode == RSMarkupDrawModeText) return; // text handled by the VC
+    if (self.drawMode == RSMarkupDrawModeText) {
+        if (self.textPlacementHandler) self.textPlacementHandler([touches.anyObject locationInView:self]);
+        return;
+    }
     CGPoint p = [touches.anyObject locationInView:self];
     self.isDrawing = YES;
     self.currentPathPoints = [NSMutableArray arrayWithObject:[NSValue valueWithCGPoint:p]];
@@ -78,6 +81,7 @@
 }
 
 - (void)touchesEnded:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
+    if (self.drawMode == RSMarkupDrawModeText) return;
     [self touchesMoved:touches withEvent:event];
     self.isDrawing = NO;
     self.liveItem = nil;
