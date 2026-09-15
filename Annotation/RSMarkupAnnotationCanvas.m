@@ -1,9 +1,12 @@
 #import "RSMarkupAnnotationCanvas.h"
 
-@interface RSMarkupAnnotationCanvas ()
+@interface RSMarkupAnnotationCanvas () <UIGestureRecognizerDelegate>
 @property (nonatomic) BOOL isDrawing;
 @property (nonatomic, strong) NSMutableArray<NSValue *> *currentPathPoints;
 @property (nonatomic, strong) RSMarkupAnnotationItem *liveItem;   // item being drawn
+@property (nonatomic, strong) UILongPressGestureRecognizer *textMoveGesture;
+@property (nonatomic, strong) RSMarkupAnnotationItem *movingTextItem;
+@property (nonatomic) CGPoint textMoveOffset;
 @end
 
 @implementation RSMarkupAnnotationCanvas
@@ -16,6 +19,10 @@
         _lineWidth = 5.0;
         _drawMode = RSMarkupDrawModeArrow;
         self.multipleTouchEnabled = YES;
+        _textMoveGesture = [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(moveText:)];
+        _textMoveGesture.maximumNumberOfTouches = 1;
+        _textMoveGesture.delegate = self;
+        [self addGestureRecognizer:_textMoveGesture];
     }
     return self;
 }
@@ -109,6 +116,48 @@
     [self setNeedsDisplay];
 }
 
+#pragma mark - Text movement
+
+- (NSDictionary *)attributesForText:(RSMarkupTextAnnotation *)annotation {
+    return @{NSFontAttributeName:[UIFont systemFontOfSize:annotation.fontSize],
+             NSForegroundColorAttributeName:[annotation.textColor colorWithAlphaComponent:annotation.opacity]};
+}
+
+- (CGRect)rectForText:(RSMarkupTextAnnotation *)annotation {
+    CGSize size = [annotation.text sizeWithAttributes:[self attributesForText:annotation]];
+    return CGRectMake(annotation.center.x-size.width/2, annotation.center.y-size.height/2, size.width, size.height);
+}
+
+- (RSMarkupAnnotationItem *)textItemAtPoint:(CGPoint)point {
+    for (RSMarkupAnnotationItem *item in self.items.reverseObjectEnumerator) {
+        if (item.type == RSMarkupDrawModeText && item.textAnnotation.text.length &&
+            CGRectContainsPoint(CGRectInset([self rectForText:item.textAnnotation], -12, -12), point)) return item;
+    }
+    return nil;
+}
+
+- (BOOL)gestureRecognizerShouldBegin:(UIGestureRecognizer *)gesture {
+    return gesture == self.textMoveGesture && [self textItemAtPoint:[gesture locationInView:self]] != nil;
+}
+
+- (void)moveText:(UILongPressGestureRecognizer *)gesture {
+    CGPoint point = [gesture locationInView:self];
+    if (gesture.state == UIGestureRecognizerStateBegan) {
+        [self cancelCurrentStroke];
+        self.movingTextItem = [self textItemAtPoint:point];
+        CGPoint center = self.movingTextItem.textAnnotation.center;
+        self.textMoveOffset = CGPointMake(center.x-point.x, center.y-point.y);
+    } else if (gesture.state == UIGestureRecognizerStateChanged && self.movingTextItem) {
+        self.movingTextItem.textAnnotation.center = CGPointMake(point.x+self.textMoveOffset.x,
+                                                                point.y+self.textMoveOffset.y);
+        [self setNeedsDisplay];
+    } else if (gesture.state == UIGestureRecognizerStateEnded ||
+               gesture.state == UIGestureRecognizerStateCancelled ||
+               gesture.state == UIGestureRecognizerStateFailed) {
+        self.movingTextItem = nil;
+    }
+}
+
 #pragma mark - Drawing
 
 - (void)drawRect:(CGRect)rect {
@@ -168,9 +217,7 @@
         case RSMarkupDrawModeText: {
             RSMarkupTextAnnotation *a = item.textAnnotation;
             if (!a.text.length) break;
-            NSDictionary *attrs = @{NSFontAttributeName:[UIFont systemFontOfSize:a.fontSize], NSForegroundColorAttributeName:[a.textColor colorWithAlphaComponent:a.opacity]};
-            CGSize size = [a.text sizeWithAttributes:attrs];
-            [a.text drawAtPoint:CGPointMake(a.center.x-size.width/2, a.center.y-size.height/2) withAttributes:attrs];
+            [a.text drawAtPoint:[self rectForText:a].origin withAttributes:[self attributesForText:a]];
             break;
         }
         default: break;

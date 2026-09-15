@@ -19,8 +19,13 @@ assert "self.multipleTouchEnabled = YES" in canvas
 assert canvas.count("event.allTouches.count > 1") == 2
 assert "UITapGestureRecognizer *textTap" in editor
 assert "[self.canvas addGestureRecognizer:self.textTap]" in editor
-assert "self.textTap.enabled = self.isAddingText" in editor
+assert "self.textTap.enabled = self.canvas.drawMode == RSMarkupDrawModeText" in editor
+assert "isAddingText" not in editor
 assert "[self presentViewController:vc animated:YES completion:nil]" in editor
+assert "UILongPressGestureRecognizer" in canvas
+assert "textItemAtPoint:" in canvas
+assert "self.movingTextItem.textAnnotation.center =" in canvas
+assert "self.items.reverseObjectEnumerator" in canvas
 assert "[self layoutToolbarButtons];" in editor.split("- (void)viewDidLayoutSubviews")[1].split("- (CGRect)imageDisplayRect")[0]
 assert "forceDestroyOnRotation" not in editor
 assert "Snapper3.h" not in editor

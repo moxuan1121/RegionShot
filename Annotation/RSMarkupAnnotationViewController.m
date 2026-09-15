@@ -5,7 +5,7 @@
 #import <Photos/Photos.h>
 #import <objc/runtime.h>
 
-@interface RSMarkupAnnotationViewController () <UIGestureRecognizerDelegate, UIScrollViewDelegate>
+@interface RSMarkupAnnotationViewController () <UIScrollViewDelegate>
 @property (nonatomic, strong) UIImage *sourceImage;
 @property (nonatomic, strong) UIScrollView *zoomView;
 @property (nonatomic, strong) UIView *zoomContentView;
@@ -14,7 +14,6 @@
 @property (nonatomic, strong) UIView *toolbar;
 @property (nonatomic, strong) RSMarkupColorPickerView *colorPicker;
 @property (nonatomic, strong) NSMutableArray<UIButton *> *modeButtons;
-@property (nonatomic) BOOL isAddingText;
 // 1.6 新增：预设线宽条
 @property (nonatomic, strong) UIView *widthBar;
 @property (nonatomic, strong) UILabel *thinLabel;
@@ -233,21 +232,21 @@
 
 - (void)updateModeButtons {
     NSArray<NSNumber *> *modes = @[@0,@1,@2,@3,@4,@5,@7,@6];
-    self.textTap.enabled = self.isAddingText;
+    self.textTap.enabled = self.canvas.drawMode == RSMarkupDrawModeText;
     for (NSUInteger i = 0; i < self.modeButtons.count; i++)
         self.modeButtons[i].tintColor = modes[i].integerValue == self.canvas.drawMode ? UIColor.systemYellowColor : UIColor.whiteColor;
 }
 
 #pragma mark - Modes
 
-- (void)setArrowMode      { self.canvas.drawMode = RSMarkupDrawModeArrow;     self.isAddingText = NO; [self updateModeButtons]; }
-- (void)setRectMode       { self.canvas.drawMode = RSMarkupDrawModeRect;      self.isAddingText = NO; [self updateModeButtons]; }
-- (void)setCircleMode     { self.canvas.drawMode = RSMarkupDrawModeCircle;    self.isAddingText = NO; [self updateModeButtons]; }
-- (void)setScribbleMode   { self.canvas.drawMode = RSMarkupDrawModeScribble;  self.isAddingText = NO; [self updateModeButtons]; }
-- (void)setMosaicMode     { self.canvas.drawMode = RSMarkupDrawModeMosaic;    self.isAddingText = NO; [self updateModeButtons]; }
-- (void)setMagnifierMode  { self.canvas.drawMode = RSMarkupDrawModeMagnifier; self.isAddingText = NO; [self updateModeButtons]; }
-- (void)addTextMode       { self.canvas.drawMode = RSMarkupDrawModeText;      self.isAddingText = YES; [self updateModeButtons]; }
-- (void)setHighlightMode  { self.canvas.drawMode = RSMarkupDrawModeHighlight; self.isAddingText = NO; [self updateModeButtons];
+- (void)setArrowMode      { self.canvas.drawMode = RSMarkupDrawModeArrow;     [self updateModeButtons]; }
+- (void)setRectMode       { self.canvas.drawMode = RSMarkupDrawModeRect;      [self updateModeButtons]; }
+- (void)setCircleMode     { self.canvas.drawMode = RSMarkupDrawModeCircle;    [self updateModeButtons]; }
+- (void)setScribbleMode   { self.canvas.drawMode = RSMarkupDrawModeScribble;  [self updateModeButtons]; }
+- (void)setMosaicMode     { self.canvas.drawMode = RSMarkupDrawModeMosaic;    [self updateModeButtons]; }
+- (void)setMagnifierMode  { self.canvas.drawMode = RSMarkupDrawModeMagnifier; [self updateModeButtons]; }
+- (void)addTextMode       { self.canvas.drawMode = RSMarkupDrawModeText;      [self updateModeButtons]; }
+- (void)setHighlightMode  { self.canvas.drawMode = RSMarkupDrawModeHighlight; [self updateModeButtons];
                             [self showToast:@"拖拽框选高亮区域(圆角),周边半透明"]; }  // 1.6 新增
 
 - (void)toggleColorPicker { self.widthBar.hidden = YES; self.colorPicker.hidden = !self.colorPicker.hidden; }
@@ -324,13 +323,13 @@
 #pragma mark - Text placement
 
 - (void)handleTextPlacement:(UITapGestureRecognizer *)gesture {
-    if (!self.isAddingText || gesture.state != UIGestureRecognizerStateEnded) return;
-    [self showTextEditAtPoint:[gesture locationInView:self.canvas] text:@"" editIndex:-1];
+    if (self.canvas.drawMode != RSMarkupDrawModeText || gesture.state != UIGestureRecognizerStateEnded) return;
+    [self showTextEditAtPoint:[gesture locationInView:self.canvas]];
 }
 
-- (void)showTextEditAtPoint:(CGPoint)point text:(NSString *)text editIndex:(NSInteger)idx {
+- (void)showTextEditAtPoint:(CGPoint)point {
     RSMarkupTextEditViewController *vc = [RSMarkupTextEditViewController new];
-    vc.initialText = text;
+    vc.initialText = @"";
     vc.initialColor = self.canvas.strokeColor;
     vc.initialFontSize = 16;
     vc.modalPresentationStyle = UIModalPresentationOverFullScreen;

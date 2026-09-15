@@ -25,7 +25,7 @@ typedef NS_ENUM(NSInteger, RSMarkupDrawMode) {
 @property (nonatomic) CGPoint endPoint;
 @end
 
-// One text mark (model only; the on-screen editable view is RSMarkupTextAnnotationView).
+// One text mark rendered by RSMarkupAnnotationCanvas.
 @interface RSMarkupTextAnnotation : NSObject
 @property (nonatomic, copy) NSString *text;
 @property (nonatomic, strong) UIColor *textColor;

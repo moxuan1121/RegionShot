@@ -2,8 +2,7 @@
 #import "RSMarkupModels.h"
 
 // The transparent drawing layer that sits on top of the screenshot image.
-// All graphic marks (arrows/boxes/circles/scribble/mosaic/magnifier) are drawn
-// here in -drawRect:. Text marks are hosted as subviews (see the VC).
+// All graphic and text marks are drawn here in -drawRect:.
 @interface RSMarkupAnnotationCanvas : UIView
 
 @property (nonatomic, strong) UIImage *sourceImage;      // underlying screenshot
