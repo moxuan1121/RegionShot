@@ -26,6 +26,7 @@ assert "UILongPressGestureRecognizer" in canvas
 assert "textItemAtPoint:" in canvas
 assert "self.movingTextItem.textAnnotation.center =" in canvas
 assert "self.items.reverseObjectEnumerator" in canvas
+assert "UIImpactFeedbackGenerator" in canvas.split("- (void)moveText:", 1)[1].split("#pragma mark - Drawing", 1)[0]
 assert "[self layoutToolbarButtons];" in editor.split("- (void)viewDidLayoutSubviews")[1].split("- (CGRect)imageDisplayRect")[0]
 assert "forceDestroyOnRotation" not in editor
 assert "Snapper3.h" not in editor
@@ -43,6 +44,9 @@ edit_selection = selection_window.split("- (void)editSelection", 1)[1].split("- 
 assert "UIModalPresentationFullScreen" in edit_selection
 assert "presentViewController:navigation" in edit_selection
 assert "addChildViewController:navigation" not in edit_selection
+toolbar = read("Selection/RSSelectionToolbar.m")
+assert "RSMenuImpact();" in toolbar
+assert '@"presentation"] isEqual:@"keyboardai"' in toolbar
 hooks = read("Selection/RSFreezeSystemHooks.xm")
 assert "acquireSystemGestureDisableAssertion" not in read("Selection/RSSelectionWindow.m")
 assert "lockUIFromSource:" in hooks and "cancelCapture]; %orig;" in hooks

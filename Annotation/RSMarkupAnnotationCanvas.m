@@ -147,6 +147,11 @@
         self.movingTextItem = [self textItemAtPoint:point];
         CGPoint center = self.movingTextItem.textAnnotation.center;
         self.textMoveOffset = CGPointMake(center.x-point.x, center.y-point.y);
+        static UIImpactFeedbackGenerator *feedback;
+        static dispatch_once_t once;
+        dispatch_once(&once, ^{ feedback = [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleLight]; });
+        [feedback impactOccurred];
+        [feedback prepare];
     } else if (gesture.state == UIGestureRecognizerStateChanged && self.movingTextItem) {
         self.movingTextItem.textAnnotation.center = CGPointMake(point.x+self.textMoveOffset.x,
                                                                 point.y+self.textMoveOffset.y);

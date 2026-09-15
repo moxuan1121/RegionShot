@@ -18,6 +18,14 @@
 }
 @end
 
+static void RSMenuImpact(void) {
+    static UIImpactFeedbackGenerator *feedback;
+    static dispatch_once_t once;
+    dispatch_once(&once, ^{ feedback = [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleLight]; });
+    [feedback impactOccurred];
+    [feedback prepare];
+}
+
 @implementation RSSelectionToolbar
 
 - (instancetype)initWithFrame:(CGRect)frame {
@@ -59,8 +67,15 @@
 }
 
 - (void)buttonPressed:(UIButton *)button {
+    NSDictionary *personaItem = nil;
     if (button.tag >= 100) {
-        for (NSDictionary *item in RSSelectionMenuItems()) if ([item[@"id"] integerValue] == button.tag && self.personaHandler) { self.personaHandler(item[@"persona"]); break; }
+        for (NSDictionary *item in RSSelectionMenuItems()) {
+            if ([item[@"id"] integerValue] == button.tag) { personaItem = item; break; }
+        }
+    }
+    if (![personaItem[@"persona"][@"presentation"] isEqual:@"keyboardai"]) RSMenuImpact();
+    if (button.tag >= 100) {
+        if (personaItem && self.personaHandler) self.personaHandler(personaItem[@"persona"]);
     } else if (button.tag == 0) {
         if (self.captureHandler) self.captureHandler();
     } else if (button.tag == 1) {
