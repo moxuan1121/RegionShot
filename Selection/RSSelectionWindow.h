@@ -1,6 +1,6 @@
 #import <UIKit/UIKit.h>
 
-FOUNDATION_EXPORT BOOL RSStageWeChatScanImage(UIImage *image);
+FOUNDATION_EXPORT BOOL RSStageWeChatScanImage(UIImage * _Nonnull image);
 
 NS_ASSUME_NONNULL_BEGIN
 @interface RSSelectionWindow : UIWindow
