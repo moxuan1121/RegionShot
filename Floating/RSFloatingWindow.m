@@ -75,7 +75,6 @@
     [controller.view setNeedsLayout]; [controller.view layoutIfNeeded];
 }
 - (void)updateOrientation {
-    if (self.hidden) return;
     UIInterfaceOrientation orientation = RSActiveOrientation(self.windowScene);
     ((RSFloatingController *)self.rootViewController).targetOrientation = orientation;
     RSApplyWindowOrientation(self, orientation);

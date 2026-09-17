@@ -119,15 +119,15 @@ enum { RSLongSignatureWidth = 96 };
     const uint8_t *old = oldGray.bytes, *new = newGray.bytes;
     for (size_t row = self.captureLine; row < self.pixelHeight; row++) {
         size_t signatureRow = self.pixelHeight - 1 - row;
-        if (signatureRow < offset) continue;
         unsigned same = 0, aligned = 0, stable = 0;
         for (size_t x = 0; x < RSLongSignatureWidth; x++) {
             unsigned difference = abs((int)old[signatureRow * RSLongSignatureWidth + x] - (int)new[signatureRow * RSLongSignatureWidth + x]);
             same += difference; stable += difference <= 8;
-            aligned += abs((int)old[(signatureRow-offset) * RSLongSignatureWidth+x] - (int)new[signatureRow * RSLongSignatureWidth+x]);
+            if (signatureRow >= offset)
+                aligned += abs((int)old[(signatureRow-offset) * RSLongSignatureWidth+x] - (int)new[signatureRow * RSLongSignatureWidth+x]);
         }
         if (stable >= RSLongSignatureWidth * 3 / 4 && same < RSLongSignatureWidth * 8 &&
-            aligned > same + RSLongSignatureWidth * 4) [self.fixedRows addIndex:row];
+            (signatureRow < offset || aligned > same + RSLongSignatureWidth * 4)) [self.fixedRows addIndex:row];
     }
 }
 
