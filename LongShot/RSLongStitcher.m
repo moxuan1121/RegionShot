@@ -28,6 +28,9 @@ enum { RSLongSignatureWidth = 96 };
 @property (nonatomic) size_t pixelHeight;
 @property (nonatomic) size_t totalHeight;
 @property (nonatomic) NSUInteger capturedFrames;
+@property (nonatomic) size_t captureLine;
+@property (nonatomic, strong) NSData *pendingBandData;
+@property (nonatomic, strong) NSMutableIndexSet *fixedRows;
 @end
 
 @implementation RSLongStitcher
@@ -36,6 +39,7 @@ enum { RSLongSignatureWidth = 96 };
     if ((self = [super init])) {
         _topInset = MAX(0, topInset);
         _slices = [NSMutableArray array];
+        _fixedRows = [NSMutableIndexSet indexSet];
         _directory = [NSTemporaryDirectory() stringByAppendingPathComponent:
             [@"RegionShotLong-" stringByAppendingString:NSUUID.UUID.UUIDString]];
         [NSFileManager.defaultManager createDirectoryAtPath:_directory withIntermediateDirectories:YES attributes:nil error:nil];
@@ -91,40 +95,64 @@ enum { RSLongSignatureWidth = 96 };
     return saved;
 }
 
-- (BOOL)writeMovingSlice:(CGImageRef)current old:(NSData *)oldGray new:(NSData *)newGray
-                       y:(size_t)y height:(size_t)height offset:(size_t)offset {
+- (NSData *)encodedCrop:(CGImageRef)image y:(size_t)y height:(size_t)height {
+    CGImageRef crop = height && y + height <= CGImageGetHeight(image)
+        ? CGImageCreateWithImageInRect(image, CGRectMake(0, y, CGImageGetWidth(image), height)) : nil;
+    if (!crop) return nil;
+    NSMutableData *data = [NSMutableData data];
+    CGImageDestinationRef destination = CGImageDestinationCreateWithData((__bridge CFMutableDataRef)data, CFSTR("public.png"), 1, nil);
+    if (destination) CGImageDestinationAddImage(destination, crop, nil);
+    BOOL saved = destination && CGImageDestinationFinalize(destination);
+    if (destination) CFRelease(destination);
+    CGImageRelease(crop);
+    return saved ? data : nil;
+}
+
+- (CGImageRef)newPendingBand CF_RETURNS_RETAINED {
+    CGImageSourceRef source = self.pendingBandData ? CGImageSourceCreateWithData((__bridge CFDataRef)self.pendingBandData, nil) : nil;
+    CGImageRef image = source ? CGImageSourceCreateImageAtIndex(source, 0, nil) : nil;
+    if (source) CFRelease(source);
+    return image;
+}
+
+- (void)recordFixedRowsFrom:(NSData *)oldGray to:(NSData *)newGray offset:(size_t)offset {
     const uint8_t *old = oldGray.bytes, *new = newGray.bytes;
-    size_t end = y + height, run = y; BOOL fixedRun = NO, saved = YES, wrote = NO;
-    for (size_t row = y; row <= end; row++) {
-        BOOL fixed = NO;
-        size_t signatureRow = CGImageGetHeight(current) - 1 - row;
-        if (row < end && signatureRow >= offset) {
-            unsigned same = 0, aligned = 0, stable = 0;
-            for (size_t x = 0; x < RSLongSignatureWidth; x++) {
-                unsigned difference = abs((int)old[signatureRow * RSLongSignatureWidth + x] - (int)new[signatureRow * RSLongSignatureWidth + x]);
-                same += difference; stable += difference <= 8;
-                aligned += abs((int)old[(signatureRow - offset) * RSLongSignatureWidth + x] - (int)new[signatureRow * RSLongSignatureWidth + x]);
-            }
-            fixed = stable >= RSLongSignatureWidth * 3 / 4 && same < RSLongSignatureWidth * 8 &&
-                    aligned > same + RSLongSignatureWidth * 4;
+    for (size_t row = self.captureLine; row < self.pixelHeight; row++) {
+        size_t signatureRow = self.pixelHeight - 1 - row;
+        if (signatureRow < offset) continue;
+        unsigned same = 0, aligned = 0, stable = 0;
+        for (size_t x = 0; x < RSLongSignatureWidth; x++) {
+            unsigned difference = abs((int)old[signatureRow * RSLongSignatureWidth + x] - (int)new[signatureRow * RSLongSignatureWidth + x]);
+            same += difference; stable += difference <= 8;
+            aligned += abs((int)old[(signatureRow-offset) * RSLongSignatureWidth+x] - (int)new[signatureRow * RSLongSignatureWidth+x]);
         }
-        if (row == y) fixedRun = fixed;
-        if (row == end || fixed != fixedRun) {
-            if (!fixedRun) { saved = saved && [self writeSlice:current y:run height:row-run]; wrote = YES; }
-            run = row; fixedRun = fixed;
+        if (stable >= RSLongSignatureWidth * 3 / 4 && same < RSLongSignatureWidth * 8 &&
+            aligned > same + RSLongSignatureWidth * 4) [self.fixedRows addIndex:row];
+    }
+}
+
+- (BOOL)writeBand:(CGImageRef)band height:(size_t)height {
+    size_t end = MIN(height, CGImageGetHeight(band)), run = 0; BOOL excluding = NO, saved = YES;
+    for (size_t row = 0; row <= end; row++) {
+        BOOL fixed = row < end && [self.fixedRows containsIndex:self.captureLine + row];
+        if (row == 0) excluding = fixed;
+        if (row == end || fixed != excluding) {
+            if (!excluding && row > run) saved = saved && [self writeSlice:band y:run height:row-run];
+            run = row; excluding = fixed;
         }
     }
-    return saved && wrote;
+    return saved;
 }
 
 - (RSLongAppendResult)appendImage:(UIImage *)image {
     CGImageRef clean = [self newCleanImage:image];
     if (!clean) return RSLongAppendResultUncertain;
     size_t width = CGImageGetWidth(clean), height = CGImageGetHeight(clean);
-    if (!self.slices.count) {
-        self.pixelWidth = width; self.pixelHeight = height;
+    if (!self.capturedFrames) {
+        self.pixelWidth = width; self.pixelHeight = height; self.captureLine = height * 35 / 100;
         self.previousGray = [self graySignature:clean];
-        BOOL saved = self.previousGray && [self writeSlice:clean y:0 height:height];
+        self.pendingBandData = [self encodedCrop:clean y:self.captureLine height:height-self.captureLine];
+        BOOL saved = self.previousGray && self.pendingBandData && [self writeSlice:clean y:0 height:self.captureLine];
         if (saved) self.capturedFrames = 1;
         CGImageRelease(clean);
         return saved ? RSLongAppendResultAdded : RSLongAppendResultUncertain;
@@ -136,44 +164,35 @@ enum { RSLongSignatureWidth = 96 };
     if (!gray) { CGImageRelease(clean); return RSLongAppendResultUncertain; }
     const size_t trim = height * 12 / 100;
     RSLongMatch match = RSFindVerticalOverlap((const uint8_t *)self.previousGray.bytes + trim * RSLongSignatureWidth,
-        (const uint8_t *)gray.bytes + trim * RSLongSignatureWidth, RSLongSignatureWidth,
-        height - trim * 2);
-    // Mostly blank pages can move while their average difference remains tiny.
-    if (match.changedFraction < 0.002) {
-        CGImageRelease(clean); return RSLongAppendResultUnchanged;
-    }
-    if (!RSLongMatchIsReliable(match)) {
-        CGImageRelease(clean); return RSLongAppendResultUncertain;
-    }
+        (const uint8_t *)gray.bytes + trim * RSLongSignatureWidth, RSLongSignatureWidth, height - trim * 2);
+    if (match.changedFraction < 0.002) { CGImageRelease(clean); return RSLongAppendResultUnchanged; }
     size_t offset = match.offset;
-    const uint8_t *oldBytes = self.previousGray.bytes, *newBytes = gray.bytes;
-    size_t fixedBottom = 0, misses = 0, maximumFixed = height / 5;
-    for (size_t row = 0; row < maximumFixed; row++) {
-        size_t y = row; unsigned difference = 0;
-        for (size_t x = 0; x < RSLongSignatureWidth; x += 2)
-            difference += abs((int)oldBytes[y * RSLongSignatureWidth + x] - (int)newBytes[y * RSLongSignatureWidth + x]);
-        double score = difference / (double)(RSLongSignatureWidth / 2);
-        if (score < 3.0) { fixedBottom = row + 1; misses = 0; }
-        else if (++misses >= 2) break;
-    }
-    size_t bottom = fixedBottom;
-    if (offset + bottom >= height || offset > height * 4 / 5) {
+    if (!RSLongMatchIsReliable(match) || !offset || offset >= height-self.captureLine) {
         CGImageRelease(clean); return RSLongAppendResultUncertain;
     }
-    RSLongSlice *previous = self.slices.lastObject;
-    // Only the initial full frame includes the fixed footer. Subsequent slices exclude it.
-    size_t footer = self.slices.count == 1 ? MIN(bottom, previous.height - 1) : 0;
-    BOOL saved = [self writeMovingSlice:clean old:self.previousGray new:gray
-                                      y:height - bottom - offset height:offset offset:offset];
-    if (saved && footer) { previous.height -= footer; self.totalHeight -= footer; }
-    if (saved) {
-        self.previousGray = gray; self.capturedFrames++;
-    }
+    [self recordFixedRowsFrom:self.previousGray to:gray offset:offset];
+    CGImageRef pending = [self newPendingBand];
+    BOOL saved = pending && [self writeBand:pending height:offset];
+    if (pending) CGImageRelease(pending);
+    NSData *nextBand = saved ? [self encodedCrop:clean y:self.captureLine height:height-self.captureLine] : nil;
+    if (saved && nextBand) {
+        self.previousGray = gray; self.pendingBandData = nextBand; self.capturedFrames++;
+    } else saved = NO;
     CGImageRelease(clean);
     return saved ? RSLongAppendResultAdded : RSLongAppendResultUncertain;
 }
 
 - (NSURL *)finishToURL:(NSError **)error {
+    if (self.pendingBandData) {
+        CGImageRef pending = [self newPendingBand];
+        BOOL saved = pending && [self writeBand:pending height:CGImageGetHeight(pending)];
+        if (pending) CGImageRelease(pending);
+        if (!saved) {
+            if (error) *error = [NSError errorWithDomain:RSLongErrorDomain code:6 userInfo:@{NSLocalizedDescriptionKey:@"无法写入长截图末段。"}];
+            return nil;
+        }
+        self.pendingBandData = nil;
+    }
     if (!self.slices.count || !self.pixelWidth || !self.totalHeight) {
         if (error) *error = [NSError errorWithDomain:RSLongErrorDomain code:1 userInfo:@{NSLocalizedDescriptionKey:@"没有可生成的长截图。"}];
         return nil;
@@ -235,7 +254,7 @@ enum { RSLongSignatureWidth = 96 };
         if (error && !*error) *error = [NSError errorWithDomain:RSLongErrorDomain code:4 userInfo:@{NSLocalizedDescriptionKey:@"长截图编码失败。"}];
         return nil;
     }
-    self.previousGray = nil;
+    self.previousGray = nil; self.pendingBandData = nil; [self.fixedRows removeAllIndexes];
     for (RSLongSlice *slice in self.slices) [NSFileManager.defaultManager removeItemAtPath:slice.path error:nil];
     [self.slices removeAllObjects];
     [NSFileManager.defaultManager removeItemAtPath:rawPath error:nil];
@@ -249,7 +268,7 @@ enum { RSLongSignatureWidth = 96 };
 }
 
 - (void)cancel {
-    self.previousGray = nil; [self.slices removeAllObjects];
+    self.previousGray = nil; self.pendingBandData = nil; [self.fixedRows removeAllIndexes]; [self.slices removeAllObjects];
     [NSFileManager.defaultManager removeItemAtPath:self.directory error:nil];
 }
 
