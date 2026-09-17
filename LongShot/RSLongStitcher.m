@@ -10,7 +10,7 @@
 #include <stdlib.h>
 
 static NSString *const RSLongErrorDomain = @"RegionShot.LongCapture";
-enum { RSLongSignatureWidth = 96 };
+enum { RSLongSignatureWidth = 48 };
 
 @interface RSLongSlice : NSObject
 @property (nonatomic, copy) NSString *path;
@@ -27,7 +27,6 @@ enum { RSLongSignatureWidth = 96 };
 @property (nonatomic) size_t pixelWidth;
 @property (nonatomic) size_t pixelHeight;
 @property (nonatomic) size_t totalHeight;
-@property (nonatomic) NSUInteger capturedFrames;
 @end
 
 @implementation RSLongStitcher
@@ -43,7 +42,7 @@ enum { RSLongSignatureWidth = 96 };
     return self;
 }
 
-- (NSUInteger)frameCount { return self.capturedFrames; }
+- (NSUInteger)frameCount { return self.slices.count; }
 - (CGFloat)estimatedHeight { return self.pixelHeight ? (CGFloat)self.totalHeight / self.pixelHeight : 0; }
 
 - (CGImageRef)newCleanImage:(UIImage *)image CF_RETURNS_RETAINED {
@@ -91,32 +90,6 @@ enum { RSLongSignatureWidth = 96 };
     return saved;
 }
 
-- (BOOL)writeMovingSlice:(CGImageRef)current old:(NSData *)oldGray new:(NSData *)newGray
-                       y:(size_t)y height:(size_t)height offset:(size_t)offset {
-    const uint8_t *old = oldGray.bytes, *new = newGray.bytes;
-    size_t end = y + height, run = y; BOOL fixedRun = NO, saved = YES, wrote = NO;
-    for (size_t row = y; row <= end; row++) {
-        BOOL fixed = NO;
-        size_t signatureRow = CGImageGetHeight(current) - 1 - row;
-        if (row < end && signatureRow >= offset) {
-            unsigned same = 0, aligned = 0, stable = 0;
-            for (size_t x = 0; x < RSLongSignatureWidth; x++) {
-                unsigned difference = abs((int)old[signatureRow * RSLongSignatureWidth + x] - (int)new[signatureRow * RSLongSignatureWidth + x]);
-                same += difference; stable += difference <= 8;
-                aligned += abs((int)old[(signatureRow - offset) * RSLongSignatureWidth + x] - (int)new[signatureRow * RSLongSignatureWidth + x]);
-            }
-            fixed = stable >= RSLongSignatureWidth * 3 / 4 && same < RSLongSignatureWidth * 8 &&
-                    aligned > same + RSLongSignatureWidth * 4;
-        }
-        if (row == y) fixedRun = fixed;
-        if (row == end || fixed != fixedRun) {
-            if (!fixedRun) { saved = saved && [self writeSlice:current y:run height:row-run]; wrote = YES; }
-            run = row; fixedRun = fixed;
-        }
-    }
-    return saved && wrote;
-}
-
 - (RSLongAppendResult)appendImage:(UIImage *)image {
     CGImageRef clean = [self newCleanImage:image];
     if (!clean) return RSLongAppendResultUncertain;
@@ -125,7 +98,6 @@ enum { RSLongSignatureWidth = 96 };
         self.pixelWidth = width; self.pixelHeight = height;
         self.previousGray = [self graySignature:clean];
         BOOL saved = self.previousGray && [self writeSlice:clean y:0 height:height];
-        if (saved) self.capturedFrames = 1;
         CGImageRelease(clean);
         return saved ? RSLongAppendResultAdded : RSLongAppendResultUncertain;
     }
@@ -149,7 +121,7 @@ enum { RSLongSignatureWidth = 96 };
     const uint8_t *oldBytes = self.previousGray.bytes, *newBytes = gray.bytes;
     size_t fixedBottom = 0, misses = 0, maximumFixed = height / 5;
     for (size_t row = 0; row < maximumFixed; row++) {
-        size_t y = row; unsigned difference = 0;
+        size_t y = height - 1 - row; unsigned difference = 0;
         for (size_t x = 0; x < RSLongSignatureWidth; x += 2)
             difference += abs((int)oldBytes[y * RSLongSignatureWidth + x] - (int)newBytes[y * RSLongSignatureWidth + x]);
         double score = difference / (double)(RSLongSignatureWidth / 2);
@@ -163,12 +135,9 @@ enum { RSLongSignatureWidth = 96 };
     RSLongSlice *previous = self.slices.lastObject;
     // Only the initial full frame includes the fixed footer. Subsequent slices exclude it.
     size_t footer = self.slices.count == 1 ? MIN(bottom, previous.height - 1) : 0;
-    BOOL saved = [self writeMovingSlice:clean old:self.previousGray new:gray
-                                      y:height - bottom - offset height:offset offset:offset];
+    BOOL saved = [self writeSlice:clean y:height - bottom - offset height:offset];
     if (saved && footer) { previous.height -= footer; self.totalHeight -= footer; }
-    if (saved) {
-        self.previousGray = gray; self.capturedFrames++;
-    }
+    if (saved) self.previousGray = gray;
     CGImageRelease(clean);
     return saved ? RSLongAppendResultAdded : RSLongAppendResultUncertain;
 }
