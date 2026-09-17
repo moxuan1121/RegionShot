@@ -355,8 +355,7 @@ static UIWindowLevel RSKAPanelWindowLevel(NSDictionary *options, NSString *key) 
 }
 - (void)copyResult {
     if ([self actionText].length) {
-        [UIPasteboard.generalPasteboard setItems:@[@{UIPasteboardTypeAutomatic: [self actionText], @"com.moxuan.regionshot.input.internal": [NSData data]}]
-                                        options:@{UIPasteboardOptionLocalOnly: @YES}];
+        UIPasteboard.generalPasteboard.string = [self actionText];
         [self close];
         UIAccessibilityPostNotification(UIAccessibilityAnnouncementNotification, @"已复制");
     }

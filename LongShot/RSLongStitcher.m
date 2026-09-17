@@ -10,7 +10,7 @@
 #include <stdlib.h>
 
 static NSString *const RSLongErrorDomain = @"RegionShot.LongCapture";
-enum { RSLongSignatureWidth = 48 };
+enum { RSLongSignatureWidth = 96 };
 
 @interface RSLongSlice : NSObject
 @property (nonatomic, copy) NSString *path;
@@ -28,7 +28,6 @@ enum { RSLongSignatureWidth = 48 };
 @property (nonatomic) size_t pixelHeight;
 @property (nonatomic) size_t totalHeight;
 @property (nonatomic) NSUInteger capturedFrames;
-@property (nonatomic, strong) NSData *previousFrameData;
 @end
 
 @implementation RSLongStitcher
@@ -67,6 +66,8 @@ enum { RSLongSignatureWidth = 48 };
     CGColorSpaceRelease(gray);
     if (!context) return nil;
     CGContextSetInterpolationQuality(context, kCGInterpolationLow);
+    CGContextTranslateCTM(context, 0, signatureHeight);
+    CGContextScaleCTM(context, 1, -1);
     CGContextDrawImage(context, CGRectMake(0, 0, RSLongSignatureWidth, signatureHeight), image);
     CGContextRelease(context);
     return data;
@@ -92,46 +93,29 @@ enum { RSLongSignatureWidth = 48 };
     return saved;
 }
 
-- (NSData *)encodedImage:(CGImageRef)image {
-    NSMutableData *data = [NSMutableData data];
-    CGImageDestinationRef destination = CGImageDestinationCreateWithData((__bridge CFMutableDataRef)data, CFSTR("public.png"), 1, nil);
-    if (destination) CGImageDestinationAddImage(destination, image, nil);
-    BOOL saved = destination && CGImageDestinationFinalize(destination);
-    if (destination) CFRelease(destination);
-    return saved ? data : nil;
-}
-
-- (CGImageRef)newPreviousFrame CF_RETURNS_RETAINED {
-    CGImageSourceRef source = self.previousFrameData ? CGImageSourceCreateWithData((__bridge CFDataRef)self.previousFrameData, nil) : nil;
-    CGImageRef image = source ? CGImageSourceCreateImageAtIndex(source, 0, nil) : nil;
-    if (source) CFRelease(source);
-    return image;
-}
-
-- (BOOL)writeMovingSlice:(CGImageRef)current previous:(CGImageRef)previous
-                     old:(NSData *)oldGray new:(NSData *)newGray
+- (BOOL)writeMovingSlice:(CGImageRef)current old:(NSData *)oldGray new:(NSData *)newGray
                        y:(size_t)y height:(size_t)height offset:(size_t)offset {
-    if (!previous) return [self writeSlice:current y:y height:height];
     const uint8_t *old = oldGray.bytes, *new = newGray.bytes;
-    size_t end = y + height, run = y; BOOL usingPrevious = NO, saved = YES;
+    size_t end = y + height, run = y; BOOL fixedRun = NO, saved = YES, wrote = NO;
     for (size_t row = y; row <= end; row++) {
         BOOL fixed = NO;
-        if (row < end && row + offset < CGImageGetHeight(previous)) {
-            unsigned same = 0, aligned = 0;
+        if (row < end && row + offset < CGImageGetHeight(current)) {
+            unsigned same = 0, aligned = 0, stable = 0;
             for (size_t x = 0; x < RSLongSignatureWidth; x++) {
-                same += abs((int)old[row * RSLongSignatureWidth + x] - (int)new[row * RSLongSignatureWidth + x]);
+                unsigned difference = abs((int)old[row * RSLongSignatureWidth + x] - (int)new[row * RSLongSignatureWidth + x]);
+                same += difference; stable += difference <= 8;
                 aligned += abs((int)old[(row + offset) * RSLongSignatureWidth + x] - (int)new[row * RSLongSignatureWidth + x]);
             }
-            fixed = same < RSLongSignatureWidth * 2 && aligned > same + RSLongSignatureWidth * 6;
+            fixed = stable >= RSLongSignatureWidth * 3 / 4 && same < RSLongSignatureWidth * 8 &&
+                    aligned > same + RSLongSignatureWidth * 4;
         }
-        if (row == y) usingPrevious = fixed;
-        if (row == end || fixed != usingPrevious) {
-            saved = saved && [self writeSlice:usingPrevious ? previous : current
-                                            y:usingPrevious ? run + offset : run height:row - run];
-            run = row; usingPrevious = fixed;
+        if (row == y) fixedRun = fixed;
+        if (row == end || fixed != fixedRun) {
+            if (!fixedRun) { saved = saved && [self writeSlice:current y:run height:row-run]; wrote = YES; }
+            run = row; fixedRun = fixed;
         }
     }
-    return saved;
+    return saved && wrote;
 }
 
 - (RSLongAppendResult)appendImage:(UIImage *)image {
@@ -141,8 +125,7 @@ enum { RSLongSignatureWidth = 48 };
     if (!self.slices.count) {
         self.pixelWidth = width; self.pixelHeight = height;
         self.previousGray = [self graySignature:clean];
-        self.previousFrameData = [self encodedImage:clean];
-        BOOL saved = self.previousGray && self.previousFrameData && [self writeSlice:clean y:0 height:height];
+        BOOL saved = self.previousGray && [self writeSlice:clean y:0 height:height];
         if (saved) self.capturedFrames = 1;
         CGImageRelease(clean);
         return saved ? RSLongAppendResultAdded : RSLongAppendResultUncertain;
@@ -181,13 +164,11 @@ enum { RSLongSignatureWidth = 48 };
     RSLongSlice *previous = self.slices.lastObject;
     // Only the initial full frame includes the fixed footer. Subsequent slices exclude it.
     size_t footer = self.slices.count == 1 ? MIN(bottom, previous.height - 1) : 0;
-    CGImageRef previousFrame = [self newPreviousFrame];
-    BOOL saved = [self writeMovingSlice:clean previous:previousFrame old:self.previousGray new:gray
+    BOOL saved = [self writeMovingSlice:clean old:self.previousGray new:gray
                                       y:height - bottom - offset height:offset offset:offset];
-    if (previousFrame) CGImageRelease(previousFrame);
     if (saved && footer) { previous.height -= footer; self.totalHeight -= footer; }
     if (saved) {
-        self.previousGray = gray; self.previousFrameData = [self encodedImage:clean]; self.capturedFrames++;
+        self.previousGray = gray; self.capturedFrames++;
     }
     CGImageRelease(clean);
     return saved ? RSLongAppendResultAdded : RSLongAppendResultUncertain;
@@ -255,7 +236,7 @@ enum { RSLongSignatureWidth = 48 };
         if (error && !*error) *error = [NSError errorWithDomain:RSLongErrorDomain code:4 userInfo:@{NSLocalizedDescriptionKey:@"长截图编码失败。"}];
         return nil;
     }
-    self.previousGray = nil; self.previousFrameData = nil;
+    self.previousGray = nil;
     for (RSLongSlice *slice in self.slices) [NSFileManager.defaultManager removeItemAtPath:slice.path error:nil];
     [self.slices removeAllObjects];
     [NSFileManager.defaultManager removeItemAtPath:rawPath error:nil];
@@ -269,7 +250,7 @@ enum { RSLongSignatureWidth = 48 };
 }
 
 - (void)cancel {
-    self.previousGray = nil; self.previousFrameData = nil; [self.slices removeAllObjects];
+    self.previousGray = nil; [self.slices removeAllObjects];
     [NSFileManager.defaultManager removeItemAtPath:self.directory error:nil];
 }
 

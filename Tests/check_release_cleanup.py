@@ -77,6 +77,9 @@ clipboard = (root / 'Input/RSInputClipboard.m').read_text(encoding='utf-8')
 capture = clipboard.split('- (void)capture {', 1)[1].split('@end', 1)[0]
 assert 'RSKAIsPanelVisible()' not in capture
 keyboard_panel = (root / 'KeyboardAI/RSKAInterface.m').read_text(encoding='utf-8')
+input_panel = (root / 'Input/RSInputInterface.m').read_text(encoding='utf-8')
+assert 'UIPasteboard.generalPasteboard.string = [self actionText]' in keyboard_panel
+assert 'UIPasteboard.generalPasteboard.string = [self actionText]' in input_panel
 open_tokens = keyboard_panel.split('void RSKAOpenTokens(NSString *text) {', 1)[1].split('void RSKAClosePanel', 1)[0]
 assert open_tokens.index('[RSKASharedPanel() close]') < open_tokens.index('[panel show]')
 desktop_focus = chat.split('- (void)armDesktopKeyRecovery {', 1)[1].split('- (void)updateHeading', 1)[0]
