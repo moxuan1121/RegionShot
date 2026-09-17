@@ -117,6 +117,7 @@ enum { RSLongSignatureWidth = 96 };
 
 - (void)recordFixedRowsFrom:(NSData *)oldGray to:(NSData *)newGray offset:(size_t)offset {
     const uint8_t *old = oldGray.bytes, *new = newGray.bytes;
+    NSMutableIndexSet *stableRows = [NSMutableIndexSet indexSet];
     for (size_t row = self.captureLine; row < self.pixelHeight; row++) {
         size_t signatureRow = self.pixelHeight - 1 - row;
         unsigned same = 0, aligned = 0, stable = 0;
@@ -126,9 +127,15 @@ enum { RSLongSignatureWidth = 96 };
             if (signatureRow >= offset)
                 aligned += abs((int)old[(signatureRow-offset) * RSLongSignatureWidth+x] - (int)new[signatureRow * RSLongSignatureWidth+x]);
         }
-        if (stable >= RSLongSignatureWidth * 3 / 4 && same < RSLongSignatureWidth * 8 &&
-            (signatureRow < offset || aligned > same + RSLongSignatureWidth * 4)) [self.fixedRows addIndex:row];
+        if (stable >= RSLongSignatureWidth * 3 / 4 && same < RSLongSignatureWidth * 8) {
+            [stableRows addIndex:row];
+            if (signatureRow >= offset && aligned > same + RSLongSignatureWidth * 4)
+                [self.fixedRows addIndex:row];
+        }
     }
+    [stableRows enumerateRangesUsingBlock:^(NSRange range, BOOL *stop) {
+        if (NSMaxRange(range) == self.pixelHeight) [self.fixedRows addIndexesInRange:range];
+    }];
 }
 
 - (BOOL)writeBand:(CGImageRef)band height:(size_t)height {
