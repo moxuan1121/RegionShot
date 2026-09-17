@@ -27,6 +27,7 @@
 @interface RSKATokenView () <UICollectionViewDataSource, UICollectionViewDelegateFlowLayout, UIGestureRecognizerDelegate>
 @property(strong) NSMutableArray<NSString *> *pieces;
 @property(strong) NSMutableIndexSet *chosen;
+@property(strong) NSMutableArray<NSNumber *> *selectionOrder;
 @property(strong) NSArray<NSValue *> *sizes;
 @property CGFloat measuredWidth;
 @property CGFloat reportedHeight;
@@ -47,6 +48,7 @@
     if ((self = [super initWithFrame:CGRectZero collectionViewLayout:layout])) {
         self.pieces = [pieces mutableCopy];
         self.chosen = [NSMutableIndexSet indexSet];
+        self.selectionOrder = [NSMutableArray array];
         self.dataSource = self;
         self.delegate = self;
         self.backgroundColor = UIColor.clearColor;
@@ -138,6 +140,12 @@
     return cell;
 }
 - (void)notifySelection {
+    [self.selectionOrder filterUsingPredicate:[NSPredicate predicateWithBlock:^BOOL(NSNumber *index, NSDictionary *bindings) {
+        return [self.chosen containsIndex:index.unsignedIntegerValue];
+    }]];
+    [self.chosen enumerateIndexesUsingBlock:^(NSUInteger index, __unused BOOL *stop) {
+        NSNumber *value = @(index); if (![self.selectionOrder containsObject:value]) [self.selectionOrder addObject:value];
+    }];
     for (NSIndexPath *path in self.indexPathsForVisibleItems) {
         UICollectionViewCell *cell = [self cellForItemAtIndexPath:path];
         if ([self.chosen containsIndex:path.item] != ((cell.accessibilityTraits & UIAccessibilityTraitSelected) != 0))
@@ -155,16 +163,26 @@
 - (void)clearSelection {
     if (!self.chosen.count) return;
     [self.chosen removeAllIndexes];
+    [self.selectionOrder removeAllObjects];
     [self notifySelection];
     RSKASelectionFeedback();
 }
 - (NSString *)selectedText {
     NSMutableString *text = [NSMutableString string];
-    [self.chosen enumerateIndexesUsingBlock:^(NSUInteger index, __unused BOOL *stop) { [text appendString:self.pieces[index]]; }];
+    for (NSNumber *value in self.selectionOrder) [text appendString:self.pieces[value.unsignedIntegerValue]];
     return text;
 }
 - (BOOL)splitAtIndex:(NSUInteger)index {
+    NSArray<NSNumber *> *order = [self.selectionOrder copy]; NSUInteger oldCount = self.pieces.count;
     if (!RSKASplitPiece(self.pieces, self.chosen, index)) return NO;
+    NSInteger delta = (NSInteger)self.pieces.count - (NSInteger)oldCount;
+    [self.selectionOrder removeAllObjects];
+    for (NSNumber *value in order) {
+        NSUInteger old = value.unsignedIntegerValue;
+        if (old < index) [self.selectionOrder addObject:value];
+        else if (old > index) [self.selectionOrder addObject:@((NSInteger)old + delta)];
+        else for (NSInteger i = 0; i <= delta; i++) [self.selectionOrder addObject:@((NSInteger)index + i)];
+    }
     self.sizes = nil;
     [self reloadData];
     [self layoutIfNeeded];
@@ -197,7 +215,12 @@
 - (void)paintAtPoint:(CGPoint)point {
     NSIndexPath *path = [self indexPathNearPoint:point];
     if (!path || self.lastIndex == NSNotFound || (NSUInteger)path.item == self.lastIndex) return;
+    NSInteger previous = (NSInteger)self.lastIndex, current = path.item, step = current >= previous ? 1 : -1;
     RSKAUpdatePaintSelection(self.chosen, self.paintBaseline, self.anchorIndex, path.item, self.selecting);
+    for (NSInteger index = previous + step; index != current + step; index += step) {
+        NSNumber *value = @(index);
+        if ([self.chosen containsIndex:(NSUInteger)index] && ![self.selectionOrder containsObject:value]) [self.selectionOrder addObject:value];
+    }
     self.lastIndex = path.item;
     [self notifySelection];
 }
@@ -212,6 +235,7 @@
         self.lastIndex = first.item;
         self.selecting = ![self.chosen containsIndex:first.item];
         RSKAUpdatePaintSelection(self.chosen, self.paintBaseline, self.anchorIndex, first.item, self.selecting);
+        if (self.selecting && ![self.selectionOrder containsObject:@(first.item)]) [self.selectionOrder addObject:@(first.item)];
         [self notifySelection];
         self.scrollLink = [CADisplayLink displayLinkWithTarget:self selector:@selector(scrollWhilePainting:)];
         [self.scrollLink addToRunLoop:NSRunLoop.mainRunLoop forMode:NSRunLoopCommonModes];

@@ -54,6 +54,7 @@
         [self cancelCurrentStroke];
         return;
     }
+    if ([self textItemAtPoint:[touches.anyObject locationInView:self]]) return;
     if (self.drawMode == RSMarkupDrawModeText) return;
     CGPoint p = [touches.anyObject locationInView:self];
     self.isDrawing = YES;

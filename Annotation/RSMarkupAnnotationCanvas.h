@@ -16,6 +16,7 @@
 - (void)cancelCurrentStroke;     // discard an unfinished mark before zooming
 - (void)undo;                    // remove last mark
 - (void)clearAll;                // remove everything
+- (RSMarkupAnnotationItem *)textItemAtPoint:(CGPoint)point;
 - (UIImage *)renderedImage;      // composite source + marks -> new UIImage
 
 // 1.6 新增：聚光灯式高亮（圆角选区 + 周边压暗）

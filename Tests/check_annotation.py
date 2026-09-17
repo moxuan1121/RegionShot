@@ -19,7 +19,8 @@ assert "self.multipleTouchEnabled = YES" in canvas
 assert canvas.count("event.allTouches.count > 1") == 2
 assert "UITapGestureRecognizer *textTap" in editor
 assert "[self.canvas addGestureRecognizer:self.textTap]" in editor
-assert "self.textTap.enabled = self.canvas.drawMode == RSMarkupDrawModeText" in editor
+assert "RSMarkupAnnotationItem *item = [self.canvas textItemAtPoint:point]" in editor
+assert "item.textAnnotation = a" in editor
 assert "isAddingText" not in editor
 assert "[self presentViewController:vc animated:YES completion:nil]" in editor
 assert "UILongPressGestureRecognizer" in canvas
@@ -62,7 +63,10 @@ assert "point.y <= 32" in read("Geometry/RSPanelController.h")
 assert "height - 28" in read("Geometry/RSPanelController.h")
 
 for token_view in ("Input/RSInputTokenView.m", "KeyboardAI/RSKATokenView.m"):
-    assert "- (void)clearSelection" in read(token_view)
+    source = read(token_view)
+    assert "- (void)clearSelection" in source
+    assert "selectionOrder" in source
+    assert "for (NSNumber *value in self.selectionOrder)" in source
 for panel in ("Input/RSInputInterface.m", "KeyboardAI/RSKAInterface.m"):
     assert "@selector(clearTokenSelection:)" in read(panel)
 assert "chat.host.isKeyWindow" in chat

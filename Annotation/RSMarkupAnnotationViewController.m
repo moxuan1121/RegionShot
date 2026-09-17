@@ -91,7 +91,7 @@
     [self.zoomContentView addSubview:self.canvas];
 
     self.textTap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(handleTextPlacement:)];
-    self.textTap.enabled = NO;
+    self.textTap.enabled = YES;
     self.textTap.cancelsTouchesInView = NO;
     [self.canvas addGestureRecognizer:self.textTap];
 
@@ -232,7 +232,6 @@
 
 - (void)updateModeButtons {
     NSArray<NSNumber *> *modes = @[@0,@1,@2,@3,@4,@5,@7,@6];
-    self.textTap.enabled = self.canvas.drawMode == RSMarkupDrawModeText;
     for (NSUInteger i = 0; i < self.modeButtons.count; i++)
         self.modeButtons[i].tintColor = modes[i].integerValue == self.canvas.drawMode ? UIColor.systemYellowColor : UIColor.whiteColor;
 }
@@ -323,23 +322,38 @@
 #pragma mark - Text placement
 
 - (void)handleTextPlacement:(UITapGestureRecognizer *)gesture {
-    if (self.canvas.drawMode != RSMarkupDrawModeText || gesture.state != UIGestureRecognizerStateEnded) return;
-    [self showTextEditAtPoint:[gesture locationInView:self.canvas]];
+    if (gesture.state != UIGestureRecognizerStateEnded) return;
+    CGPoint point = [gesture locationInView:self.canvas];
+    RSMarkupAnnotationItem *item = [self.canvas textItemAtPoint:point];
+    if (item) [self showTextEditForItem:item atPoint:point];
+    else if (self.canvas.drawMode == RSMarkupDrawModeText) [self showTextEditForItem:nil atPoint:point];
 }
 
-- (void)showTextEditAtPoint:(CGPoint)point {
+- (void)showTextEditForItem:(RSMarkupAnnotationItem *)item atPoint:(CGPoint)point {
+    RSMarkupTextAnnotation *existing = item.textAnnotation;
     RSMarkupTextEditViewController *vc = [RSMarkupTextEditViewController new];
-    vc.initialText = @"";
-    vc.initialColor = self.canvas.strokeColor;
-    vc.initialFontSize = 16;
+    vc.initialText = existing.text ?: @"";
+    vc.initialColor = existing.textColor ?: self.canvas.strokeColor;
+    vc.initialFontSize = existing ? existing.fontSize : 16;
+    vc.initialOpacity = existing ? existing.opacity : 1;
+    vc.initialBorder = existing.showBorder;
+    vc.initialBackground = existing.showBackground;
+    vc.initialShadow = existing.showShadow;
     vc.modalPresentationStyle = UIModalPresentationOverFullScreen;
     __weak typeof(self) ws = self;
     vc.completion = ^(RSMarkupTextAnnotation *a) {
         if (!a) return;
+        if (item) {
+            a.center = existing.center;
+            item.textAnnotation = a;
+            [ws.canvas setNeedsDisplay];
+            [ws showToast:@"已更新文字"];
+            return;
+        }
         a.center = point;
-        RSMarkupAnnotationItem *item = [RSMarkupAnnotationItem new];
-        item.type = RSMarkupDrawModeText; item.textAnnotation = a;
-        [ws.canvas.items addObject:item]; [ws.canvas setNeedsDisplay];
+        RSMarkupAnnotationItem *newItem = [RSMarkupAnnotationItem new];
+        newItem.type = RSMarkupDrawModeText; newItem.textAnnotation = a;
+        [ws.canvas.items addObject:newItem]; [ws.canvas setNeedsDisplay];
         [ws showToast:@"已添加文字"];
     };
     [self presentViewController:vc animated:YES completion:nil];
