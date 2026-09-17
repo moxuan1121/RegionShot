@@ -68,13 +68,18 @@ enum { RSLongSignatureWidth = 48 };
     CGContextSetInterpolationQuality(context, kCGInterpolationLow);
     CGContextDrawImage(context, CGRectMake(0, 0, RSLongSignatureWidth, signatureHeight), image);
     CGContextRelease(context);
-    uint8_t *pixels = data.mutableBytes;
-    for (size_t y = signatureHeight - 1; y > 0; y--)
+    return data;
+}
+
+- (NSData *)edgeSignature:(NSData *)gray height:(size_t)height {
+    NSMutableData *edges = [gray mutableCopy];
+    uint8_t *pixels = edges.mutableBytes;
+    for (size_t y = height - 1; y > 0; y--)
         for (size_t x = 0; x < RSLongSignatureWidth; x++)
             pixels[y * RSLongSignatureWidth + x] = (uint8_t)abs((int)pixels[y * RSLongSignatureWidth + x] -
                                                                 (int)pixels[(y - 1) * RSLongSignatureWidth + x]);
     memset(pixels, 0, RSLongSignatureWidth);
-    return data;
+    return edges;
 }
 
 - (BOOL)writeSlice:(CGImageRef)image y:(size_t)y height:(size_t)height {
@@ -114,8 +119,10 @@ enum { RSLongSignatureWidth = 48 };
     NSData *gray = [self graySignature:clean];
     if (!gray) { CGImageRelease(clean); return RSLongAppendResultUncertain; }
     const size_t trim = height * 12 / 100;
-    RSLongMatch match = RSFindVerticalOverlap((const uint8_t *)self.previousGray.bytes + trim * RSLongSignatureWidth,
-        (const uint8_t *)gray.bytes + trim * RSLongSignatureWidth, RSLongSignatureWidth,
+    NSData *oldEdges = [self edgeSignature:self.previousGray height:height];
+    NSData *newEdges = [self edgeSignature:gray height:height];
+    RSLongMatch match = RSFindVerticalOverlap((const uint8_t *)oldEdges.bytes + trim * RSLongSignatureWidth,
+        (const uint8_t *)newEdges.bytes + trim * RSLongSignatureWidth, RSLongSignatureWidth,
         height - trim * 2);
     // Mostly blank pages can move while their average difference remains tiny.
     if (match.changedFraction < 0.002) {
