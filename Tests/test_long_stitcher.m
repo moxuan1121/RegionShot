@@ -65,6 +65,7 @@ int main(void) { @autoreleasepool {
     stitcher=[[RSLongStitcher alloc] initWithTopInset:0];
     for(size_t top=0;top<=120;top+=3) assert([stitcher appendImage:frame(top)]==RSLongAppendResultAdded);
     result=[stitcher finish:&error];
+    fprintf(stderr, "fixed result height=%zu\n", result ? CGImageGetHeight(result.CGImage) : 0);
     assert(result && CGImageGetHeight(result.CGImage)==348);
     [stitcher cancel];
     puts("Verified small-scroll frames, fixed bars, final height, seam pixels and orientation");
