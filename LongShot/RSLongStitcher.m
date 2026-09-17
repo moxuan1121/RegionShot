@@ -169,9 +169,12 @@ enum { RSLongSignatureWidth = 96 };
     }
     NSData *gray = [self graySignature:clean];
     if (!gray) { CGImageRelease(clean); return RSLongAppendResultUncertain; }
-    const size_t trim = height * 12 / 100;
-    RSLongMatch match = RSFindVerticalOverlap((const uint8_t *)self.previousGray.bytes + trim * RSLongSignatureWidth,
-        (const uint8_t *)gray.bytes + trim * RSLongSignatureWidth, RSLongSignatureWidth, height - trim * 2);
+    // Match only the正文 band around the recording line. Page headers,
+    // composers and browser chrome otherwise dominate the score while staying fixed.
+    size_t screenStart = height * 10 / 100, screenEnd = height * 60 / 100;
+    size_t signatureStart = height - screenEnd, matchHeight = screenEnd - screenStart;
+    RSLongMatch match = RSFindVerticalOverlap((const uint8_t *)self.previousGray.bytes + signatureStart * RSLongSignatureWidth,
+        (const uint8_t *)gray.bytes + signatureStart * RSLongSignatureWidth, RSLongSignatureWidth, matchHeight);
     if (match.changedFraction < 0.002) { CGImageRelease(clean); return RSLongAppendResultUnchanged; }
     size_t offset = match.offset;
     if (!RSLongMatchIsReliable(match) || !offset || offset >= height-self.captureLine) {
