@@ -120,7 +120,14 @@
 }
 
 - (UIImage *)finalScreenImage {
-    return [self screenImage];
+    CGSize displaySize = self.rootViewController.view.bounds.size;
+    CGFloat height = CGRectGetMinY(self.panel.frame);
+    if (displaySize.width <= 0 || height <= 0) return nil;
+    UIImage *screen = [RSScreenCapture captureScreen];
+    if (!screen) return nil;
+    return [RSScreenCapture cropImage:screen
+                               toRect:CGRectMake(0, displaySize.height - height, displaySize.width, height)
+                          displaySize:displaySize];
 }
 
 - (void)captureFinalFrame {
