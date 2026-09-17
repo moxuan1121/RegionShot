@@ -66,8 +66,6 @@ enum { RSLongSignatureWidth = 96 };
     CGColorSpaceRelease(gray);
     if (!context) return nil;
     CGContextSetInterpolationQuality(context, kCGInterpolationLow);
-    CGContextTranslateCTM(context, 0, signatureHeight);
-    CGContextScaleCTM(context, 1, -1);
     CGContextDrawImage(context, CGRectMake(0, 0, RSLongSignatureWidth, signatureHeight), image);
     CGContextRelease(context);
     return data;
@@ -99,12 +97,13 @@ enum { RSLongSignatureWidth = 96 };
     size_t end = y + height, run = y; BOOL fixedRun = NO, saved = YES, wrote = NO;
     for (size_t row = y; row <= end; row++) {
         BOOL fixed = NO;
-        if (row < end && row + offset < CGImageGetHeight(current)) {
+        size_t signatureRow = CGImageGetHeight(current) - 1 - row;
+        if (row < end && signatureRow >= offset) {
             unsigned same = 0, aligned = 0, stable = 0;
             for (size_t x = 0; x < RSLongSignatureWidth; x++) {
-                unsigned difference = abs((int)old[row * RSLongSignatureWidth + x] - (int)new[row * RSLongSignatureWidth + x]);
+                unsigned difference = abs((int)old[signatureRow * RSLongSignatureWidth + x] - (int)new[signatureRow * RSLongSignatureWidth + x]);
                 same += difference; stable += difference <= 8;
-                aligned += abs((int)old[(row + offset) * RSLongSignatureWidth + x] - (int)new[row * RSLongSignatureWidth + x]);
+                aligned += abs((int)old[(signatureRow - offset) * RSLongSignatureWidth + x] - (int)new[signatureRow * RSLongSignatureWidth + x]);
             }
             fixed = stable >= RSLongSignatureWidth * 3 / 4 && same < RSLongSignatureWidth * 8 &&
                     aligned > same + RSLongSignatureWidth * 4;
@@ -150,7 +149,7 @@ enum { RSLongSignatureWidth = 96 };
     const uint8_t *oldBytes = self.previousGray.bytes, *newBytes = gray.bytes;
     size_t fixedBottom = 0, misses = 0, maximumFixed = height / 5;
     for (size_t row = 0; row < maximumFixed; row++) {
-        size_t y = height - 1 - row; unsigned difference = 0;
+        size_t y = row; unsigned difference = 0;
         for (size_t x = 0; x < RSLongSignatureWidth; x += 2)
             difference += abs((int)oldBytes[y * RSLongSignatureWidth + x] - (int)newBytes[y * RSLongSignatureWidth + x]);
         double score = difference / (double)(RSLongSignatureWidth / 2);

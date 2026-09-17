@@ -34,7 +34,6 @@ static UIImage *frame(size_t top) {
     CGImageRef pixels=CGImageCreate(W,H,8,32,W*4,rgb,kCGImageAlphaPremultipliedLast|kCGBitmapByteOrder32Big,provider,NULL,false,kCGRenderingIntentDefault);
     // Owned copy, because the input bytes are on the stack.
     CGContextRef ctx=CGBitmapContextCreate(NULL,W,H,8,W*4,rgb,kCGImageAlphaPremultipliedLast|kCGBitmapByteOrder32Big);
-    CGContextTranslateCTM(ctx,0,H); CGContextScaleCTM(ctx,1,-1);
     CGContextDrawImage(ctx,CGRectMake(0,0,W,H),pixels);
     CGImageRef owned=CGBitmapContextCreateImage(ctx);
     UIImage *result=[[UIImage alloc] initWithCGImage:owned];
@@ -54,7 +53,6 @@ int main(void) { @autoreleasepool {
     size_t w=CGImageGetWidth(result.CGImage), h=CGImageGetHeight(result.CGImage);
     uint8_t *bytes=calloc(w*h,4); CGColorSpaceRef rgb=CGColorSpaceCreateDeviceRGB();
     CGContextRef ctx=CGBitmapContextCreate(bytes,w,h,8,w*4,rgb,kCGImageAlphaPremultipliedLast|kCGBitmapByteOrder32Big);
-    CGContextTranslateCTM(ctx,0,h); CGContextScaleCTM(ctx,1,-1);
     CGContextDrawImage(ctx,CGRectMake(0,0,w,h),result.CGImage);
     for(size_t y=0;y<h;y++) for(size_t x=0;x<w;x++) {
         const uint8_t *p=bytes+(y*w+x)*4;
