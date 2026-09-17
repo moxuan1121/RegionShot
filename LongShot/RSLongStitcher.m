@@ -8,6 +8,7 @@
 #import <unistd.h>
 #include <math.h>
 #include <stdlib.h>
+#include <string.h>
 
 static NSString *const RSLongErrorDomain = @"RegionShot.LongCapture";
 enum { RSLongSignatureWidth = 48 };
@@ -67,6 +68,12 @@ enum { RSLongSignatureWidth = 48 };
     CGContextSetInterpolationQuality(context, kCGInterpolationLow);
     CGContextDrawImage(context, CGRectMake(0, 0, RSLongSignatureWidth, signatureHeight), image);
     CGContextRelease(context);
+    uint8_t *pixels = data.mutableBytes;
+    for (size_t y = signatureHeight - 1; y > 0; y--)
+        for (size_t x = 0; x < RSLongSignatureWidth; x++)
+            pixels[y * RSLongSignatureWidth + x] = (uint8_t)abs((int)pixels[y * RSLongSignatureWidth + x] -
+                                                                (int)pixels[(y - 1) * RSLongSignatureWidth + x]);
+    memset(pixels, 0, RSLongSignatureWidth);
     return data;
 }
 
