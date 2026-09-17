@@ -54,6 +54,7 @@ int main(void) { @autoreleasepool {
     size_t w=CGImageGetWidth(result.CGImage), h=CGImageGetHeight(result.CGImage);
     uint8_t *bytes=calloc(w*h,4); CGColorSpaceRef rgb=CGColorSpaceCreateDeviceRGB();
     CGContextRef ctx=CGBitmapContextCreate(bytes,w,h,8,w*4,rgb,kCGImageAlphaPremultipliedLast|kCGBitmapByteOrder32Big);
+    CGContextTranslateCTM(ctx,0,h); CGContextScaleCTM(ctx,1,-1);
     CGContextDrawImage(ctx,CGRectMake(0,0,w,h),result.CGImage);
     for(size_t y=0;y<h;y++) for(size_t x=0;x<w;x++) {
         const uint8_t *p=bytes+(y*w+x)*4;
