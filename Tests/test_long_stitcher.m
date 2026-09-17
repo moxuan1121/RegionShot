@@ -34,6 +34,7 @@ static UIImage *frame(size_t top) {
     CGImageRef pixels=CGImageCreate(W,H,8,32,W*4,rgb,kCGImageAlphaPremultipliedLast|kCGBitmapByteOrder32Big,provider,NULL,false,kCGRenderingIntentDefault);
     // Owned copy, because the input bytes are on the stack.
     CGContextRef ctx=CGBitmapContextCreate(NULL,W,H,8,W*4,rgb,kCGImageAlphaPremultipliedLast|kCGBitmapByteOrder32Big);
+    CGContextTranslateCTM(ctx,0,H); CGContextScaleCTM(ctx,1,-1);
     CGContextDrawImage(ctx,CGRectMake(0,0,W,H),pixels);
     CGImageRef owned=CGBitmapContextCreateImage(ctx);
     UIImage *result=[[UIImage alloc] initWithCGImage:owned];
