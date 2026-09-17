@@ -13,6 +13,12 @@ int main(void) {
         second[y * W + x] = (uint8_t)((y * 17 + x * 11) & 255);
     RSLongMatch match = RSFindVerticalOverlap(first, second, W, H);
     assert(match.offset == SHIFT && match.score == 0 && match.unchangedScore > 1 && RSLongMatchIsReliable(match));
+    for (size_t y = 8; y < H - 8; y++) {
+        memset(first + y * W, 37, W * 3 / 4);
+        memset(second + y * W, 37, W * 3 / 4);
+    }
+    match = RSFindVerticalOverlap(first, second, W, H);
+    assert(match.offset == SHIFT && RSLongMatchIsReliable(match));
     for (size_t shift = 1; shift <= 60; shift++) {
         for (size_t y = 0; y < H - shift; y++)
             memcpy(second + y * W, first + (y + shift) * W, W);

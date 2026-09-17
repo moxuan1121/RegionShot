@@ -37,7 +37,10 @@ static inline RSLongMatch RSFindVerticalOverlap(const uint8_t *previous, const u
             const uint8_t *a = previous + (y + offset) * width;
             const uint8_t *b = current + y * width;
             for (size_t x = 0; x < width; x += 2) {
-                difference += (uint64_t)abs((int)a[x] - (int)b[x]); samples++;
+                unsigned aligned = (unsigned)abs((int)a[x] - (int)b[x]);
+                unsigned stationary = (unsigned)abs((int)previous[y * width + x] - (int)b[x]);
+                if (stationary <= 2 && aligned > 8) continue;
+                difference += aligned; samples++;
             }
         }
         double score = samples ? (double)difference / (double)samples : DBL_MAX;
