@@ -18,7 +18,14 @@
 @property (nonatomic, strong, nullable) RSLongCaptureController *longCaptureWindow;
 @property (nonatomic, strong, nullable) RSFloatingWindow *floatingWindow;
 @property (nonatomic, strong) NSMutableArray<RSFloatingImageView *> *mutableSnaps;
+- (void)createFloatingSnap:(UIImage *)image windowScene:(nullable UIWindowScene *)scene;
 @end
+
+void RSShowFloatingImage(UIImage *image, UIWindowScene *scene) {
+    if (![image isKindOfClass:UIImage.class] || image.size.width <= 0 || image.size.height <= 0) return;
+    dispatch_block_t show = ^{ [[RSRegionShotManager sharedManager] createFloatingSnap:image windowScene:scene]; };
+    if ([NSThread isMainThread]) show(); else dispatch_async(dispatch_get_main_queue(), show);
+}
 
 @implementation RSRegionShotManager
 

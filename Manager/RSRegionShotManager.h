@@ -2,6 +2,8 @@
 
 @class RSFloatingImageView, UIImage, UIWindowScene;
 
+FOUNDATION_EXPORT void RSShowFloatingImage(UIImage *image, UIWindowScene * _Nullable scene);
+
 NS_ASSUME_NONNULL_BEGIN
 
 @interface RSRegionShotManager : NSObject
