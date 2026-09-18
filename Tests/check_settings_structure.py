@@ -21,7 +21,7 @@ header = (root / 'LongShot/RSLongCaptureController.h').read_text(encoding='utf-8
 makefile = (root / 'Makefile').read_text(encoding='utf-8')
 injection = (root / 'RegionShot.plist').read_text(encoding='utf-8')
 swipe = (root / 'LongShot/RSLongSwipe.m').read_text(encoding='utf-8')
-assert '@"choiceValues":@[@2, @3]' in source
+assert '@"choiceValues":@[@3, @4]' in source
 assert 'choiceValues.count > index ? choiceValues[index] : @(index)' in behavior
 assert '[value unsignedIntegerValue]' not in behavior
 ai_settings = (root / 'AI/RSAISettingsController.m').read_text(encoding='utf-8')
@@ -48,10 +48,12 @@ assert 'UIInterfaceOrientationLandscapeLeft) videoOrientation = AVCaptureVideoOr
 assert 'UIInterfaceOrientationLandscapeRight) videoOrientation = AVCaptureVideoOrientationLandscapeRight' in camera
 mode_block = re.search(r'typedef NS_ENUM\(NSInteger, RSLongCaptureMode\) \{([^}]+)\}', header).group(1)
 assert set(re.findall(r'(RSLongCaptureMode\w+)\s*=', mode_block)) == {
-    'RSLongCaptureModeManual', 'RSLongCaptureModeButtonStep'}
-assert 'mode == RSLongCaptureModeButtonStep ? RSLongCaptureModeButtonStep : RSLongCaptureModeManual' in controller
-assert '@"继续" action:@selector(continuePressed)' in controller
-assert 'self.mode == RSLongCaptureModeButtonStep || self.stopped' in controller
+    'RSLongCaptureModeButtonStep', 'RSLongCaptureModeAutomaticStep'}
+assert 'mode == RSLongCaptureModeAutomaticStep ? RSLongCaptureModeAutomaticStep : RSLongCaptureModeButtonStep' in controller
+assert '@"按键分步滚动"' in source and '@"自动分步滚动"' in source
+assert 'action:@selector(continuePressed)' in controller
+assert 'scheduleAutomaticStep' in controller and 'automaticStepScheduled' in controller
+assert 'NSTimer' not in controller and 'manualTick' not in controller and 'startSampling' not in controller
 assert 'LongShot/RSLongSwipe.m' in makefile
 assert 'com.apple.UIKit' not in injection
 assert 'progress * progress * (3.0 - 2.0 * progress)' in swipe

@@ -9,10 +9,10 @@ static NSUserDefaults *RSPrefs(void) {
 NSArray<NSDictionary *> *RSOptionGroups(void) {
     static NSArray *groups; static dispatch_once_t once;
     dispatch_once(&once, ^{ groups = @[
-        @{@"title":@"触发与选区", @"footer":@"长截图可选择手动滚动，或点击“继续”逐段向下滚动并记录。", @"items":@[
+        @{@"title":@"触发与选区", @"footer":@"长截图可点击“继续”逐段滚动，或由系统自动逐段滚动；两种方式都可随时结束。", @"items":@[
             @{@"key":@"StatusBarSwipe", @"title":@"状态栏右半侧右滑截图", @"default":@YES},
-            @{@"key":@"LongCaptureMode", @"title":@"长截图方式", @"default":@2, @"min":@0, @"max":@3,
-              @"choices":@[@"手动滚动", @"按键分步滚动"], @"choiceValues":@[@2, @3]},
+            @{@"key":@"LongCaptureMode", @"title":@"长截图方式", @"default":@2, @"min":@0, @"max":@4,
+              @"choices":@[@"按键分步滚动", @"自动分步滚动"], @"choiceValues":@[@3, @4]},
             @{@"key":@"SelectionShade", @"title":@"选区外遮罩深度", @"default":@0.38, @"min":@0.05, @"max":@0.8},
             @{@"key":@"CaptureHaptic", @"title":@"截图反馈振动", @"default":@YES} ]},
         @{@"title":@"菜单外观", @"items":@[

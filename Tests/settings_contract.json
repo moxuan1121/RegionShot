@@ -7,7 +7,7 @@
     "key": "@\"LongCaptureMode\"",
     "default": "@2",
     "min": "@0",
-    "max": "@3"
+    "max": "@4"
   },
   "CaptureHaptic": {
     "key": "@\"CaptureHaptic\"",

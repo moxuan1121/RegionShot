@@ -110,40 +110,6 @@ static inline RSLongMatch RSFindVerticalOverlapNear(const uint8_t *previous, con
     return result;
 }
 
-// Find a compact fixed control in the lower viewport (for example a web page's
-// floating down arrow). Full-width stationary backgrounds are deliberately
-// rejected, because they are page decoration rather than an overlay.
-static inline size_t RSFindLowerFixedOverlayStart(const uint8_t *previous, const uint8_t *current,
-                                                   size_t width, size_t height, size_t offset,
-                                                   size_t minimumY) {
-    if (!previous || !current || width < 16 || !offset || minimumY >= height) return height;
-    size_t limit = height > offset ? height - offset : 0;
-    size_t minimumVotes = width / 32 > 3 ? width / 32 : 3;
-    size_t maximumVotes = width * 2 / 3;
-    size_t requiredRows = height / 400 > 6 ? height / 400 : 6;
-    size_t runStart = height, runRows = 0, gaps = 0;
-    for (size_t y = minimumY; y < limit; y++) {
-        size_t votes = 0;
-        const uint8_t *same = previous + y * width;
-        const uint8_t *aligned = previous + (y + offset) * width;
-        const uint8_t *incoming = current + y * width;
-        for (size_t x = 0; x < width; x++) {
-            unsigned stationaryDifference = (unsigned)abs((int)same[x] - (int)incoming[x]);
-            unsigned alignedDifference = (unsigned)abs((int)aligned[x] - (int)incoming[x]);
-            votes += stationaryDifference <= 3 && alignedDifference >= 10;
-        }
-        int fixedRow = votes >= minimumVotes && votes <= maximumVotes;
-        if (fixedRow) {
-            if (runStart == height) runStart = y;
-            runRows++; gaps = 0;
-        } else if (runStart != height && ++gaps > 2) {
-            if (runRows >= requiredRows) return runStart;
-            runStart = height; runRows = 0; gaps = 0;
-        }
-    }
-    return runRows >= requiredRows ? runStart : height;
-}
-
 // Refine a cheap coarse match in a small, higher-resolution search window.
 // The caller supplies grayscale or vertical-edge rows; fixed screen pixels are
 // ignored when they disagree with the aligned scrolling candidate.

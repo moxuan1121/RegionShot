@@ -26,16 +26,18 @@
 @property (nonatomic, strong) UIImageView *preview;
 @property (nonatomic, strong) UIButton *captureButton;
 @property (nonatomic, strong) UIButton *continueButton;
-@property (nonatomic, strong) NSTimer *timer;
 @property (nonatomic, strong) dispatch_queue_t processingQueue;
 @property (nonatomic, copy) NSArray<UIWindow *> *temporarilyHiddenWindows;
 @property (nonatomic) BOOL busy;
 @property (nonatomic) BOOL stopped;
 @property (nonatomic) BOOL retryCurrentFrame;
+@property (nonatomic) BOOL automaticPaused;
+@property (nonatomic) BOOL automaticStepScheduled;
 @property (nonatomic) CFTimeInterval nextStepAllowedTime;
 
 @property (nonatomic, copy) void (^resultHandler)(UIWindowScene *);
 @property (nonatomic, copy) dispatch_block_t cancelHandler;
+- (void)performStep;
 @end
 
 @implementation RSLongCaptureController
@@ -43,7 +45,7 @@
 + (instancetype)startWithScene:(UIWindowScene *)scene mode:(RSLongCaptureMode)mode
                     completion:(void (^)(UIWindowScene *))completion cancel:(dispatch_block_t)cancel {
     RSLongCaptureController *window = scene ? [[self alloc] initWithWindowScene:scene] : [[self alloc] initWithFrame:UIScreen.mainScreen.bounds];
-    window.mode = mode == RSLongCaptureModeButtonStep ? RSLongCaptureModeButtonStep : RSLongCaptureModeManual;
+    window.mode = mode == RSLongCaptureModeAutomaticStep ? RSLongCaptureModeAutomaticStep : RSLongCaptureModeButtonStep;
     window.resultHandler = completion; window.cancelHandler = cancel;
     [window configure]; RSApplyWindowOrientation(window, RSActiveOrientation(scene)); window.hidden = NO; [window beginSession];
     return window;
@@ -62,14 +64,13 @@
     self.statusLabel.font = [UIFont preferredFontForTextStyle:UIFontTextStyleFootnote];
     self.statusLabel.numberOfLines = 2; [self.panel addSubview:self.statusLabel];
     UIButton *cancel = [self button:@"取消" action:@selector(cancelPressed)];
-    self.captureButton = [self button:self.mode == RSLongCaptureModeButtonStep ? @"结束" : @"截取" action:@selector(capturePressed)];
+    self.captureButton = [self button:@"结束" action:@selector(capturePressed)];
     [self.panel addSubview:cancel];
     cancel.tag = 1;
-    if (self.mode == RSLongCaptureModeButtonStep) {
-        self.continueButton = [self button:@"继续" action:@selector(continuePressed)];
-        self.continueButton.enabled = NO; self.continueButton.tag = 2;
-        self.captureButton.tag = 3; [self.panel addSubview:self.continueButton];
-    } else self.captureButton.tag = 2;
+    self.continueButton = [self button:self.mode == RSLongCaptureModeAutomaticStep ? @"暂停" : @"继续"
+        action:@selector(continuePressed)];
+    self.continueButton.enabled = self.mode == RSLongCaptureModeAutomaticStep;
+    self.continueButton.tag = 2; self.captureButton.tag = 3; [self.panel addSubview:self.continueButton];
     [self.panel addSubview:self.captureButton];
 }
 
@@ -86,7 +87,7 @@
     self.panel.frame = CGRectMake((bounds.size.width - width) / 2, bounds.size.height - insets.bottom - 118, width, 96);
     self.preview.frame = CGRectMake(12, 12, 54, 54);
     self.statusLabel.frame = CGRectMake(76, 9, width - 88, 38);
-    CGFloat buttonWidth = (width - 24) / (self.continueButton ? 3 : 2);
+    CGFloat buttonWidth = (width - 24) / 3;
     for (UIView *view in self.panel.subviews) if ([view isKindOfClass:UIButton.class])
         view.frame = CGRectMake(12 + (view.tag - 1) * buttonWidth, 51, buttonWidth, 38);
 }
@@ -147,25 +148,15 @@
     [self layoutIfNeeded];
     [self hideOtherRegionShotWindows];
     self.stitcher = [[RSLongStitcher alloc] initWithTopInset:self.rootViewController.view.safeAreaInsets.top];
-    self.statusLabel.text = self.mode == RSLongCaptureModeButtonStep
-        ? @"正在记录首屏…" : @"缓慢向上滑动，结束后点击截取";
-    [self startSampling];
+    self.statusLabel.text = self.mode == RSLongCaptureModeAutomaticStep
+        ? @"正在记录首屏，随后自动分步滚动…" : @"正在记录首屏…";
     [CATransaction flush];
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 80 * NSEC_PER_MSEC), dispatch_get_main_queue(), ^{
-        [self manualTick];
+        [self captureCurrentFrame];
     });
 }
 
-- (void)startSampling {
-    if (self.mode == RSLongCaptureModeButtonStep || self.stopped || self.timer || self.finishedFileURL) return;
-    __weak typeof(self) weakSelf = self;
-    self.timer = [NSTimer timerWithTimeInterval:0.25 repeats:YES block:^(NSTimer *timer) {
-        [weakSelf manualTick];
-    }];
-    [NSRunLoop.mainRunLoop addTimer:self.timer forMode:NSRunLoopCommonModes];
-}
-
-- (void)manualTick {
+- (void)captureCurrentFrame {
     if (self.busy || self.stopped || self.finishRequested) return;
     [self processImage:[self screenImage] finalFrame:NO];
 }
@@ -183,10 +174,24 @@
     });
 }
 
+- (void)scheduleAutomaticStep {
+    if (self.mode != RSLongCaptureModeAutomaticStep || self.automaticPaused || self.automaticStepScheduled ||
+        self.busy || self.stopped || self.finishRequested || self.finishedFileURL) return;
+    self.automaticStepScheduled = YES;
+    NSTimeInterval delay = MAX(0, self.nextStepAllowedTime - CACurrentMediaTime());
+    __weak typeof(self) weakSelf = self;
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(delay * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        typeof(self) self = weakSelf;
+        if (!self) return;
+        self.automaticStepScheduled = NO;
+        if (!self.automaticPaused && !self.busy && !self.stopped && !self.finishRequested) [self performStep];
+    });
+}
+
 - (void)capturePressed {
     if (self.stopped || self.finishRequested) return;
     self.finishRequested = YES;
-    [self.timer invalidate]; self.timer = nil;
+    self.automaticPaused = YES;
     self.captureButton.enabled = NO;
     if (self.finishedFileURL) { [self saveFinishedImage]; return; }
     if (!self.busy) [self captureFinalFrame];
@@ -197,7 +202,10 @@
     if (!image) {
         self.busy = NO;
         self.statusLabel.text = @"未能读取屏幕，请重试截取";
-        if (self.finishRequested) { self.finishRequested = NO; self.captureButton.enabled = YES; [self startSampling]; }
+        if (self.finishRequested) { self.finishRequested = NO; self.captureButton.enabled = YES; }
+        if (self.mode == RSLongCaptureModeAutomaticStep) {
+            self.automaticPaused = YES; [self.continueButton setTitle:@"重试" forState:UIControlStateNormal];
+        }
         [self enableContinueWhenReady];
         return;
     }
@@ -222,19 +230,27 @@
                     if (result != RSLongAppendResultLimit) [self enableContinueWhenReady];
                     if (self.retryCurrentFrame) self.statusLabel.text = @"本次未记录，页面稳定后点重试";
                     else if (result == RSLongAppendResultUnchanged) self.statusLabel.text = @"页面未移动，可能已到底；可结束或继续";
+                } else if (!self.finishRequested) {
+                    if (result == RSLongAppendResultAdded) [self scheduleAutomaticStep];
+                    else {
+                        self.automaticPaused = YES;
+                        self.retryCurrentFrame = result == RSLongAppendResultUncertain;
+                        [self.continueButton setTitle:self.retryCurrentFrame ? @"重试" : @"继续" forState:UIControlStateNormal];
+                        if (self.retryCurrentFrame) self.statusLabel.text = @"本次未记录，页面稳定后点重试";
+                        else if (result == RSLongAppendResultUnchanged) self.statusLabel.text = @"页面未移动，可能已到底；可结束或继续";
+                    }
                 }
                 if (result == RSLongAppendResultLimit) {
-                    [self.timer invalidate]; self.timer = nil;
-                    self.statusLabel.text = self.continueButton ? @"已到尺寸上限，请点击结束" : @"已到尺寸上限，请点击截取";
+                    self.automaticPaused = YES;
+                    self.statusLabel.text = @"已到尺寸上限，请点击结束";
                 }
                 if (self.finishRequested) {
                     if (!finalFrame) [self captureFinalFrame];
                     else if (result == RSLongAppendResultUncertain) {
-                        self.finishRequested = NO; self.captureButton.enabled = YES; [self startSampling];
-                        if (self.continueButton) {
-                            self.retryCurrentFrame = YES; [self enableContinueWhenReady];
-                            [self.continueButton setTitle:@"重试" forState:UIControlStateNormal];
-                        }
+                        self.finishRequested = NO; self.captureButton.enabled = YES;
+                        self.automaticPaused = self.mode == RSLongCaptureModeAutomaticStep;
+                        self.retryCurrentFrame = YES; [self enableContinueWhenReady];
+                        [self.continueButton setTitle:@"重试" forState:UIControlStateNormal];
                     } else [self donePressed];
                 }
             });
@@ -243,16 +259,43 @@
 }
 
 - (void)continuePressed {
-    if (self.busy || self.stopped || self.finishRequested) return;
+    if (self.stopped || self.finishRequested) return;
+    if (self.mode == RSLongCaptureModeAutomaticStep) {
+        if (!self.automaticPaused) {
+            self.automaticPaused = YES;
+            [self.continueButton setTitle:@"继续" forState:UIControlStateNormal];
+            self.statusLabel.text = @"已暂停，可结束或继续";
+            return;
+        }
+        if (self.busy) return;
+        self.automaticPaused = NO;
+        [self.continueButton setTitle:@"暂停" forState:UIControlStateNormal];
+        if (self.retryCurrentFrame) {
+            self.retryCurrentFrame = NO; [self captureCurrentFrame];
+        } else [self scheduleAutomaticStep];
+        return;
+    }
+    if (self.busy) return;
     CFTimeInterval now = CACurrentMediaTime();
     if (now < self.nextStepAllowedTime) { [self enableContinueWhenReady]; return; }
-    self.nextStepAllowedTime = now + 1.8;
-    self.continueButton.enabled = NO;
     if (self.retryCurrentFrame) {
         self.retryCurrentFrame = NO;
         [self.continueButton setTitle:@"继续" forState:UIControlStateNormal];
-        [self manualTick]; return;
+        [self captureCurrentFrame]; return;
     }
+    [self performStep];
+}
+
+- (void)performStep {
+    if (self.busy || self.stopped || self.finishRequested) return;
+    CFTimeInterval now = CACurrentMediaTime();
+    if (now < self.nextStepAllowedTime) {
+        if (self.mode == RSLongCaptureModeAutomaticStep) [self scheduleAutomaticStep];
+        else [self enableContinueWhenReady];
+        return;
+    }
+    self.nextStepAllowedTime = now + 1.8;
+    if (self.mode == RSLongCaptureModeButtonStep) self.continueButton.enabled = NO;
     self.busy = YES;
     self.statusLabel.text = @"正在向下移动并记录…";
     CGFloat screenHeight = CGRectGetHeight(self.rootViewController.view.bounds);
@@ -265,10 +308,13 @@
         if (!self || self.stopped) return;
         self.busy = NO;
         if (!success) {
-            self.statusLabel.text = @"系统滚动不可用，请切换手动滚动";
-            [self enableContinueWhenReady]; return;
+            self.statusLabel.text = @"系统滚动不可用，请结束后重试";
+            if (self.mode == RSLongCaptureModeAutomaticStep) {
+                self.automaticPaused = YES; [self.continueButton setTitle:@"继续" forState:UIControlStateNormal];
+            } else [self enableContinueWhenReady];
+            return;
         }
-        [self manualTick];
+        [self captureCurrentFrame];
     });
 }
 
@@ -329,7 +375,7 @@
 
 - (void)stop {
     if (self.stopped) return; self.stopped = YES;
-    [self.timer invalidate]; self.timer = nil;
+    self.automaticPaused = YES;
     RSLongStitcher *stitcher = self.stitcher; self.stitcher = nil;
     if (stitcher) dispatch_async(self.processingQueue, ^{ [stitcher cancel]; });
     self.finishedFileURL = nil; self.resultHandler = nil; self.cancelHandler = nil; self.hidden = YES; self.rootViewController = nil;

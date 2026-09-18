@@ -43,21 +43,6 @@ int main(void) {
     RSLongMatch recovered = RSFindVerticalOverlapNear(first, second, W, H, SHIFT + 2, 6);
     assert(recovered.offset == SHIFT && RSLongMatchIsReliable(recovered));
 
-    uint8_t overlayFirst[W * H], overlaySecond[W * H];
-    for (size_t y = 0; y < H; y++) for (size_t x = 0; x < W; x++)
-        overlayFirst[y * W + x] = (uint8_t)((y * 19 + x * 11 + y * x) & 255);
-    for (size_t y = 0; y < H - SHIFT; y++)
-        memcpy(overlaySecond + y * W, overlayFirst + (y + SHIFT) * W, W);
-    memset(overlaySecond + (H - SHIFT) * W, 211, SHIFT * W);
-    for (size_t y = 48; y < 58; y++)
-        for (size_t x = 10; x < 18; x++) overlayFirst[y * W + x] = overlaySecond[y * W + x] = 31;
-    size_t overlay = RSFindLowerFixedOverlayStart(overlayFirst, overlaySecond, W, H, SHIFT, H / 2);
-    assert(overlay >= 48 && overlay <= 50);
-
-    memset(overlayFirst, 80, sizeof(overlayFirst));
-    memset(overlaySecond, 80, sizeof(overlaySecond));
-    assert(RSFindLowerFixedOverlayStart(overlayFirst, overlaySecond, W, H, SHIFT, H / 2) == H);
-
     memset(first, 255, sizeof(first)); memset(second, 255, sizeof(second));
     for (size_t y = 12; y < 16; y++) memset(first + y * W + 4, 0, 24);
     for (size_t y = 5; y < 9; y++) memset(second + y * W + 4, 0, 24);

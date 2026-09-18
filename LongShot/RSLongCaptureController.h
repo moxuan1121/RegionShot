@@ -3,8 +3,8 @@
 NS_ASSUME_NONNULL_BEGIN
 
 typedef NS_ENUM(NSInteger, RSLongCaptureMode) {
-    RSLongCaptureModeManual = 2,
-    RSLongCaptureModeButtonStep = 3
+    RSLongCaptureModeButtonStep = 3,
+    RSLongCaptureModeAutomaticStep = 4
 };
 
 @interface RSLongCaptureController : UIWindow

@@ -171,10 +171,6 @@ enum { RSLongSignatureWidth = 48, RSLongDetailWidth = 192 };
         else if (++misses >= 2) break;
     }
     size_t bottom = fixedBottom;
-    size_t overlayStart = RSFindLowerFixedOverlayStart(self.previousDetail.bytes, detail.bytes,
-        detailWidth, height, offset, height * 55 / 100);
-    size_t overlayBottom = overlayStart < height ? height - overlayStart : 0;
-    if (overlayBottom <= height * 45 / 100) bottom = MAX(bottom, overlayBottom);
     if (offset + bottom >= height || offset > height * 4 / 5) {
         CGImageRelease(clean); return RSLongAppendResultUncertain;
     }
