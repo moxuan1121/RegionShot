@@ -179,8 +179,11 @@ void RSShowFloatingImage(UIImage *image, UIWindowScene *scene) {
         [snap layoutIfNeeded];
         [UIView animateWithDuration:reduceMotion ? 0 : 0.22 delay:0
             options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction | UIViewAnimationOptionCurveEaseOut
-            animations:^{ snap.alpha = [RSOption(@"FloatOpacity") doubleValue]; snap.transform = CGAffineTransformIdentity; }
-            completion:^(BOOL finished) { if (snap.superview) [snap setShadowVisible:YES]; }];
+            animations:^{
+                snap.alpha = [RSOption(@"FloatOpacity") doubleValue];
+                snap.transform = CGAffineTransformIdentity;
+                [snap setShadowVisible:YES];
+            } completion:nil];
     });
     if (record) {
         __weak typeof(self) weakSelf = self;
