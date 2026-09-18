@@ -307,6 +307,7 @@
         typeof(self) self = weakSelf;
         if (!self || self.stopped) return;
         self.busy = NO;
+        if (self.finishRequested) { [self captureFinalFrame]; return; }
         if (!success) {
             self.statusLabel.text = @"系统滚动不可用，请结束后重试";
             if (self.mode == RSLongCaptureModeAutomaticStep) {

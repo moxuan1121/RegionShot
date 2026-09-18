@@ -54,6 +54,7 @@ assert '@"按键分步滚动"' in source and '@"自动分步滚动"' in source
 assert 'action:@selector(continuePressed)' in controller
 assert 'scheduleAutomaticStep' in controller and 'automaticStepScheduled' in controller
 assert 'NSTimer' not in controller and 'manualTick' not in controller and 'startSampling' not in controller
+assert 'if (self.finishRequested) { [self captureFinalFrame]; return; }' in controller
 assert 'LongShot/RSLongSwipe.m' in makefile
 assert 'com.apple.UIKit' not in injection
 assert 'progress * progress * (3.0 - 2.0 * progress)' in swipe
