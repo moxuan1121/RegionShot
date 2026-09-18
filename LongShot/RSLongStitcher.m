@@ -29,6 +29,7 @@ enum { RSLongSignatureWidth = 48, RSLongDetailWidth = 192 };
 @property (nonatomic) size_t pixelWidth;
 @property (nonatomic) size_t pixelHeight;
 @property (nonatomic) size_t totalHeight;
+@property (nonatomic) size_t previousOffset;
 @end
 
 @implementation RSLongStitcher
@@ -146,14 +147,19 @@ enum { RSLongSignatureWidth = 48, RSLongDetailWidth = 192 };
     if (match.changedFraction < 0.002) {
         CGImageRelease(clean); return RSLongAppendResultUnchanged;
     }
-    if (!RSLongMatchIsReliable(match)) {
-        CGImageRelease(clean); return RSLongAppendResultUncertain;
-    }
     NSData *oldDetailEdges = [self edgeSignature:self.previousDetail width:detailWidth height:height];
     NSData *newDetailEdges = [self edgeSignature:detail width:detailWidth height:height];
     size_t radius = MIN((size_t)24, MAX((size_t)6, height / 100));
-    size_t offset = RSRefineVerticalOffset(oldDetailEdges.bytes, newDetailEdges.bytes,
-        detailWidth, height, match.offset, radius);
+    size_t offset = 0;
+    if (RSLongMatchIsReliable(match)) {
+        offset = RSRefineVerticalOffset(oldDetailEdges.bytes, newDetailEdges.bytes,
+            detailWidth, height, match.offset, radius);
+    } else if (self.previousOffset) {
+        RSLongMatch recovered = RSFindVerticalOverlapNear(oldDetailEdges.bytes, newDetailEdges.bytes,
+            detailWidth, height, self.previousOffset, MIN((size_t)48, MAX((size_t)12, self.previousOffset / 3)));
+        if (RSLongMatchIsReliable(recovered)) offset = recovered.offset;
+    }
+    if (!offset) { CGImageRelease(clean); return RSLongAppendResultUncertain; }
     const uint8_t *oldBytes = self.previousGray.bytes, *newBytes = gray.bytes;
     size_t fixedBottom = 0, misses = 0, maximumFixed = height / 5;
     for (size_t row = 0; row < maximumFixed; row++) {
@@ -165,6 +171,10 @@ enum { RSLongSignatureWidth = 48, RSLongDetailWidth = 192 };
         else if (++misses >= 2) break;
     }
     size_t bottom = fixedBottom;
+    size_t overlayStart = RSFindLowerFixedOverlayStart(self.previousDetail.bytes, detail.bytes,
+        detailWidth, height, offset, height * 55 / 100);
+    size_t overlayBottom = overlayStart < height ? height - overlayStart : 0;
+    if (overlayBottom <= height * 45 / 100) bottom = MAX(bottom, overlayBottom);
     if (offset + bottom >= height || offset > height * 4 / 5) {
         CGImageRelease(clean); return RSLongAppendResultUncertain;
     }
@@ -177,7 +187,7 @@ enum { RSLongSignatureWidth = 48, RSLongDetailWidth = 192 };
         detailWidth, height, offset, incomingEnd, seamWindow);
     BOOL saved = [self writeSlice:clean y:incomingEnd - rewind height:offset + rewind];
     if (saved && footer + rewind) [self trimRows:footer + rewind beforeLastSlice:YES];
-    if (saved) { self.previousGray = gray; self.previousDetail = detail; }
+    if (saved) { self.previousGray = gray; self.previousDetail = detail; self.previousOffset = offset; }
     CGImageRelease(clean);
     return saved ? RSLongAppendResultAdded : RSLongAppendResultUncertain;
 }
@@ -244,7 +254,7 @@ enum { RSLongSignatureWidth = 48, RSLongDetailWidth = 192 };
         if (error && !*error) *error = [NSError errorWithDomain:RSLongErrorDomain code:4 userInfo:@{NSLocalizedDescriptionKey:@"长截图编码失败。"}];
         return nil;
     }
-    self.previousGray = nil; self.previousDetail = nil;
+    self.previousGray = nil; self.previousDetail = nil; self.previousOffset = 0;
     for (RSLongSlice *slice in self.slices) [NSFileManager.defaultManager removeItemAtPath:slice.path error:nil];
     [self.slices removeAllObjects];
     [NSFileManager.defaultManager removeItemAtPath:rawPath error:nil];
@@ -258,7 +268,7 @@ enum { RSLongSignatureWidth = 48, RSLongDetailWidth = 192 };
 }
 
 - (void)cancel {
-    self.previousGray = nil; self.previousDetail = nil; [self.slices removeAllObjects];
+    self.previousGray = nil; self.previousDetail = nil; self.previousOffset = 0; [self.slices removeAllObjects];
     [NSFileManager.defaultManager removeItemAtPath:self.directory error:nil];
 }
 

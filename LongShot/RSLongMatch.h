@@ -65,6 +65,85 @@ static inline int RSLongMatchIsReliable(RSLongMatch match) {
     return match.offset && match.score <= 16.0 && match.margin >= requiredMargin;
 }
 
+// Repeating lists can make the cheap full-range signature ambiguous. Once a
+// session has a reliable movement distance, search the detailed signature near
+// that distance instead of accepting a visually similar row farther away.
+static inline RSLongMatch RSFindVerticalOverlapNear(const uint8_t *previous, const uint8_t *current,
+                                                     size_t width, size_t height, size_t center,
+                                                     size_t radius) {
+    RSLongMatch result = {0, DBL_MAX, 0, 0, 0};
+    if (!previous || !current || width < 8 || height < 24 || !center) return result;
+    uint64_t unchanged = 0, changed = 0;
+    for (size_t i = 0; i < width * height; i++) {
+        unsigned difference = (unsigned)abs((int)previous[i] - (int)current[i]);
+        unchanged += difference; changed += difference > 8;
+    }
+    result.unchangedScore = (double)unchanged / (double)(width * height);
+    result.changedFraction = (double)changed / (double)(width * height);
+    size_t minimum = center > radius ? center - radius : 1;
+    size_t maximum = center + radius < height * 4 / 5 ? center + radius : height * 4 / 5;
+    double second = DBL_MAX;
+    size_t neighborhood = height / 300 + 3;
+    for (size_t offset = minimum; offset <= maximum; offset++) {
+        size_t overlap = height - offset, stepY = overlap > 240 ? overlap / 240 : 1;
+        uint64_t difference = 0, samples = 0;
+        for (size_t y = 0; y < overlap; y += stepY) {
+            const uint8_t *aligned = previous + (y + offset) * width;
+            const uint8_t *stationary = previous + y * width;
+            const uint8_t *incoming = current + y * width;
+            for (size_t x = 0; x < width; x += 2) {
+                unsigned alignedDifference = (unsigned)abs((int)aligned[x] - (int)incoming[x]);
+                unsigned stationaryDifference = (unsigned)abs((int)stationary[x] - (int)incoming[x]);
+                if (stationaryDifference <= 2 && alignedDifference > 8) continue;
+                difference += alignedDifference; samples++;
+            }
+        }
+        double score = samples ? (double)difference / (double)samples : DBL_MAX;
+        if (score < result.score) {
+            if (result.offset && (offset > result.offset ? offset - result.offset : result.offset - offset) > neighborhood)
+                second = result.score;
+            result.score = score; result.offset = offset;
+        } else if ((offset > result.offset ? offset - result.offset : result.offset - offset) > neighborhood &&
+                   score < second) second = score;
+    }
+    result.margin = second == DBL_MAX ? 0 : second - result.score;
+    return result;
+}
+
+// Find a compact fixed control in the lower viewport (for example a web page's
+// floating down arrow). Full-width stationary backgrounds are deliberately
+// rejected, because they are page decoration rather than an overlay.
+static inline size_t RSFindLowerFixedOverlayStart(const uint8_t *previous, const uint8_t *current,
+                                                   size_t width, size_t height, size_t offset,
+                                                   size_t minimumY) {
+    if (!previous || !current || width < 16 || !offset || minimumY >= height) return height;
+    size_t limit = height > offset ? height - offset : 0;
+    size_t minimumVotes = width / 32 > 3 ? width / 32 : 3;
+    size_t maximumVotes = width * 2 / 3;
+    size_t requiredRows = height / 400 > 6 ? height / 400 : 6;
+    size_t runStart = height, runRows = 0, gaps = 0;
+    for (size_t y = minimumY; y < limit; y++) {
+        size_t votes = 0;
+        const uint8_t *same = previous + y * width;
+        const uint8_t *aligned = previous + (y + offset) * width;
+        const uint8_t *incoming = current + y * width;
+        for (size_t x = 0; x < width; x++) {
+            unsigned stationaryDifference = (unsigned)abs((int)same[x] - (int)incoming[x]);
+            unsigned alignedDifference = (unsigned)abs((int)aligned[x] - (int)incoming[x]);
+            votes += stationaryDifference <= 3 && alignedDifference >= 10;
+        }
+        int fixedRow = votes >= minimumVotes && votes <= maximumVotes;
+        if (fixedRow) {
+            if (runStart == height) runStart = y;
+            runRows++; gaps = 0;
+        } else if (runStart != height && ++gaps > 2) {
+            if (runRows >= requiredRows) return runStart;
+            runStart = height; runRows = 0; gaps = 0;
+        }
+    }
+    return runRows >= requiredRows ? runStart : height;
+}
+
 // Refine a cheap coarse match in a small, higher-resolution search window.
 // The caller supplies grayscale or vertical-edge rows; fixed screen pixels are
 // ignored when they disagree with the aligned scrolling candidate.
