@@ -232,12 +232,16 @@
                     else if (result == RSLongAppendResultUnchanged) self.statusLabel.text = @"页面未移动，可能已到底；可结束或继续";
                 } else if (!self.finishRequested) {
                     if (result == RSLongAppendResultAdded) [self scheduleAutomaticStep];
-                    else {
+                    else if (result == RSLongAppendResultUnchanged) {
+                        self.automaticPaused = YES; self.finishRequested = YES;
+                        self.captureButton.enabled = NO;
+                        self.statusLabel.text = @"已到页面底部，正在生成长图…";
+                        [self donePressed]; return;
+                    } else {
                         self.automaticPaused = YES;
                         self.retryCurrentFrame = result == RSLongAppendResultUncertain;
                         [self.continueButton setTitle:self.retryCurrentFrame ? @"重试" : @"继续" forState:UIControlStateNormal];
                         if (self.retryCurrentFrame) self.statusLabel.text = @"本次未记录，页面稳定后点重试";
-                        else if (result == RSLongAppendResultUnchanged) self.statusLabel.text = @"页面未移动，可能已到底；可结束或继续";
                     }
                 }
                 if (result == RSLongAppendResultLimit) {

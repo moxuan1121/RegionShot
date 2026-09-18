@@ -55,6 +55,7 @@ assert 'action:@selector(continuePressed)' in controller
 assert 'scheduleAutomaticStep' in controller and 'automaticStepScheduled' in controller
 assert 'NSTimer' not in controller and 'manualTick' not in controller and 'startSampling' not in controller
 assert 'if (self.finishRequested) { [self captureFinalFrame]; return; }' in controller
+assert '@"已到页面底部，正在生成长图…"' in controller
 assert 'LongShot/RSLongSwipe.m' in makefile
 assert 'com.apple.UIKit' not in injection
 assert 'progress * progress * (3.0 - 2.0 * progress)' in swipe
