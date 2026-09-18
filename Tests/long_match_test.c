@@ -29,6 +29,17 @@ int main(void) {
     match = RSFindVerticalOverlap(first, first, W, H);
     assert(match.unchangedScore == 0 && match.changedFraction == 0);
 
+    // A higher-resolution local pass corrects a deliberately imprecise coarse offset.
+    for (size_t y = 0; y < H - SHIFT; y++)
+        memcpy(second + y * W, first + (y + SHIFT) * W, W);
+    memset(second + (H - SHIFT) * W, 219, SHIFT * W);
+    assert(RSRefineVerticalOffset(first, second, W, H, SHIFT + 4, 6) == SHIFT);
+
+    // Keep an already clean hard seam, but move away from a noisy boundary.
+    assert(RSFindQuietSeamRewind(first, second, W, H, SHIFT, H - SHIFT, 8) == 0);
+    for (size_t x = 0; x < W; x++) second[(H - SHIFT - 1) * W + x] ^= 0xff;
+    assert(RSFindQuietSeamRewind(first, second, W, H, SHIFT, H - SHIFT, 8) > 0);
+
     memset(first, 255, sizeof(first)); memset(second, 255, sizeof(second));
     for (size_t y = 12; y < 16; y++) memset(first + y * W + 4, 0, 24);
     for (size_t y = 5; y < 9; y++) memset(second + y * W + 4, 0, 24);

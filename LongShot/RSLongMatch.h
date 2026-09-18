@@ -65,4 +65,75 @@ static inline int RSLongMatchIsReliable(RSLongMatch match) {
     return match.offset && match.score <= 16.0 && match.margin >= requiredMargin;
 }
 
+// Refine a cheap coarse match in a small, higher-resolution search window.
+// The caller supplies grayscale or vertical-edge rows; fixed screen pixels are
+// ignored when they disagree with the aligned scrolling candidate.
+static inline size_t RSRefineVerticalOffset(const uint8_t *previous, const uint8_t *current,
+                                            size_t width, size_t height, size_t coarse,
+                                            size_t radius) {
+    if (!previous || !current || width < 8 || height < 24 || !coarse) return coarse;
+    size_t minimum = coarse > radius ? coarse - radius : 1;
+    size_t maximum = coarse + radius;
+    size_t limit = height * 4 / 5;
+    if (maximum > limit) maximum = limit;
+    size_t best = coarse;
+    double bestScore = DBL_MAX, coarseScore = DBL_MAX;
+    for (size_t offset = minimum; offset <= maximum; offset++) {
+        size_t overlap = height - offset;
+        size_t stepY = overlap > 240 ? overlap / 240 : 1;
+        uint64_t difference = 0, samples = 0;
+        for (size_t y = 0; y < overlap; y += stepY) {
+            const uint8_t *aligned = previous + (y + offset) * width;
+            const uint8_t *stationary = previous + y * width;
+            const uint8_t *incoming = current + y * width;
+            for (size_t x = 0; x < width; x += 2) {
+                unsigned alignedDifference = (unsigned)abs((int)aligned[x] - (int)incoming[x]);
+                unsigned stationaryDifference = (unsigned)abs((int)stationary[x] - (int)incoming[x]);
+                if (stationaryDifference <= 2 && alignedDifference > 8) continue;
+                difference += alignedDifference;
+                samples++;
+            }
+        }
+        double score = samples ? (double)difference / (double)samples : DBL_MAX;
+        if (offset == coarse) coarseScore = score;
+        if (score < bestScore) { bestScore = score; best = offset; }
+    }
+    // The coarse result is already confidence-checked. Change it only when the
+    // detailed rows provide a material improvement, not a neighboring tie.
+    return best != coarse && bestScore + 0.25 < coarseScore * 0.97 ? best : coarse;
+}
+
+// Move a hard cut upward only when a nearby aligned row is substantially
+// quieter. This keeps the output height unchanged: the stitcher trims the same
+// number of rows from its tail before appending the longer incoming strip.
+static inline size_t RSFindQuietSeamRewind(const uint8_t *previous, const uint8_t *current,
+                                           size_t width, size_t height, size_t offset,
+                                           size_t incomingEnd, size_t maximumRewind) {
+    if (!previous || !current || width < 8 || !offset || incomingEnd < 2) return 0;
+    if (maximumRewind >= incomingEnd) maximumRewind = incomingEnd - 1;
+    double bestScore = DBL_MAX, baseScore = DBL_MAX;
+    size_t bestRewind = 0;
+    for (size_t rewind = 0; rewind <= maximumRewind; rewind++) {
+        size_t seam = incomingEnd - rewind;
+        uint64_t difference = 0, samples = 0;
+        size_t band = seam < 4 ? seam : 4;
+        for (size_t row = 1; row <= band; row++) {
+            size_t currentY = seam - row;
+            size_t previousY = currentY + offset;
+            if (previousY >= height) continue;
+            const uint8_t *a = previous + previousY * width;
+            const uint8_t *b = current + currentY * width;
+            for (size_t x = 0; x < width; x += 2) {
+                difference += (unsigned)abs((int)a[x] - (int)b[x]);
+                samples++;
+            }
+        }
+        double score = samples ? (double)difference / (double)samples : DBL_MAX;
+        if (!rewind) baseScore = score;
+        if (score < bestScore) { bestScore = score; bestRewind = rewind; }
+    }
+    // Avoid moving a clean seam just because another row is microscopically better.
+    return bestRewind && bestScore + 0.5 < baseScore * 0.75 ? bestRewind : 0;
+}
+
 #endif

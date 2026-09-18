@@ -11,7 +11,7 @@
 #include <string.h>
 
 static NSString *const RSLongErrorDomain = @"RegionShot.LongCapture";
-enum { RSLongSignatureWidth = 48 };
+enum { RSLongSignatureWidth = 48, RSLongDetailWidth = 192 };
 
 @interface RSLongSlice : NSObject
 @property (nonatomic, copy) NSString *path;
@@ -25,6 +25,7 @@ enum { RSLongSignatureWidth = 48 };
 @property (nonatomic, copy) NSString *directory;
 @property (nonatomic, strong) NSMutableArray<RSLongSlice *> *slices;
 @property (nonatomic, strong) NSData *previousGray;
+@property (nonatomic, strong) NSData *previousDetail;
 @property (nonatomic) size_t pixelWidth;
 @property (nonatomic) size_t pixelHeight;
 @property (nonatomic) size_t totalHeight;
@@ -57,29 +58,43 @@ enum { RSLongSignatureWidth = 48 };
     return CGImageCreateWithImageInRect(source, CGRectMake(0, top, width - right, height - top));
 }
 
-- (NSData *)graySignature:(CGImageRef)image {
+- (NSData *)graySignature:(CGImageRef)image width:(size_t)signatureWidth {
     size_t signatureHeight = CGImageGetHeight(image);
-    NSMutableData *data = [NSMutableData dataWithLength:RSLongSignatureWidth * signatureHeight];
+    NSMutableData *data = [NSMutableData dataWithLength:signatureWidth * signatureHeight];
     CGColorSpaceRef gray = CGColorSpaceCreateDeviceGray();
-    CGContextRef context = CGBitmapContextCreate(data.mutableBytes, RSLongSignatureWidth, signatureHeight,
-        8, RSLongSignatureWidth, gray, kCGImageAlphaNone);
+    CGContextRef context = CGBitmapContextCreate(data.mutableBytes, signatureWidth, signatureHeight,
+        8, signatureWidth, gray, kCGImageAlphaNone);
     CGColorSpaceRelease(gray);
     if (!context) return nil;
     CGContextSetInterpolationQuality(context, kCGInterpolationLow);
-    CGContextDrawImage(context, CGRectMake(0, 0, RSLongSignatureWidth, signatureHeight), image);
+    CGContextDrawImage(context, CGRectMake(0, 0, signatureWidth, signatureHeight), image);
     CGContextRelease(context);
     return data;
 }
 
-- (NSData *)edgeSignature:(NSData *)gray height:(size_t)height {
+- (NSData *)edgeSignature:(NSData *)gray width:(size_t)width height:(size_t)height {
     NSMutableData *edges = [gray mutableCopy];
     uint8_t *pixels = edges.mutableBytes;
     for (size_t y = height - 1; y > 0; y--)
-        for (size_t x = 0; x < RSLongSignatureWidth; x++)
-            pixels[y * RSLongSignatureWidth + x] = (uint8_t)abs((int)pixels[y * RSLongSignatureWidth + x] -
-                                                                (int)pixels[(y - 1) * RSLongSignatureWidth + x]);
-    memset(pixels, 0, RSLongSignatureWidth);
+        for (size_t x = 0; x < width; x++)
+            pixels[y * width + x] = (uint8_t)abs((int)pixels[y * width + x] -
+                                                 (int)pixels[(y - 1) * width + x]);
+    memset(pixels, 0, width);
     return edges;
+}
+
+- (void)trimRows:(size_t)rows beforeLastSlice:(BOOL)beforeLast {
+    NSInteger index = (NSInteger)self.slices.count - (beforeLast ? 2 : 1);
+    while (rows && index >= 0) {
+        RSLongSlice *slice = self.slices[(NSUInteger)index];
+        size_t removed = MIN(rows, slice.height);
+        slice.height -= removed; self.totalHeight -= removed; rows -= removed;
+        if (!slice.height) {
+            [NSFileManager.defaultManager removeItemAtPath:slice.path error:nil];
+            [self.slices removeObjectAtIndex:(NSUInteger)index];
+        }
+        index--;
+    }
 }
 
 - (BOOL)writeSlice:(CGImageRef)image y:(size_t)y height:(size_t)height {
@@ -108,19 +123,22 @@ enum { RSLongSignatureWidth = 48 };
     size_t width = CGImageGetWidth(clean), height = CGImageGetHeight(clean);
     if (!self.slices.count) {
         self.pixelWidth = width; self.pixelHeight = height;
-        self.previousGray = [self graySignature:clean];
-        BOOL saved = self.previousGray && [self writeSlice:clean y:0 height:height];
+        self.previousGray = [self graySignature:clean width:RSLongSignatureWidth];
+        self.previousDetail = [self graySignature:clean width:MIN((size_t)RSLongDetailWidth, width)];
+        BOOL saved = self.previousGray && self.previousDetail && [self writeSlice:clean y:0 height:height];
         CGImageRelease(clean);
         return saved ? RSLongAppendResultAdded : RSLongAppendResultUncertain;
     }
     if (width != self.pixelWidth || height != self.pixelHeight || self.totalHeight >= 60000) {
         CGImageRelease(clean); return RSLongAppendResultLimit;
     }
-    NSData *gray = [self graySignature:clean];
-    if (!gray) { CGImageRelease(clean); return RSLongAppendResultUncertain; }
+    size_t detailWidth = MIN((size_t)RSLongDetailWidth, width);
+    NSData *gray = [self graySignature:clean width:RSLongSignatureWidth];
+    NSData *detail = [self graySignature:clean width:detailWidth];
+    if (!gray || !detail || !self.previousDetail) { CGImageRelease(clean); return RSLongAppendResultUncertain; }
     const size_t trim = height * 12 / 100;
-    NSData *oldEdges = [self edgeSignature:self.previousGray height:height];
-    NSData *newEdges = [self edgeSignature:gray height:height];
+    NSData *oldEdges = [self edgeSignature:self.previousGray width:RSLongSignatureWidth height:height];
+    NSData *newEdges = [self edgeSignature:gray width:RSLongSignatureWidth height:height];
     RSLongMatch match = RSFindVerticalOverlap((const uint8_t *)oldEdges.bytes + trim * RSLongSignatureWidth,
         (const uint8_t *)newEdges.bytes + trim * RSLongSignatureWidth, RSLongSignatureWidth,
         height - trim * 2);
@@ -131,7 +149,11 @@ enum { RSLongSignatureWidth = 48 };
     if (!RSLongMatchIsReliable(match)) {
         CGImageRelease(clean); return RSLongAppendResultUncertain;
     }
-    size_t offset = match.offset;
+    NSData *oldDetailEdges = [self edgeSignature:self.previousDetail width:detailWidth height:height];
+    NSData *newDetailEdges = [self edgeSignature:detail width:detailWidth height:height];
+    size_t radius = MIN((size_t)24, MAX((size_t)6, height / 100));
+    size_t offset = RSRefineVerticalOffset(oldDetailEdges.bytes, newDetailEdges.bytes,
+        detailWidth, height, match.offset, radius);
     const uint8_t *oldBytes = self.previousGray.bytes, *newBytes = gray.bytes;
     size_t fixedBottom = 0, misses = 0, maximumFixed = height / 5;
     for (size_t row = 0; row < maximumFixed; row++) {
@@ -146,12 +168,16 @@ enum { RSLongSignatureWidth = 48 };
     if (offset + bottom >= height || offset > height * 4 / 5) {
         CGImageRelease(clean); return RSLongAppendResultUncertain;
     }
-    RSLongSlice *previous = self.slices.lastObject;
     // Only the initial full frame includes the fixed footer. Subsequent slices exclude it.
+    RSLongSlice *previous = self.slices.lastObject;
     size_t footer = self.slices.count == 1 ? MIN(bottom, previous.height - 1) : 0;
-    BOOL saved = [self writeSlice:clean y:height - bottom - offset height:offset];
-    if (saved && footer) { previous.height -= footer; self.totalHeight -= footer; }
-    if (saved) self.previousGray = gray;
+    size_t incomingEnd = height - bottom - offset;
+    size_t seamWindow = MIN((size_t)48, MIN(offset, incomingEnd / 4));
+    size_t rewind = RSFindQuietSeamRewind(self.previousDetail.bytes, detail.bytes,
+        detailWidth, height, offset, incomingEnd, seamWindow);
+    BOOL saved = [self writeSlice:clean y:incomingEnd - rewind height:offset + rewind];
+    if (saved && footer + rewind) [self trimRows:footer + rewind beforeLastSlice:YES];
+    if (saved) { self.previousGray = gray; self.previousDetail = detail; }
     CGImageRelease(clean);
     return saved ? RSLongAppendResultAdded : RSLongAppendResultUncertain;
 }
@@ -218,7 +244,7 @@ enum { RSLongSignatureWidth = 48 };
         if (error && !*error) *error = [NSError errorWithDomain:RSLongErrorDomain code:4 userInfo:@{NSLocalizedDescriptionKey:@"长截图编码失败。"}];
         return nil;
     }
-    self.previousGray = nil;
+    self.previousGray = nil; self.previousDetail = nil;
     for (RSLongSlice *slice in self.slices) [NSFileManager.defaultManager removeItemAtPath:slice.path error:nil];
     [self.slices removeAllObjects];
     [NSFileManager.defaultManager removeItemAtPath:rawPath error:nil];
@@ -232,7 +258,7 @@ enum { RSLongSignatureWidth = 48 };
 }
 
 - (void)cancel {
-    self.previousGray = nil; [self.slices removeAllObjects];
+    self.previousGray = nil; self.previousDetail = nil; [self.slices removeAllObjects];
     [NSFileManager.defaultManager removeItemAtPath:self.directory error:nil];
 }
 
