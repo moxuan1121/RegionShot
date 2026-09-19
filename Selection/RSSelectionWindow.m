@@ -26,31 +26,6 @@ BOOL RSStageWeChatScanImage(UIImage *image) {
     return YES;
 }
 
-static NSString *RSLensUploadPagePath(void) {
-    return jbroot(@"/var/mobile/Library/Caches/com.moxuan.regionshot.google-lens.html");
-}
-
-static NSURL *RSStageLensUploadPage(UIImage *image, NSError **error) {
-    NSData *jpeg = UIImageJPEGRepresentation(image, 0.9);
-    if (!jpeg.length) {
-        if (error) *error = [NSError errorWithDomain:@"com.moxuan.regionshot.lens" code:1 userInfo:@{NSLocalizedDescriptionKey:@"无法编码所选图片。"}];
-        return nil;
-    }
-    long long milliseconds = (long long)(NSDate.date.timeIntervalSince1970 * 1000.0);
-    NSString *dimensions = [NSString stringWithFormat:@"%.0f,%.0f", image.size.width * image.scale, image.size.height * image.scale];
-    NSString *html = [NSString stringWithFormat:
-        @"<!doctype html><meta charset=utf-8><meta name=viewport content='width=device-width'><title>RegionShot 识图</title>"
-         "<style>body{font:17px -apple-system;margin:0;display:grid;place-items:center;height:100vh;background:#fff;color:#555}</style>"
-         "<div id=status>正在上传图片…</div><form id=upload action='https://lens.google.com/v3/upload?ep=ccm&hl=zh-CN&st=%lld' method=post enctype='multipart/form-data' hidden>"
-         "<input id=image type=file name=encoded_image><input name=processed_image_dimensions value='%@'></form>"
-         "<script>try{const b=atob('%@'),u=new Uint8Array(b.length);for(let i=0;i<b.length;i++)u[i]=b.charCodeAt(i);const d=new DataTransfer();d.items.add(new File([u],'regionshot.jpg',{type:'image/jpeg'}));document.getElementById('image').files=d.files;document.getElementById('upload').submit()}catch(e){document.getElementById('status').textContent='无法准备识图图片，请返回后重试。'}</script>",
-        milliseconds, dimensions, [jpeg base64EncodedStringWithOptions:0]];
-    NSString *path = RSLensUploadPagePath();
-    if (![html writeToFile:path atomically:YES encoding:NSUTF8StringEncoding error:error]) return nil;
-    [[NSFileManager defaultManager] setAttributes:@{NSFilePosixPermissions:@0600} ofItemAtPath:path error:nil];
-    return [NSURL fileURLWithPath:path];
-}
-
 @interface RSSelectionController : UIViewController
 @property (nonatomic) UIInterfaceOrientation captureOrientation;
 @end
@@ -67,7 +42,7 @@ static NSURL *RSStageLensUploadPage(UIImage *image, NSError **error) {
 - (BOOL)prefersHomeIndicatorAutoHidden { return YES; }
 @end
 
-@interface RSSelectionWindow ()
+@interface RSSelectionWindow () <NSURLSessionTaskDelegate>
 @property (nonatomic, strong) UIImageView *imageView;
 @property (nonatomic, strong) RSSelectionView *selectionView;
 @property (nonatomic, strong) RSSelectionToolbar *toolbar;
@@ -76,7 +51,10 @@ static NSURL *RSStageLensUploadPage(UIImage *image, NSError **error) {
 @property (nonatomic, strong) UIScrollView *toolbarScroll;
 @property (nonatomic) UIInterfaceOrientation captureOrientation;
 @property (nonatomic, strong) UIAlertController *lensProgress;
-@property (nonatomic) BOOL lensPageHandedOff;
+@property (nonatomic, strong) NSURLSession *lensSession;
+@property (nonatomic, strong) NSURLSessionTask *lensTask;
+- (void)uploadLensJPEG:(NSData *)jpeg dimensions:(NSString *)dimensions;
+- (void)finishLensWithURL:(NSURL *)resultURL errorText:(NSString *)errorText;
 @end
 
 @implementation RSSelectionWindow
@@ -248,40 +226,82 @@ static NSURL *RSStageLensUploadPage(UIImage *image, NSError **error) {
     if (!self.selectionView.hasValidSelection) [self.selectionView selectAll];
     UIImage *image = [RSScreenCapture cropImage:self.imageView.image toRect:self.selectionRect displaySize:self.displaySize];
     if (!image) return;
-    UIAlertController *progress = [UIAlertController alertControllerWithTitle:@"正在识图" message:@"正在准备所选图片…" preferredStyle:UIAlertControllerStyleAlert];
+    UIAlertController *progress = [UIAlertController alertControllerWithTitle:@"正在识图" message:@"正在上传所选图片…" preferredStyle:UIAlertControllerStyleAlert];
     [progress addAction:[UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:^(UIAlertAction *action) {
+        [self.lensSession invalidateAndCancel];
+        self.lensSession = nil; self.lensTask = nil;
         self.lensProgress = nil;
-        [[NSFileManager defaultManager] removeItemAtPath:RSLensUploadPagePath() error:nil];
     }]];
     self.lensProgress = progress;
     __weak typeof(self) weakSelf = self;
     [self.rootViewController presentViewController:progress animated:YES completion:^{
         dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
             @autoreleasepool {
-                NSError *error = nil;
-                NSURL *pageURL = RSStageLensUploadPage(image, &error);
+                NSData *jpeg = UIImageJPEGRepresentation(image, 0.9);
+                NSString *dimensions = [NSString stringWithFormat:@"%.0f,%.0f", image.size.width * image.scale, image.size.height * image.scale];
                 dispatch_async(dispatch_get_main_queue(), ^{
                     RSSelectionWindow *window = weakSelf;
-                    if (!window || window.lensProgress != progress) {
-                        if (pageURL) [[NSFileManager defaultManager] removeItemAtPath:RSLensUploadPagePath() error:nil];
-                        return;
-                    }
-                    [progress dismissViewControllerAnimated:YES completion:^{
-                        window.lensProgress = nil;
-                        if (!pageURL) { [window showLensError:error.localizedDescription ?: @"无法准备识图图片，请重试。"]; return; }
-                        NSURLComponents *components = [NSURLComponents new];
-                        components.scheme = @"reynard"; components.host = @"open";
-                        components.queryItems = @[[NSURLQueryItem queryItemWithName:@"url" value:pageURL.absoluteString]];
-                        window.lensPageHandedOff = YES;
-                        if (window.toolbar.cancelHandler) window.toolbar.cancelHandler();
-                        [UIApplication.sharedApplication openURL:components.URL options:@{} completionHandler:nil];
-                        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 120 * NSEC_PER_SEC), dispatch_get_global_queue(QOS_CLASS_UTILITY, 0), ^{
-                            [[NSFileManager defaultManager] removeItemAtPath:RSLensUploadPagePath() error:nil];
-                        });
-                    }];
+                    if (!window || window.lensProgress != progress) return;
+                    if (!jpeg.length) { [window finishLensWithURL:nil errorText:@"无法编码所选图片。"]; return; }
+                    [window uploadLensJPEG:jpeg dimensions:dimensions];
                 });
             }
         });
+    }];
+}
+
+- (void)uploadLensJPEG:(NSData *)jpeg dimensions:(NSString *)dimensions {
+    NSString *boundary = [@"RegionShot-" stringByAppendingString:NSUUID.UUID.UUIDString];
+    NSMutableData *body = [NSMutableData data];
+    void (^append)(NSString *) = ^(NSString *text) { [body appendData:[text dataUsingEncoding:NSUTF8StringEncoding]]; };
+    append([NSString stringWithFormat:@"--%@\r\nContent-Disposition: form-data; name=\"encoded_image\"; filename=\"regionshot.jpg\"\r\nContent-Type: image/jpeg\r\n\r\n", boundary]);
+    [body appendData:jpeg];
+    append([NSString stringWithFormat:@"\r\n--%@\r\nContent-Disposition: form-data; name=\"processed_image_dimensions\"\r\n\r\n%@\r\n--%@--\r\n", boundary, dimensions, boundary]);
+
+    long long milliseconds = (long long)(NSDate.date.timeIntervalSince1970 * 1000.0);
+    NSURL *url = [NSURL URLWithString:[NSString stringWithFormat:@"https://lens.google.com/v3/upload?ep=ccm&hl=zh-CN&st=%lld", milliseconds]];
+    NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url cachePolicy:NSURLRequestReloadIgnoringLocalCacheData timeoutInterval:30];
+    request.HTTPMethod = @"POST"; request.HTTPBody = body;
+    [request setValue:[NSString stringWithFormat:@"multipart/form-data; boundary=%@", boundary] forHTTPHeaderField:@"Content-Type"];
+    [request setValue:@"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/136.0.0.0 Safari/537.36" forHTTPHeaderField:@"User-Agent"];
+    NSURLSessionConfiguration *configuration = NSURLSessionConfiguration.ephemeralSessionConfiguration;
+    configuration.requestCachePolicy = NSURLRequestReloadIgnoringLocalCacheData;
+    self.lensSession = [NSURLSession sessionWithConfiguration:configuration delegate:self delegateQueue:NSOperationQueue.mainQueue];
+    self.lensTask = [self.lensSession dataTaskWithRequest:request];
+    [self.lensTask resume];
+}
+
+- (void)URLSession:(NSURLSession *)session task:(NSURLSessionTask *)task
+ willPerformHTTPRedirection:(NSHTTPURLResponse *)response newRequest:(NSURLRequest *)request
+ completionHandler:(void (^)(NSURLRequest *))completionHandler {
+    if (task != self.lensTask) { completionHandler(nil); return; }
+    NSString *host = request.URL.host.lowercaseString;
+    BOOL valid = [request.URL.scheme.lowercaseString isEqualToString:@"https"] &&
+        ([host isEqualToString:@"google.com"] || [host hasSuffix:@".google.com"]) &&
+        [request.URL.query containsString:@"gsessionid="] && [request.URL.query containsString:@"lsessionid="];
+    completionHandler(nil);
+    [self finishLensWithURL:valid ? request.URL : nil errorText:valid ? nil : @"Google 没有返回完整的识图结果链接。"];
+}
+
+- (void)URLSession:(NSURLSession *)session task:(NSURLSessionTask *)task didCompleteWithError:(NSError *)error {
+    if (task != self.lensTask) return;
+    NSString *message = error.code == NSURLErrorTimedOut ? @"识图请求超时，请检查网络后重试。" :
+        error.localizedDescription ?: @"识图请求失败，请稍后重试。";
+    [self finishLensWithURL:nil errorText:message];
+}
+
+- (void)finishLensWithURL:(NSURL *)resultURL errorText:(NSString *)errorText {
+    [self.lensSession invalidateAndCancel];
+    self.lensSession = nil; self.lensTask = nil;
+    UIAlertController *progress = self.lensProgress;
+    self.lensProgress = nil;
+    [progress dismissViewControllerAnimated:YES completion:^{
+        if (!resultURL) { [self showLensError:errorText ?: @"识图请求失败，请稍后重试。"]; return; }
+        NSURLComponents *components = [NSURLComponents new];
+        components.scheme = @"reynard"; components.host = @"open";
+        components.queryItems = @[[NSURLQueryItem queryItemWithName:@"url" value:resultURL.absoluteString]];
+        if (self.toolbar.cancelHandler) self.toolbar.cancelHandler();
+        [UIApplication.sharedApplication openURL:components.URL options:@{} completionHandler:nil];
     }];
 }
 
@@ -333,7 +353,8 @@ static NSURL *RSStageLensUploadPage(UIImage *image, NSError **error) {
 - (BOOL)_shouldDelayTouchForSystemGestures:(UITouch *)touch { return NO; }
 
 - (void)dismiss {
-    if (!self.lensPageHandedOff) [[NSFileManager defaultManager] removeItemAtPath:RSLensUploadPagePath() error:nil];
+    [self.lensSession invalidateAndCancel];
+    self.lensSession = nil; self.lensTask = nil;
     self.lensProgress = nil;
     self.hidden = YES;
     [self resignKeyWindow];

@@ -9,7 +9,9 @@ assert '@"id":@13' in menu and '@"title":@"识图"' in menu
 assert "button.tag == 13" in toolbar and "imageSearchHandler" in toolbar
 assert "https://lens.google.com/v3/upload" in window
 assert 'components.scheme = @"reynard"' in window
-assert "google-lens.html" in window and "fileURLWithPath" in window
-assert "NSURLSession" not in window
+assert 'name=\\"processed_image_dimensions\\"' in window
+assert "Chrome/136.0.0.0" in window
+assert "gsessionid=" in window and "lsessionid=" in window
+assert "NSURLSession" in window
 assert "search.app.goo.gl" not in window
-print("Google Lens upload is staged inside Reynard's browser session")
+print("Google Lens redirect keeps dimensions and both result session IDs")
