@@ -12,6 +12,7 @@
 #import "../Geometry/RSGeometry.h"
 #import "../Geometry/RSOrientation.h"
 #import "../Preferences/RSOptions.h"
+#import <WebKit/WebKit.h>
 #import <roothide.h>
 
 static NSString *RSWeChatScanImagePath(void) {
@@ -42,7 +43,92 @@ BOOL RSStageWeChatScanImage(UIImage *image) {
 - (BOOL)prefersHomeIndicatorAutoHidden { return YES; }
 @end
 
-@interface RSSelectionWindow () <NSURLSessionTaskDelegate>
+@interface RSLensWebController : UIViewController <WKNavigationDelegate, WKUIDelegate>
+@property (nonatomic, strong) NSData *jpeg;
+@property (nonatomic, strong) WKWebView *webView;
+@property (nonatomic) BOOL injected;
+@property (nonatomic, copy) void (^resultHandler)(NSURL *url);
+- (instancetype)initWithImage:(UIImage *)image resultHandler:(void (^)(NSURL *url))resultHandler;
+@end
+
+@implementation RSLensWebController
+
+- (instancetype)initWithImage:(UIImage *)image resultHandler:(void (^)(NSURL *url))resultHandler {
+    if ((self = [super init])) {
+        _jpeg = UIImageJPEGRepresentation(image, 0.9);
+        _resultHandler = [resultHandler copy];
+        self.title = @"Google 识图";
+    }
+    return self;
+}
+
+- (void)viewDidLoad {
+    [super viewDidLoad];
+    self.view.backgroundColor = UIColor.systemBackgroundColor;
+    self.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemCancel target:self action:@selector(cancel)];
+    WKWebViewConfiguration *configuration = [WKWebViewConfiguration new];
+    configuration.websiteDataStore = WKWebsiteDataStore.nonPersistentDataStore;
+    self.webView = [[WKWebView alloc] initWithFrame:self.view.bounds configuration:configuration];
+    self.webView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+    self.webView.navigationDelegate = self;
+    self.webView.UIDelegate = self;
+    [self.view addSubview:self.webView];
+    [self.webView loadRequest:[NSURLRequest requestWithURL:[NSURL URLWithString:@"https://searchenginereports.net/reverse-image-search"]]];
+}
+
+- (void)cancel { [self dismissViewControllerAnimated:YES completion:nil]; }
+
+- (void)openResult:(NSURL *)url {
+    if (!url || !self.resultHandler) return;
+    void (^handler)(NSURL *) = self.resultHandler;
+    self.resultHandler = nil;
+    [self dismissViewControllerAnimated:YES completion:^{ handler(url); }];
+}
+
+- (BOOL)isGoogleResultURL:(NSURL *)url {
+    NSString *host = url.host.lowercaseString;
+    return ([host isEqualToString:@"google.com"] || [host hasSuffix:@".google.com"]) &&
+        [url.path isEqualToString:@"/search"] && [url.query containsString:@"vsrid="];
+}
+
+- (void)webView:(WKWebView *)webView didFinishNavigation:(WKNavigation *)navigation {
+    NSURL *url = webView.URL;
+    if ([self isGoogleResultURL:url]) { [self openResult:url]; return; }
+    if (!self.injected && [url.host.lowercaseString isEqualToString:@"searchenginereports.net"] &&
+        [url.path containsString:@"reverse-image-search"] && self.jpeg.length) {
+        self.injected = YES;
+        NSString *base64 = [self.jpeg base64EncodedStringWithOptions:0];
+        self.jpeg = nil;
+        NSString *script = [NSString stringWithFormat:
+            @"(()=>{const b=atob('%@'),u=new Uint8Array(b.length);for(let i=0;i<b.length;i++)u[i]=b.charCodeAt(i);"
+             "const f=new File([u],'regionshot.jpg',{type:'image/jpeg'});let n=0;const send=()=>{if(typeof processImg!=='function'){if(++n<80)setTimeout(send,250);return;}processImg(f,true)};send()})()", base64];
+        [webView evaluateJavaScript:script completionHandler:nil];
+        return;
+    }
+    if ([url.host.lowercaseString isEqualToString:@"searchenginereports.net"] && [url.path containsString:@"ris-result"]) {
+        [webView evaluateJavaScript:
+            @"(()=>{let n=0;const find=()=>{const a=[...document.links].find(x=>x.href.includes('google.com/search?')&&x.href.includes('vsrid='));if(a){location.href=a.href;return;}if(++n<60)setTimeout(find,500)};find()})()"
+            completionHandler:nil];
+    }
+}
+
+- (void)webView:(WKWebView *)webView decidePolicyForNavigationAction:(WKNavigationAction *)action decisionHandler:(void (^)(WKNavigationActionPolicy))decisionHandler {
+    if ([self isGoogleResultURL:action.request.URL]) {
+        decisionHandler(WKNavigationActionPolicyCancel);
+        [self openResult:action.request.URL];
+    } else decisionHandler(WKNavigationActionPolicyAllow);
+}
+
+- (WKWebView *)webView:(WKWebView *)webView createWebViewWithConfiguration:(WKWebViewConfiguration *)configuration
+   forNavigationAction:(WKNavigationAction *)action windowFeatures:(WKWindowFeatures *)windowFeatures {
+    if ([self isGoogleResultURL:action.request.URL]) [self openResult:action.request.URL];
+    else if (action.request.URL) [webView loadRequest:action.request];
+    return nil;
+}
+
+@end
+
+@interface RSSelectionWindow ()
 @property (nonatomic, strong) UIImageView *imageView;
 @property (nonatomic, strong) RSSelectionView *selectionView;
 @property (nonatomic, strong) RSSelectionToolbar *toolbar;
@@ -50,11 +136,6 @@ BOOL RSStageWeChatScanImage(UIImage *image) {
 @property (nonatomic, weak) UIWindow *previousKeyWindow;
 @property (nonatomic, strong) UIScrollView *toolbarScroll;
 @property (nonatomic) UIInterfaceOrientation captureOrientation;
-@property (nonatomic, strong) UIAlertController *lensProgress;
-@property (nonatomic, strong) NSURLSession *lensSession;
-@property (nonatomic, strong) NSURLSessionTask *lensTask;
-- (void)uploadLensJPEG:(NSData *)jpeg dimensions:(NSString *)dimensions;
-- (void)finishLensWithURL:(NSURL *)resultURL errorText:(NSString *)errorText;
 @end
 
 @implementation RSSelectionWindow
@@ -222,93 +303,23 @@ BOOL RSStageWeChatScanImage(UIImage *image) {
 }
 
 - (void)searchSelectionWithGoogleLens {
-    if (self.lensProgress) return;
+    if (self.rootViewController.presentedViewController) return;
     if (!self.selectionView.hasValidSelection) [self.selectionView selectAll];
     UIImage *image = [RSScreenCapture cropImage:self.imageView.image toRect:self.selectionRect displaySize:self.displaySize];
     if (!image) return;
-    UIAlertController *progress = [UIAlertController alertControllerWithTitle:@"正在识图" message:@"正在上传所选图片…" preferredStyle:UIAlertControllerStyleAlert];
-    [progress addAction:[UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:^(UIAlertAction *action) {
-        [self.lensSession invalidateAndCancel];
-        self.lensSession = nil; self.lensTask = nil;
-        self.lensProgress = nil;
-    }]];
-    self.lensProgress = progress;
     __weak typeof(self) weakSelf = self;
-    [self.rootViewController presentViewController:progress animated:YES completion:^{
-        dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
-            @autoreleasepool {
-                NSData *jpeg = UIImageJPEGRepresentation(image, 0.9);
-                NSString *dimensions = [NSString stringWithFormat:@"%.0f,%.0f", image.size.width * image.scale, image.size.height * image.scale];
-                dispatch_async(dispatch_get_main_queue(), ^{
-                    RSSelectionWindow *window = weakSelf;
-                    if (!window || window.lensProgress != progress) return;
-                    if (!jpeg.length) { [window finishLensWithURL:nil errorText:@"无法编码所选图片。"]; return; }
-                    [window uploadLensJPEG:jpeg dimensions:dimensions];
-                });
-            }
-        });
-    }];
-}
-
-- (void)uploadLensJPEG:(NSData *)jpeg dimensions:(NSString *)dimensions {
-    NSString *boundary = [@"RegionShot-" stringByAppendingString:NSUUID.UUID.UUIDString];
-    NSMutableData *body = [NSMutableData data];
-    void (^append)(NSString *) = ^(NSString *text) { [body appendData:[text dataUsingEncoding:NSUTF8StringEncoding]]; };
-    append([NSString stringWithFormat:@"--%@\r\nContent-Disposition: form-data; name=\"encoded_image\"; filename=\"regionshot.jpg\"\r\nContent-Type: image/jpeg\r\n\r\n", boundary]);
-    [body appendData:jpeg];
-    append([NSString stringWithFormat:@"\r\n--%@\r\nContent-Disposition: form-data; name=\"processed_image_dimensions\"\r\n\r\n%@\r\n--%@--\r\n", boundary, dimensions, boundary]);
-
-    long long milliseconds = (long long)(NSDate.date.timeIntervalSince1970 * 1000.0);
-    NSURL *url = [NSURL URLWithString:[NSString stringWithFormat:@"https://lens.google.com/v3/upload?ep=ccm&hl=zh-CN&st=%lld", milliseconds]];
-    NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url cachePolicy:NSURLRequestReloadIgnoringLocalCacheData timeoutInterval:30];
-    request.HTTPMethod = @"POST"; request.HTTPBody = body;
-    [request setValue:[NSString stringWithFormat:@"multipart/form-data; boundary=%@", boundary] forHTTPHeaderField:@"Content-Type"];
-    [request setValue:@"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/136.0.0.0 Safari/537.36" forHTTPHeaderField:@"User-Agent"];
-    NSURLSessionConfiguration *configuration = NSURLSessionConfiguration.ephemeralSessionConfiguration;
-    configuration.requestCachePolicy = NSURLRequestReloadIgnoringLocalCacheData;
-    self.lensSession = [NSURLSession sessionWithConfiguration:configuration delegate:self delegateQueue:NSOperationQueue.mainQueue];
-    self.lensTask = [self.lensSession dataTaskWithRequest:request];
-    [self.lensTask resume];
-}
-
-- (void)URLSession:(NSURLSession *)session task:(NSURLSessionTask *)task
- willPerformHTTPRedirection:(NSHTTPURLResponse *)response newRequest:(NSURLRequest *)request
- completionHandler:(void (^)(NSURLRequest *))completionHandler {
-    if (task != self.lensTask) { completionHandler(nil); return; }
-    NSString *host = request.URL.host.lowercaseString;
-    BOOL valid = [request.URL.scheme.lowercaseString isEqualToString:@"https"] &&
-        ([host isEqualToString:@"google.com"] || [host hasSuffix:@".google.com"]) &&
-        [request.URL.query containsString:@"gsessionid="] && [request.URL.query containsString:@"lsessionid="];
-    completionHandler(nil);
-    [self finishLensWithURL:valid ? request.URL : nil errorText:valid ? nil : @"Google 没有返回完整的识图结果链接。"];
-}
-
-- (void)URLSession:(NSURLSession *)session task:(NSURLSessionTask *)task didCompleteWithError:(NSError *)error {
-    if (task != self.lensTask) return;
-    NSString *message = error.code == NSURLErrorTimedOut ? @"识图请求超时，请检查网络后重试。" :
-        error.localizedDescription ?: @"识图请求失败，请稍后重试。";
-    [self finishLensWithURL:nil errorText:message];
-}
-
-- (void)finishLensWithURL:(NSURL *)resultURL errorText:(NSString *)errorText {
-    [self.lensSession invalidateAndCancel];
-    self.lensSession = nil; self.lensTask = nil;
-    UIAlertController *progress = self.lensProgress;
-    self.lensProgress = nil;
-    [progress dismissViewControllerAnimated:YES completion:^{
-        if (!resultURL) { [self showLensError:errorText ?: @"识图请求失败，请稍后重试。"]; return; }
+    RSLensWebController *page = [[RSLensWebController alloc] initWithImage:image resultHandler:^(NSURL *resultURL) {
+        RSSelectionWindow *window = weakSelf;
+        if (!window) return;
         NSURLComponents *components = [NSURLComponents new];
         components.scheme = @"reynard"; components.host = @"open";
         components.queryItems = @[[NSURLQueryItem queryItemWithName:@"url" value:resultURL.absoluteString]];
-        if (self.toolbar.cancelHandler) self.toolbar.cancelHandler();
+        if (window.toolbar.cancelHandler) window.toolbar.cancelHandler();
         [UIApplication.sharedApplication openURL:components.URL options:@{} completionHandler:nil];
     }];
-}
-
-- (void)showLensError:(NSString *)message {
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"识图失败" message:message preferredStyle:UIAlertControllerStyleAlert];
-    [alert addAction:[UIAlertAction actionWithTitle:@"好" style:UIAlertActionStyleCancel handler:nil]];
-    [self.rootViewController presentViewController:alert animated:YES completion:nil];
+    UINavigationController *navigation = [[UINavigationController alloc] initWithRootViewController:page];
+    navigation.modalPresentationStyle = UIModalPresentationFullScreen;
+    [self.rootViewController presentViewController:navigation animated:YES completion:nil];
 }
 
 - (void)editSelection {
@@ -353,9 +364,6 @@ BOOL RSStageWeChatScanImage(UIImage *image) {
 - (BOOL)_shouldDelayTouchForSystemGestures:(UITouch *)touch { return NO; }
 
 - (void)dismiss {
-    [self.lensSession invalidateAndCancel];
-    self.lensSession = nil; self.lensTask = nil;
-    self.lensProgress = nil;
     self.hidden = YES;
     [self resignKeyWindow];
     [self.previousKeyWindow makeKeyWindow];

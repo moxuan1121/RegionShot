@@ -7,11 +7,12 @@ window = (root / "Selection/RSSelectionWindow.m").read_text(encoding="utf-8")
 
 assert '@"id":@13' in menu and '@"title":@"识图"' in menu
 assert "button.tag == 13" in toolbar and "imageSearchHandler" in toolbar
-assert "https://lens.google.com/v3/upload" in window
+assert "https://searchenginereports.net/reverse-image-search" in window
+assert "processImg(f,true)" in window
+assert "WKWebsiteDataStore.nonPersistentDataStore" in window
+assert "ris-result" in window
 assert 'components.scheme = @"reynard"' in window
-assert 'name=\\"processed_image_dimensions\\"' in window
-assert "Chrome/136.0.0.0" in window
-assert "gsessionid=" in window and "lsessionid=" in window
-assert "NSURLSession" in window
+assert "google.com/search?" in window and "vsrid=" in window
+assert "NSURLSession" not in window
 assert "search.app.goo.gl" not in window
-print("Google Lens redirect keeps dimensions and both result session IDs")
+print("Google Lens search uses the verified aggregator session and hands its result to Reynard")
