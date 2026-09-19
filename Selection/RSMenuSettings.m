@@ -31,7 +31,8 @@ static NSArray *RSMenuDefaults(BOOL floating) {
              @{@"id":@9, @"title":@"复制", @"symbol":@"doc.on.clipboard", @"enabled":@YES},
              @{@"id":@10, @"title":@"保存", @"symbol":@"square.and.arrow.down", @"enabled":@YES},
              @{@"id":@11, @"title":@"微信扫码", @"symbol":@"qrcode", @"enabled":@YES},
-             @{@"id":@12, @"title":@"长截图", @"symbol":@"rectangle.expand.vertical", @"enabled":@YES}];
+             @{@"id":@12, @"title":@"长截图", @"symbol":@"rectangle.expand.vertical", @"enabled":@YES},
+             @{@"id":@13, @"title":@"识图", @"symbol":@"photo.on.rectangle.angled", @"enabled":@YES}];
 }
 static NSArray *RSMenuItems(BOOL floating) {
     [RSMenuPrefs() synchronize];
