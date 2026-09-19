@@ -34,11 +34,14 @@ assert 'constraintEqualToConstant:260' in chat and 'MAX(220, size.height + 156' 
 assert 'RSInstallMaterialBackground(button, 16)' in chat
 assert 'bringSubviewToFront:button.imageView' in chat and 'bringSubviewToFront:button.titleLabel' in chat
 assert '+ (void)minimizeForLock' in chat and 'AIMinimizeOnLock' in chat
-assert '[RSChatController minimizeForLock]' in (root / 'Trigger.xm').read_text(encoding='utf-8')
+lock_action = (root / 'Trigger.xm').read_text(encoding='utf-8').split('CFSTR("com.apple.springboard.lockcomplete")', 1)[1].split('return;', 1)[0]
+assert lock_action.index('[RSChatCameraController closeForLock]') < lock_action.index('[RSChatController minimizeForLock]')
+assert 'if ([chat hasContent]) [chat minimize]; else [chat close];' in chat
 assert 'RSAICreatePhrasesController()' in behavior
 assert '@[@"打开对话", @"复制对话调用地址", @"对话设置", @"服务配置", @"人设", @"弹出式窗口"]' in ai_settings
 assert 'prefs://root=regionshot_aiwindow' in ai_settings
 camera = (root / 'AI/RSChatCameraController.m').read_text(encoding='utf-8')
+assert '+ (void)closeForLock { [RSActiveCamera close]; }' in camera
 assert '[self.output connectionWithMediaType:AVMediaTypeVideo]' in camera
 assert '[self updateVideoOrientation];' in camera
 assert 'RSActiveOrientation(self.host.windowScene)' in camera

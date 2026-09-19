@@ -93,6 +93,7 @@
 @property (nonatomic) NSUInteger desktopKeyGeneration;
 - (void)armDesktopKeyRecovery;
 - (void)stopDesktopKeyRecovery;
+- (BOOL)hasContent;
 @end
 
 static RSChatController *RSActiveChat;
@@ -107,8 +108,9 @@ static NSUserDefaults *RSChatPreferences(void) {
 
 + (void)minimizeForLock {
     RSChatController *chat = RSActiveChat;
-    if ([RSOption(@"AIMinimizeOnLock") boolValue] && chat.host && !chat.host.hidden && !chat.card.hidden && !chat.keyboardPresentation)
-        [chat minimize];
+    if ([RSOption(@"AIMinimizeOnLock") boolValue] && chat.host && !chat.host.hidden && !chat.card.hidden && !chat.keyboardPresentation) {
+        if ([chat hasContent]) [chat minimize]; else [chat close];
+    }
 }
 
 - (BOOL)shouldAutorotate { return NO; }
@@ -457,9 +459,9 @@ static NSUserDefaults *RSChatPreferences(void) {
 }
 - (void)textViewDidChange:(UITextView *)textView { if (textView == self.input) self.placeholder.hidden = textView.text.length > 0; }
 - (void)hideKeyboard { [self.view endEditing:YES]; }
+- (BOOL)hasContent { return self.history.count || self.input.text.length || self.attachment || self.fileAttachment; }
 - (void)backgroundTapped {
-    BOOL hasContent = self.history.count || self.input.text.length || self.attachment || self.fileAttachment;
-    if (hasContent) [self minimize]; else [self close];
+    if ([self hasContent]) [self minimize]; else [self close];
 }
 - (void)minimize {
     [self stopDesktopKeyRecovery];

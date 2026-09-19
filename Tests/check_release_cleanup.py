@@ -90,8 +90,8 @@ assert 'UIKeyboardDidHideNotification' not in chat and 'stabilizingInitialFocus'
 assert 'AIDesktopKeyboardFix' not in chat and 'AIDesktopKeyboardFix' not in (root / 'Preferences/RSOptions.m').read_text(encoding='utf-8')
 assert 'action:@selector(backgroundTapped)' in chat
 background_tap = chat.split('- (void)backgroundTapped {', 1)[1].split('- (void)minimize {', 1)[0]
-assert 'self.history.count || self.input.text.length || self.attachment || self.fileAttachment' in background_tap
-assert 'if (hasContent) [self minimize]; else [self close];' in background_tap
+assert 'self.history.count || self.input.text.length || self.attachment || self.fileAttachment' in chat.split('- (BOOL)hasContent {', 1)[1].split('- (void)backgroundTapped', 1)[0]
+assert 'if ([self hasContent]) [self minimize]; else [self close];' in background_tap
 assert '+ (void)showCameraInScene:' in chat
 assert 'com.moxuan.regionshot/AICamera' in trigger
 external_camera = chat.split('+ (void)showCameraInScene:', 1)[1].split('- (void)showPhrases:', 1)[0]

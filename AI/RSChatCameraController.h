@@ -3,4 +3,5 @@
 @interface RSChatCameraController : UIViewController
 + (BOOL)isVisible;
 + (void)showInScene:(UIWindowScene *)scene completion:(void (^)(UIImage *image))completion;
++ (void)closeForLock;
 @end

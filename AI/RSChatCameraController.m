@@ -19,12 +19,14 @@
 @property(nonatomic) AVCaptureDevicePosition position;
 @property(nonatomic) CGFloat zoomAtPinchStart;
 @property(nonatomic) BOOL closing;
+- (void)close;
 @end
 
 static RSChatCameraController *RSActiveCamera;
 
 @implementation RSChatCameraController
 + (BOOL)isVisible { return RSActiveCamera != nil; }
++ (void)closeForLock { [RSActiveCamera close]; }
 + (void)showInScene:(UIWindowScene *)scene completion:(void (^)(UIImage *))completion {
     if (!scene || RSActiveCamera) return;
     RSChatCameraController *camera = [RSChatCameraController new];
@@ -189,6 +191,7 @@ static RSChatCameraController *RSActiveCamera;
     NSData *data = error ? nil : photo.fileDataRepresentation;
     UIImage *image = data.length ? [UIImage imageWithData:data] : nil;
     dispatch_async(dispatch_get_main_queue(), ^{
+        if (self.closing) return;
         if (!image.CGImage) { self.shutter.enabled = YES; [self fail:error.localizedDescription ?: @"照片读取失败。"]; return; }
         void (^completion)(UIImage *) = self.completion;
         [self close];

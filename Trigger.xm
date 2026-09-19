@@ -6,6 +6,7 @@
 #import "Manager/RSRegionShotManager.h"
 #import "Preferences/RSOptions.h"
 #import "AI/RSChatController.h"
+#import "AI/RSChatCameraController.h"
 #import "Input/RSInputClipboard.h"
 #import "KeyboardAI/RSKAInterface.h"
 #import "Geometry/RSGeometry.h"
@@ -185,7 +186,7 @@ static BOOL RSCompatible(Class cls, NSString *name, const char *argumentTypes) {
 static void RSPreferenceEvent(CFNotificationCenterRef center, void *observer, CFStringRef name,
                               const void *object, CFDictionaryRef info) {
     if (CFEqual(name, CFSTR("com.apple.springboard.lockcomplete"))) {
-        dispatch_async(dispatch_get_main_queue(), ^{ [RSRegionShotManager.sharedManager cancelCapture]; [RSChatController minimizeForLock]; }); return;
+        dispatch_async(dispatch_get_main_queue(), ^{ [RSRegionShotManager.sharedManager cancelCapture]; [RSChatCameraController closeForLock]; [RSChatController minimizeForLock]; }); return;
     }
     if ((CFEqual(name, CFSTR("com.moxuan.regionshot/History")) || CFEqual(name, CFSTR("com.jontelang.snapper3.history")))) {
         dispatch_async(dispatch_get_main_queue(), ^{ [RSRegionShotManager.sharedManager showHistory]; }); return;
