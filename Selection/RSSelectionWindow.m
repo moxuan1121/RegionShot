@@ -12,7 +12,6 @@
 #import "../Geometry/RSGeometry.h"
 #import "../Geometry/RSOrientation.h"
 #import "../Preferences/RSOptions.h"
-#import <WebKit/WebKit.h>
 #import <roothide.h>
 
 static NSString *RSWeChatScanImagePath(void) {
@@ -41,88 +40,6 @@ BOOL RSStageWeChatScanImage(UIImage *image) {
 - (UIViewController *)childViewControllerForScreenEdgesDeferringSystemGestures { return nil; }
 - (BOOL)prefersStatusBarHidden { return YES; }
 - (BOOL)prefersHomeIndicatorAutoHidden { return YES; }
-@end
-
-@interface RSLensWebController : UIViewController <WKNavigationDelegate, WKUIDelegate>
-@property (nonatomic, strong) NSData *jpeg;
-@property (nonatomic, strong) WKWebView *webView;
-@property (nonatomic) BOOL injected;
-@property (nonatomic, copy) void (^resultHandler)(NSURL *url);
-- (instancetype)initWithImage:(UIImage *)image resultHandler:(void (^)(NSURL *url))resultHandler;
-@end
-
-@implementation RSLensWebController
-
-- (instancetype)initWithImage:(UIImage *)image resultHandler:(void (^)(NSURL *url))resultHandler {
-    if ((self = [super init])) {
-        _jpeg = UIImageJPEGRepresentation(image, 0.9);
-        _resultHandler = [resultHandler copy];
-        self.title = @"Yandex 识图";
-    }
-    return self;
-}
-
-- (void)viewDidLoad {
-    [super viewDidLoad];
-    self.view.backgroundColor = UIColor.systemBackgroundColor;
-    self.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemCancel target:self action:@selector(cancel)];
-    WKWebViewConfiguration *configuration = [WKWebViewConfiguration new];
-    configuration.websiteDataStore = WKWebsiteDataStore.nonPersistentDataStore;
-    self.webView = [[WKWebView alloc] initWithFrame:self.view.bounds configuration:configuration];
-    self.webView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-    self.webView.navigationDelegate = self;
-    self.webView.UIDelegate = self;
-    [self.view addSubview:self.webView];
-    [self.webView loadRequest:[NSURLRequest requestWithURL:[NSURL URLWithString:@"https://yandex.com/images/"]]];
-}
-
-- (void)cancel { [self dismissViewControllerAnimated:YES completion:nil]; }
-
-- (void)openResult:(NSURL *)url {
-    if (!url || !self.resultHandler) return;
-    void (^handler)(NSURL *) = self.resultHandler;
-    self.resultHandler = nil;
-    [self dismissViewControllerAnimated:YES completion:^{ handler(url); }];
-}
-
-- (BOOL)isSearchResultURL:(NSURL *)url {
-    NSString *host = url.host.lowercaseString;
-    return ([host isEqualToString:@"yandex.com"] || [host hasSuffix:@".yandex.com"]) &&
-        [url.path containsString:@"/images/search"] && [url.query containsString:@"cbir_id="];
-}
-
-- (void)webView:(WKWebView *)webView didFinishNavigation:(WKNavigation *)navigation {
-    NSURL *url = webView.URL;
-    if ([self isSearchResultURL:url]) { [self openResult:url]; return; }
-    if (!self.injected && ([url.host.lowercaseString isEqualToString:@"yandex.com"] ||
-        [url.host.lowercaseString hasSuffix:@".yandex.com"]) && self.jpeg.length) {
-        self.injected = YES;
-        NSString *base64 = [self.jpeg base64EncodedStringWithOptions:0];
-        self.jpeg = nil;
-        NSString *script = [NSString stringWithFormat:
-            @"(()=>{const b=atob('%@'),u=new Uint8Array(b.length);for(let i=0;i<b.length;i++)u[i]=b.charCodeAt(i);"
-             "const f=new File([u],'regionshot.jpg',{type:'image/jpeg'}),d=new DataTransfer();d.items.add(f);"
-             "let n=0;const send=()=>{const i=document.querySelector('input[type=file]');if(!i){"
-             "document.querySelector('button[aria-label*=Image],button[aria-label*=image]')?.click();"
-             "if(++n<80)setTimeout(send,250);return;}i.files=d.files;i.dispatchEvent(new Event('change',{bubbles:true}))};send()})()", base64];
-        [webView evaluateJavaScript:script completionHandler:nil];
-    }
-}
-
-- (void)webView:(WKWebView *)webView decidePolicyForNavigationAction:(WKNavigationAction *)action decisionHandler:(void (^)(WKNavigationActionPolicy))decisionHandler {
-    if ([self isSearchResultURL:action.request.URL]) {
-        decisionHandler(WKNavigationActionPolicyCancel);
-        [self openResult:action.request.URL];
-    } else decisionHandler(WKNavigationActionPolicyAllow);
-}
-
-- (WKWebView *)webView:(WKWebView *)webView createWebViewWithConfiguration:(WKWebViewConfiguration *)configuration
-   forNavigationAction:(WKNavigationAction *)action windowFeatures:(WKWindowFeatures *)windowFeatures {
-    if ([self isSearchResultURL:action.request.URL]) [self openResult:action.request.URL];
-    else if (action.request.URL) [webView loadRequest:action.request];
-    return nil;
-}
-
 @end
 
 @interface RSSelectionWindow ()
@@ -202,7 +119,6 @@ BOOL RSStageWeChatScanImage(UIImage *image) {
         _toolbar.fullscreenHandler = ^{ [weakSelf.selectionView selectAll]; };
         _toolbar.historyHandler = ^{ [RSRegionShotManager.sharedManager showHistory]; };
         _toolbar.longCaptureHandler = ^{ [RSRegionShotManager.sharedManager beginLongCapture]; };
-        _toolbar.imageSearchHandler = ^{ [weakSelf searchSelectionWithGoogleLens]; };
         _toolbar.copyHandler = ^{
             RSSelectionWindow *window = weakSelf;
             CGRect rect = window.selectionView.hasValidSelection ? window.selectionRect : window.selectionView.bounds;
@@ -299,26 +215,6 @@ BOOL RSStageWeChatScanImage(UIImage *image) {
     [self.rootViewController presentViewController:navigation animated:YES completion:nil];
 }
 
-- (void)searchSelectionWithGoogleLens {
-    if (self.rootViewController.presentedViewController) return;
-    if (!self.selectionView.hasValidSelection) [self.selectionView selectAll];
-    UIImage *image = [RSScreenCapture cropImage:self.imageView.image toRect:self.selectionRect displaySize:self.displaySize];
-    if (!image) return;
-    __weak typeof(self) weakSelf = self;
-    RSLensWebController *page = [[RSLensWebController alloc] initWithImage:image resultHandler:^(NSURL *resultURL) {
-        RSSelectionWindow *window = weakSelf;
-        if (!window) return;
-        NSURLComponents *components = [NSURLComponents new];
-        components.scheme = @"reynard"; components.host = @"open";
-        components.queryItems = @[[NSURLQueryItem queryItemWithName:@"url" value:resultURL.absoluteString]];
-        if (window.toolbar.cancelHandler) window.toolbar.cancelHandler();
-        [UIApplication.sharedApplication openURL:components.URL options:@{} completionHandler:nil];
-    }];
-    UINavigationController *navigation = [[UINavigationController alloc] initWithRootViewController:page];
-    navigation.modalPresentationStyle = UIModalPresentationFullScreen;
-    [self.rootViewController presentViewController:navigation animated:YES completion:nil];
-}
-
 - (void)editSelection {
     if (self.rootViewController.presentedViewController || self.rootViewController.childViewControllers.count) return;
     if (!self.selectionView.hasValidSelection) [self.selectionView selectAll];
@@ -373,7 +269,6 @@ BOOL RSStageWeChatScanImage(UIImage *image) {
     self.toolbar.aiHandler = nil; self.toolbar.copyHandler = nil; self.toolbar.saveHandler = nil; self.toolbar.fullscreenHandler = nil;
     self.toolbar.historyHandler = nil;
     self.toolbar.longCaptureHandler = nil;
-    self.toolbar.imageSearchHandler = nil;
     self.selectionView.doubleTapHandler = nil;
     self.selectionView.cancelHandler = nil;
     self.selectionView.selectionChanged = nil;

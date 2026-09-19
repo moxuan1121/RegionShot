@@ -98,8 +98,6 @@ static void RSMenuImpact(void) {
         if (self.historyHandler) self.historyHandler();
     } else if (button.tag == 12) {
         if (self.longCaptureHandler) self.longCaptureHandler();
-    } else if (button.tag == 13) {
-        if (self.imageSearchHandler) self.imageSearchHandler();
     }
 }
 
