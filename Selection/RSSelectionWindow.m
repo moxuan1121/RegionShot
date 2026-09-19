@@ -57,7 +57,7 @@ BOOL RSStageWeChatScanImage(UIImage *image) {
     if ((self = [super init])) {
         _jpeg = UIImageJPEGRepresentation(image, 0.9);
         _resultHandler = [resultHandler copy];
-        self.title = @"Google 识图";
+        self.title = @"Yandex 识图";
     }
     return self;
 }
@@ -73,7 +73,7 @@ BOOL RSStageWeChatScanImage(UIImage *image) {
     self.webView.navigationDelegate = self;
     self.webView.UIDelegate = self;
     [self.view addSubview:self.webView];
-    [self.webView loadRequest:[NSURLRequest requestWithURL:[NSURL URLWithString:@"https://searchenginereports.net/reverse-image-search"]]];
+    [self.webView loadRequest:[NSURLRequest requestWithURL:[NSURL URLWithString:@"https://yandex.com/images/"]]];
 }
 
 - (void)cancel { [self dismissViewControllerAnimated:YES completion:nil]; }
@@ -85,35 +85,32 @@ BOOL RSStageWeChatScanImage(UIImage *image) {
     [self dismissViewControllerAnimated:YES completion:^{ handler(url); }];
 }
 
-- (BOOL)isGoogleResultURL:(NSURL *)url {
+- (BOOL)isSearchResultURL:(NSURL *)url {
     NSString *host = url.host.lowercaseString;
-    return ([host isEqualToString:@"google.com"] || [host hasSuffix:@".google.com"]) &&
-        [url.path isEqualToString:@"/search"] && [url.query containsString:@"vsrid="];
+    return ([host isEqualToString:@"yandex.com"] || [host hasSuffix:@".yandex.com"]) &&
+        [url.path containsString:@"/images/search"] && [url.query containsString:@"cbir_id="];
 }
 
 - (void)webView:(WKWebView *)webView didFinishNavigation:(WKNavigation *)navigation {
     NSURL *url = webView.URL;
-    if ([self isGoogleResultURL:url]) { [self openResult:url]; return; }
-    if (!self.injected && [url.host.lowercaseString isEqualToString:@"searchenginereports.net"] &&
-        [url.path containsString:@"reverse-image-search"] && self.jpeg.length) {
+    if ([self isSearchResultURL:url]) { [self openResult:url]; return; }
+    if (!self.injected && ([url.host.lowercaseString isEqualToString:@"yandex.com"] ||
+        [url.host.lowercaseString hasSuffix:@".yandex.com"]) && self.jpeg.length) {
         self.injected = YES;
         NSString *base64 = [self.jpeg base64EncodedStringWithOptions:0];
         self.jpeg = nil;
         NSString *script = [NSString stringWithFormat:
             @"(()=>{const b=atob('%@'),u=new Uint8Array(b.length);for(let i=0;i<b.length;i++)u[i]=b.charCodeAt(i);"
-             "const f=new File([u],'regionshot.jpg',{type:'image/jpeg'});let n=0;const send=()=>{if(typeof processImg!=='function'){if(++n<80)setTimeout(send,250);return;}processImg(f,true)};send()})()", base64];
+             "const f=new File([u],'regionshot.jpg',{type:'image/jpeg'}),d=new DataTransfer();d.items.add(f);"
+             "let n=0;const send=()=>{const i=document.querySelector('input[type=file]');if(!i){"
+             "document.querySelector('button[aria-label*=Image],button[aria-label*=image]')?.click();"
+             "if(++n<80)setTimeout(send,250);return;}i.files=d.files;i.dispatchEvent(new Event('change',{bubbles:true}))};send()})()", base64];
         [webView evaluateJavaScript:script completionHandler:nil];
-        return;
-    }
-    if ([url.host.lowercaseString isEqualToString:@"searchenginereports.net"] && [url.path containsString:@"ris-result"]) {
-        [webView evaluateJavaScript:
-            @"(()=>{let n=0;const find=()=>{const a=[...document.links].find(x=>x.href.includes('google.com/search?')&&x.href.includes('vsrid='));if(a){location.href=a.href;return;}if(++n<60)setTimeout(find,500)};find()})()"
-            completionHandler:nil];
     }
 }
 
 - (void)webView:(WKWebView *)webView decidePolicyForNavigationAction:(WKNavigationAction *)action decisionHandler:(void (^)(WKNavigationActionPolicy))decisionHandler {
-    if ([self isGoogleResultURL:action.request.URL]) {
+    if ([self isSearchResultURL:action.request.URL]) {
         decisionHandler(WKNavigationActionPolicyCancel);
         [self openResult:action.request.URL];
     } else decisionHandler(WKNavigationActionPolicyAllow);
@@ -121,7 +118,7 @@ BOOL RSStageWeChatScanImage(UIImage *image) {
 
 - (WKWebView *)webView:(WKWebView *)webView createWebViewWithConfiguration:(WKWebViewConfiguration *)configuration
    forNavigationAction:(WKNavigationAction *)action windowFeatures:(WKWindowFeatures *)windowFeatures {
-    if ([self isGoogleResultURL:action.request.URL]) [self openResult:action.request.URL];
+    if ([self isSearchResultURL:action.request.URL]) [self openResult:action.request.URL];
     else if (action.request.URL) [webView loadRequest:action.request];
     return nil;
 }

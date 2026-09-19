@@ -7,12 +7,12 @@ window = (root / "Selection/RSSelectionWindow.m").read_text(encoding="utf-8")
 
 assert '@"id":@13' in menu and '@"title":@"识图"' in menu
 assert "button.tag == 13" in toolbar and "imageSearchHandler" in toolbar
-assert "https://searchenginereports.net/reverse-image-search" in window
-assert "processImg(f,true)" in window
+assert "https://yandex.com/images/" in window
+assert "input[type=file]" in window and "DataTransfer" in window
 assert "WKWebsiteDataStore.nonPersistentDataStore" in window
-assert "ris-result" in window
+assert "cbir_id=" in window
 assert 'components.scheme = @"reynard"' in window
-assert "google.com/search?" in window and "vsrid=" in window
 assert "NSURLSession" not in window
 assert "search.app.goo.gl" not in window
-print("Google Lens search uses the verified aggregator session and hands its result to Reynard")
+assert "searchenginereports.net" not in window
+print("Yandex image search uploads in a temporary browser and hands its result to Reynard")
