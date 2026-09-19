@@ -9,5 +9,7 @@ assert '@"id":@13' in menu and '@"title":@"识图"' in menu
 assert "button.tag == 13" in toolbar and "imageSearchHandler" in toolbar
 assert "https://lens.google.com/v3/upload" in window
 assert 'components.scheme = @"reynard"' in window
+assert "google-lens.html" in window and "fileURLWithPath" in window
+assert "NSURLSession" not in window
 assert "search.app.goo.gl" not in window
-print("Google Lens selection action is wired directly to Reynard")
+print("Google Lens upload is staged inside Reynard's browser session")
