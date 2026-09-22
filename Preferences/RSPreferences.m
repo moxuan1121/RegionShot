@@ -32,7 +32,7 @@ static __weak UINavigationController *RSSettingsNavigation;
         [items addObject:[PSSpecifier groupSpecifierWithName:section[0]]];
         for (NSUInteger i = 1; i < section.count; i++) {
             NSArray *entry = section[i];
-            PSSpecifier *link = [PSSpecifier preferenceSpecifierNamed:entry[0] target:self set:nil get:nil detail:nil cell:PSLinkCell edit:nil];
+            PSSpecifier *link = [PSSpecifier preferenceSpecifierNamed:entry[0] target:self set:nil get:nil detail:RSPreferences.class cell:PSLinkCell edit:nil];
             [link setProperty:entry[1] forKey:@"RSMainMenuAction"]; [items addObject:link];
         }
     }
