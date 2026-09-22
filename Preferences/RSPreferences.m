@@ -32,19 +32,18 @@ static __weak UINavigationController *RSSettingsNavigation;
         [items addObject:[PSSpecifier groupSpecifierWithName:section[0]]];
         for (NSUInteger i = 1; i < section.count; i++) {
             NSArray *entry = section[i];
-            PSSpecifier *link = [PSSpecifier preferenceSpecifierNamed:entry[0] target:self set:nil get:nil detail:nil cell:PSButtonCell edit:nil];
-            link.buttonAction = NSSelectorFromString(entry[1]); [link setProperty:@YES forKey:@"RSMainMenuLink"]; [items addObject:link];
+            PSSpecifier *link = [PSSpecifier preferenceSpecifierNamed:entry[0] target:self set:nil get:nil detail:nil cell:PSLinkCell edit:nil];
+            [link setProperty:entry[1] forKey:@"RSMainMenuAction"]; [items addObject:link];
         }
     }
     _specifiers = items.copy; return _specifiers;
 }
-- (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
-    UITableViewCell *cell = [super tableView:tableView cellForRowAtIndexPath:indexPath];
-    if ([[self specifierAtIndexPath:indexPath] propertyForKey:@"RSMainMenuLink"]) {
-        cell.textLabel.textColor = UIColor.labelColor;
-        cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
-    }
-    return cell;
+- (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
+    NSString *name = [[self specifierAtIndexPath:indexPath] propertyForKey:@"RSMainMenuAction"];
+    if (!name.length) { [super tableView:tableView didSelectRowAtIndexPath:indexPath]; return; }
+    [tableView deselectRowAtIndexPath:indexPath animated:YES];
+    SEL action = NSSelectorFromString(name);
+    ((void (*)(id, SEL))[self methodForSelector:action])(self, action);
 }
 - (id)readPreferenceValue:(PSSpecifier *)specifier {
     NSUserDefaults *prefs = [[NSUserDefaults alloc] initWithSuiteName:@"com.moxuan.regionshot"];
