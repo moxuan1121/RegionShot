@@ -89,6 +89,8 @@ assert desktop_focus.index('dispatch_async(dispatch_get_main_queue()') < desktop
 assert 'UIKeyboardDidHideNotification' not in chat and 'stabilizingInitialFocus' not in chat
 assert 'AIDesktopKeyboardFix' not in chat and 'AIDesktopKeyboardFix' not in (root / 'Preferences/RSOptions.m').read_text(encoding='utf-8')
 assert 'action:@selector(backgroundTapped)' in chat
+assert '+ (RSChatController *)detachMinimizedChat' in chat
+assert 'RSActiveChat = background.host ? background : nil;' in chat
 background_tap = chat.split('- (void)backgroundTapped {', 1)[1].split('- (void)minimize {', 1)[0]
 assert 'self.history.count || self.input.text.length || self.attachment || self.fileAttachment' in chat.split('- (BOOL)hasContent {', 1)[1].split('- (void)backgroundTapped', 1)[0]
 assert 'if ([self hasContent]) [self minimize]; else [self close];' in background_tap

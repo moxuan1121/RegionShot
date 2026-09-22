@@ -23,10 +23,14 @@ static UIImage *RSConsumeWeChatScanImage(void) {
     %orig;
     UIImage *image = RSConsumeWeChatScanImage();
     if (!image) return;
+    BOOL markedAlbum = [self respondsToSelector:@selector(setIsPickingImageFromAlbum:)];
     @try {
-        if ([self respondsToSelector:@selector(setIsPickingImageFromAlbum:)]) [self setIsPickingImageFromAlbum:YES];
+        if (markedAlbum) [self setIsPickingImageFromAlbum:YES];
         [self scanPickedImage:image];
-    } @catch (__unused NSException *exception) {}
+    } @catch (__unused NSException *exception) {
+    } @finally {
+        if (markedAlbum) [self setIsPickingImageFromAlbum:NO];
+    }
 }
 %end
 %end

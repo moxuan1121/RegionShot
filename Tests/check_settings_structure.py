@@ -10,6 +10,7 @@ for line in source.splitlines():
         actual[match[1]] = dict(re.findall(r'@"(key|default|min|max|limit)":(@"(?:[^"\\]|\\.)*"|@[-\w.]+)', line))
 assert actual == json.loads((root / 'Tests/settings_contract.json').read_text(encoding='utf-8'))
 page = (root / 'Preferences/RSPreferences.m').read_text(encoding='utf-8')
+assert 'RSMainMenuLink' in page and 'UITableViewCellAccessoryDisclosureIndicator' in page and 'UIColor.labelColor' in page
 for selector in re.findall(r'@"((?:open|test|check)\w+)"', page):
     assert re.search(r'- \(void\)' + selector + r'\b', page), selector
 assert '当前开发预览' not in page and '关于' not in page

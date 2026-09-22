@@ -33,10 +33,18 @@ static __weak UINavigationController *RSSettingsNavigation;
         for (NSUInteger i = 1; i < section.count; i++) {
             NSArray *entry = section[i];
             PSSpecifier *link = [PSSpecifier preferenceSpecifierNamed:entry[0] target:self set:nil get:nil detail:nil cell:PSButtonCell edit:nil];
-            link.buttonAction = NSSelectorFromString(entry[1]); [items addObject:link];
+            link.buttonAction = NSSelectorFromString(entry[1]); [link setProperty:@YES forKey:@"RSMainMenuLink"]; [items addObject:link];
         }
     }
     _specifiers = items.copy; return _specifiers;
+}
+- (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
+    UITableViewCell *cell = [super tableView:tableView cellForRowAtIndexPath:indexPath];
+    if ([[self specifierAtIndexPath:indexPath] propertyForKey:@"RSMainMenuLink"]) {
+        cell.textLabel.textColor = UIColor.labelColor;
+        cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
+    }
+    return cell;
 }
 - (id)readPreferenceValue:(PSSpecifier *)specifier {
     NSUserDefaults *prefs = [[NSUserDefaults alloc] initWithSuiteName:@"com.moxuan.regionshot"];

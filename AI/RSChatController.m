@@ -89,6 +89,7 @@
 @property (nonatomic, strong) NSDictionary *fileAttachment;
 @property (nonatomic, strong) NSMutableIndexSet *excludedHistory;
 @property (nonatomic, copy) NSString *fileName;
+@property (nonatomic, strong) RSChatController *backgroundChat;
 @property (nonatomic, strong) id desktopKeyObserver;
 @property (nonatomic) NSUInteger desktopKeyGeneration;
 - (void)armDesktopKeyRecovery;
@@ -105,6 +106,13 @@ static NSUserDefaults *RSChatPreferences(void) {
     return prefs;
 }
 @implementation RSChatController
+
++ (RSChatController *)detachMinimizedChat {
+    RSChatController *chat = RSActiveChat;
+    if (!chat.host || chat.host.hidden || !chat.card.hidden || chat.ball.hidden) return nil;
+    RSActiveChat = nil;
+    return chat;
+}
 
 + (void)minimizeForLock {
     RSChatController *chat = RSActiveChat;
@@ -170,8 +178,11 @@ static NSUserDefaults *RSChatPreferences(void) {
 + (void)showImage:(UIImage *)image scene:(UIWindowScene *)scene persona:(NSDictionary *)persona {
     if (!image || !persona) return;
     BOOL keyboard = [persona[@"presentation"] isEqual:@"keyboardai"];
+    BOOL popup = keyboard && [RSChatPreferences() stringForKey:@"AIEndpoint"].length;
+    RSChatController *background = popup ? [self detachMinimizedChat] : nil;
     if (keyboard && RSActiveChat) [RSActiveChat close];
     [self showImage:nil scene:scene];
+    RSActiveChat.backgroundChat = background;
     RSActiveChat.personaPrompt = persona[@"prompt"] ?: @"";
     if ([persona[@"presentation"] isEqual:@"keyboardai"] && [RSChatPreferences() stringForKey:@"AIEndpoint"].length) {
         RSChatController *chat = RSActiveChat;
@@ -194,8 +205,10 @@ static NSUserDefaults *RSChatPreferences(void) {
 }
 + (void)showText:(NSString *)text scene:(UIWindowScene *)scene persona:(NSDictionary *)persona {
     if (!text.length || !persona) return;
+    RSChatController *background = [RSChatPreferences() stringForKey:@"AIEndpoint"].length ? [self detachMinimizedChat] : nil;
     if (RSActiveChat) [RSActiveChat close];
     [self showImage:nil scene:scene];
+    RSActiveChat.backgroundChat = background;
     RSActiveChat.personaPrompt = persona[@"prompt"] ?: @"";
     if ([RSChatPreferences() stringForKey:@"AIEndpoint"].length) {
         RSChatController *chat = RSActiveChat;
@@ -506,6 +519,8 @@ static NSUserDefaults *RSChatPreferences(void) {
     [pan setTranslation:CGPointZero inView:self.view];
 }
 - (void)close {
+    RSChatController *background = self.backgroundChat;
+    self.backgroundChat = nil;
     [self stopDesktopKeyRecovery];
     [self.session invalidateAndCancel];
     self.task = nil;
@@ -514,7 +529,7 @@ static NSUserDefaults *RSChatPreferences(void) {
     RSCloseWindowSurface(self.host, self.card.hidden ? self.ball : self.card);
     [self.previousKey makeKeyWindow];
     self.host = nil;
-    if (RSActiveChat == self) RSActiveChat = nil;
+    if (RSActiveChat == self) RSActiveChat = background.host ? background : nil;
 }
 - (void)message:(NSString *)message {
     if (self.keyboardPresentation) { RSKAUpdateAnswer(self.answer ?: @"", YES, message); return; }
