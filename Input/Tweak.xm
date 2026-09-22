@@ -10,14 +10,16 @@
 
 static UIImage *RSConsumeWeChatScanImage(void) {
     NSString *path = jbroot(@"/var/mobile/Library/Caches/com.moxuan.regionshot.wechat-scan.png");
-    NSString *consuming = [path stringByAppendingString:@".consuming"];
+    static NSString *lastFile;
     NSFileManager *files = NSFileManager.defaultManager;
-    [files removeItemAtPath:consuming error:nil];
-    if (![files moveItemAtPath:path toPath:consuming error:nil]) return nil;
-    NSDictionary *attributes = [files attributesOfItemAtPath:consuming error:nil];
+    [files removeItemAtPath:[path stringByAppendingString:@".consuming"] error:nil];
+    NSDictionary *attributes = [files attributesOfItemAtPath:path error:nil];
     unsigned long long size = [attributes fileSize];
-    NSData *data = size && size <= 64ull * 1024 * 1024 ? [NSData dataWithContentsOfFile:consuming] : nil;
-    [files removeItemAtPath:consuming error:nil];
+    NSData *data = size && size <= 64ull * 1024 * 1024 ? [NSData dataWithContentsOfFile:path] : nil;
+    NSString *file = data.length ? [NSString stringWithFormat:@"%@:%llu:%lu", attributes[NSFileModificationDate], size, (unsigned long)data.hash] : nil;
+    [files removeItemAtPath:path error:nil];
+    if (!file.length || [file isEqual:lastFile]) return nil;
+    lastFile = file;
     return data.length ? [UIImage imageWithData:data] : nil;
 }
 

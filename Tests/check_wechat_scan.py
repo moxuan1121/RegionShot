@@ -12,8 +12,9 @@ assert "saveImage:" not in handler
 assert "RSConsumeWeChatScanImage()" in receiver
 assert "scanPickedImage:image" in receiver
 consume = receiver.split("static UIImage *RSConsumeWeChatScanImage", 1)[1].split("%group RSWeChatScanner", 1)[0]
-assert consume.index("moveItemAtPath:path toPath:consuming") < consume.index("dataWithContentsOfFile:consuming")
-assert "dataWithContentsOfFile:path" not in consume
+assert "[files moveItemAtPath" not in consume and "dataWithContentsOfFile:path" in consume
+assert consume.index("dataWithContentsOfFile:path") < consume.index("removeItemAtPath:path")
+assert "[file isEqual:lastFile]" in consume
 scan_hook = receiver.split("%group RSWeChatScanner", 1)[1].split("%end\n%end", 1)[0]
 assert scan_hook.index("setIsPickingImageFromAlbum:YES") < scan_hook.index("scanPickedImage:image") < scan_hook.index("setIsPickingImageFromAlbum:NO")
 assert "@finally" in scan_hook
