@@ -10,25 +10,35 @@
 
 static UIImage *RSConsumeWeChatScanImage(void) {
     NSString *path = jbroot(@"/var/mobile/Library/Caches/com.moxuan.regionshot.wechat-scan.png");
-    static NSString *lastFile;
     NSFileManager *files = NSFileManager.defaultManager;
     [files removeItemAtPath:[path stringByAppendingString:@".consuming"] error:nil];
+    NSString *requestPath = [path stringByAppendingString:@".request"];
+    NSString *request = [NSString stringWithContentsOfFile:requestPath encoding:NSUTF8StringEncoding error:nil];
+    NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
+    if (!request.length || [request isEqual:[defaults stringForKey:@"com.moxuan.regionshot.lastWechatScanRequest"]]) return nil;
     NSDictionary *attributes = [files attributesOfItemAtPath:path error:nil];
     unsigned long long size = [attributes fileSize];
     NSData *data = size && size <= 64ull * 1024 * 1024 ? [NSData dataWithContentsOfFile:path] : nil;
-    NSString *file = data.length ? [NSString stringWithFormat:@"%@:%llu:%lu", attributes[NSFileModificationDate], size, (unsigned long)data.hash] : nil;
+    if (!data.length) return nil;
+    [defaults setObject:request forKey:@"com.moxuan.regionshot.lastWechatScanRequest"];
+    [defaults synchronize];
     [files removeItemAtPath:path error:nil];
-    if (!file.length || [file isEqual:lastFile]) return nil;
-    lastFile = file;
-    return data.length ? [UIImage imageWithData:data] : nil;
+    [files removeItemAtPath:requestPath error:nil];
+    return [UIImage imageWithData:data];
 }
 
+static BOOL RSResetWeChatAlbumBeforeAppearance;
 %group RSWeChatScanner
 %hook CameraScanViewController
 - (void)viewDidAppear:(BOOL)animated {
+    if (RSResetWeChatAlbumBeforeAppearance) {
+        RSResetWeChatAlbumBeforeAppearance = NO;
+        if ([self respondsToSelector:@selector(setIsPickingImageFromAlbum:)]) [self setIsPickingImageFromAlbum:NO];
+    }
     %orig;
     UIImage *image = RSConsumeWeChatScanImage();
     if (!image) return;
+    RSResetWeChatAlbumBeforeAppearance = YES;
     BOOL markedAlbum = [self respondsToSelector:@selector(setIsPickingImageFromAlbum:)];
     @try {
         if (markedAlbum) [self setIsPickingImageFromAlbum:YES];

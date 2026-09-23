@@ -23,6 +23,11 @@ BOOL RSStageWeChatScanImage(UIImage *image) {
     NSString *path = RSWeChatScanImagePath();
     if (!data.length || ![data writeToFile:path options:NSDataWritingAtomic error:nil]) return NO;
     [[NSFileManager defaultManager] setAttributes:@{NSFilePosixPermissions:@0600} ofItemAtPath:path error:nil];
+    NSString *request = NSUUID.UUID.UUIDString;
+    if (![request writeToFile:[path stringByAppendingString:@".request"] atomically:YES encoding:NSUTF8StringEncoding error:nil]) {
+        [[NSFileManager defaultManager] removeItemAtPath:path error:nil];
+        return NO;
+    }
     return YES;
 }
 
@@ -161,7 +166,7 @@ BOOL RSStageWeChatScanImage(UIImage *image) {
             if (!window.selectionView.hasValidSelection) return;
             UIImage *image = [RSScreenCapture cropImage:window.imageView.image toRect:window.selectionRect displaySize:window.displaySize];
             if (!image) return;
-            RSStageWeChatScanImage(image);
+            if (!RSStageWeChatScanImage(image)) return;
             if (window.toolbar.cancelHandler) window.toolbar.cancelHandler();
             [UIApplication.sharedApplication openURL:[NSURL URLWithString:@"weixin://scanqrcode"] options:@{} completionHandler:nil];
         };
