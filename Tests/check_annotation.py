@@ -52,6 +52,10 @@ menu = read("Selection/RSMenuSettings.m")
 icon_import = menu.split("- (void)importImage:", 1)[1].split("- (void)picker:", 1)[0]
 assert "CGBitmapContextCreate" in icon_import and "CGImageCreateWithImageInRect" in icon_import
 assert icon_import.index("CGImageCreateWithImageInRect") < icon_import.index("UIImagePNGRepresentation(icon)")
+assert 'RSSelectionCustomIconSize(void)' in menu
+assert 'colorWithWhite:0.28' in menu and '自定义图标大小' in menu
+assert 'RSSelectionCustomIconSize()' in toolbar
+assert 'RSSelectionCustomIconSize()' in read("Selection/RSSelectionWindow.m")
 hooks = read("Selection/RSFreezeSystemHooks.xm")
 assert "acquireSystemGestureDisableAssertion" not in read("Selection/RSSelectionWindow.m")
 assert "lockUIFromSource:" in hooks and "cancelCapture]; %orig;" in hooks

@@ -71,6 +71,11 @@ CGFloat RSSelectionMenuSize(BOOL icon) {
     CGFloat value = [prefs objectForKey:key] ? [prefs doubleForKey:key] : (icon ? 32 : 12);
     return isfinite(value) ? MIN(MAX(value, icon ? 16 : 8), icon ? 80 : 16) : (icon ? 32 : 12);
 }
+CGFloat RSSelectionCustomIconSize(void) {
+    id saved = [RSMenuPrefs() objectForKey:@"SelectionCustomIconSize"];
+    CGFloat value = saved ? [saved doubleValue] : RSSelectionMenuSize(YES);
+    return isfinite(value) ? MIN(MAX(value, 16), 80) : RSSelectionMenuSize(YES);
+}
 BOOL RSSelectionMenuHideNames(void) { return [RSMenuPrefs() boolForKey:@"HideSelectionNames"]; }
 
 @interface RSMenuSymbols : UITableViewController <UISearchResultsUpdating>
@@ -136,7 +141,7 @@ BOOL RSSelectionMenuHideNames(void) { return [RSMenuPrefs() boolForKey:@"HideSel
 }
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView { return 3; }
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
-    return section == 0 ? self.items.count : section == 1 ? (self.floatingMenu ? 0 : 3) : 1;
+    return section == 0 ? self.items.count : section == 1 ? (self.floatingMenu ? 0 : 4) : 1;
 }
 - (NSString *)tableView:(UITableView *)tableView titleForHeaderInSection:(NSInteger)section {
     return section == 1 && self.floatingMenu ? nil : @[@"图标、名称与排序", @"显示大小", @"恢复"][section];
@@ -148,7 +153,16 @@ BOOL RSSelectionMenuHideNames(void) { return [RSMenuPrefs() boolForKey:@"HideSel
     UITableViewCell *cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:nil];
     if (path.section == 0) {
         NSDictionary *item = self.items[path.row]; cell.textLabel.text = item[@"title"];
-        cell.imageView.image = RSSelectionMenuIcon(item); cell.detailTextLabel.text = item[@"image"] ? @"自定义图片" : item[@"symbol"];
+        UIImage *icon = RSSelectionMenuIcon(item);
+        if (item[@"image"] && icon) {
+            UIGraphicsImageRenderer *preview = [[UIGraphicsImageRenderer alloc] initWithSize:CGSizeMake(36, 36)];
+            icon = [preview imageWithActions:^(UIGraphicsImageRendererContext *context) {
+                [[UIColor colorWithWhite:0.28 alpha:1] setFill];
+                [[UIBezierPath bezierPathWithRoundedRect:CGRectMake(0, 0, 36, 36) cornerRadius:7] fill];
+                [icon drawInRect:CGRectMake(2, 2, 32, 32)];
+            }];
+        }
+        cell.imageView.image = icon; cell.detailTextLabel.text = item[@"image"] ? @"自定义图片" : item[@"symbol"];
         UISwitch *toggle = [UISwitch new]; toggle.on = [item[@"enabled"] boolValue]; toggle.tag = [item[@"id"] integerValue];
         toggle.enabled = !self.floatingMenu || toggle.tag != 6; toggle.accessibilityLabel = [@"显示 " stringByAppendingString:item[@"title"]];
         [toggle addTarget:self action:@selector(toggleItem:) forControlEvents:UIControlEventValueChanged]; cell.accessoryView = toggle;
@@ -157,11 +171,12 @@ BOOL RSSelectionMenuHideNames(void) { return [RSMenuPrefs() boolForKey:@"HideSel
         UISwitch *toggle = [UISwitch new]; toggle.on = RSSelectionMenuHideNames();
         [toggle addTarget:self action:@selector(toggleNames:) forControlEvents:UIControlEventValueChanged]; cell.accessoryView = toggle;
     } else if (path.section == 1) {
-        BOOL icon = path.row == 1;
-        cell.textLabel.text = [NSString stringWithFormat:@"%@：%.0f", icon ? @"图标大小" : @"文字大小", RSSelectionMenuSize(icon)];
-        UISlider *slider = [[UISlider alloc] initWithFrame:CGRectMake(0, 0, 140, 44)]; slider.tag = icon;
-        slider.minimumValue = icon ? 16 : 8; slider.maximumValue = icon ? 80 : 16; slider.value = RSSelectionMenuSize(icon);
-        slider.accessibilityLabel = icon ? @"图标大小" : @"文字大小";
+        NSString *label = path.row == 1 ? @"图标大小" : path.row == 2 ? @"自定义图标大小" : @"文字大小";
+        CGFloat value = path.row == 2 ? RSSelectionCustomIconSize() : RSSelectionMenuSize(path.row == 1);
+        cell.textLabel.text = [NSString stringWithFormat:@"%@：%.0f", label, value];
+        UISlider *slider = [[UISlider alloc] initWithFrame:CGRectMake(0, 0, 140, 44)]; slider.tag = path.row;
+        slider.minimumValue = path.row == 3 ? 8 : 16; slider.maximumValue = path.row == 3 ? 16 : 80; slider.value = value;
+        slider.accessibilityLabel = label;
         [slider addTarget:self action:@selector(sizeChanged:) forControlEvents:UIControlEventValueChanged]; cell.accessoryView = RSSliderInput(slider, self);
     } else { cell.textLabel.text = @"恢复工具条默认设置"; cell.textLabel.textColor = UIColor.systemRedColor; }
     return cell;
@@ -173,10 +188,12 @@ BOOL RSSelectionMenuHideNames(void) { return [RSMenuPrefs() boolForKey:@"HideSel
 - (void)toggleItem:(UISwitch *)toggle { [self itemForID:@(toggle.tag)][@"enabled"] = @(toggle.on); [self save]; }
 - (void)toggleNames:(UISwitch *)toggle { [RSMenuPrefs() setBool:toggle.on forKey:@"HideSelectionNames"]; }
 - (void)sizeChanged:(UISlider *)slider {
-    [RSMenuPrefs() setDouble:round(slider.value) forKey:slider.tag ? @"SelectionIconSize" : @"SelectionTextSize"];
+    NSString *key = slider.tag == 1 ? @"SelectionIconSize" : slider.tag == 2 ? @"SelectionCustomIconSize" : @"SelectionTextSize";
+    [RSMenuPrefs() setDouble:round(slider.value) forKey:key];
     UIView *view = slider;
     while (view && ![view isKindOfClass:UITableViewCell.class]) view = view.superview;
-    ((UITableViewCell *)view).textLabel.text = [NSString stringWithFormat:@"%@：%.0f", slider.tag ? @"图标大小" : @"文字大小", round(slider.value)];
+    NSString *label = slider.tag == 1 ? @"图标大小" : slider.tag == 2 ? @"自定义图标大小" : @"文字大小";
+    ((UITableViewCell *)view).textLabel.text = [NSString stringWithFormat:@"%@：%.0f", label, round(slider.value)];
 }
 - (BOOL)tableView:(UITableView *)tableView canMoveRowAtIndexPath:(NSIndexPath *)path { return path.section == 0; }
 - (BOOL)tableView:(UITableView *)tableView canEditRowAtIndexPath:(NSIndexPath *)path { return path.section == 0; }
@@ -196,7 +213,7 @@ BOOL RSSelectionMenuHideNames(void) { return [RSMenuPrefs() boolForKey:@"HideSel
         UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"恢复默认" message:@"清除工具条排序、名称、图标和大小设置？" preferredStyle:UIAlertControllerStyleAlert];
         [alert addAction:[UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:nil]];
         [alert addAction:[UIAlertAction actionWithTitle:@"恢复" style:UIAlertActionStyleDestructive handler:^(UIAlertAction *action) {
-            for (NSString *key in (self.floatingMenu ? @[@"FloatingMenu"] : self.frozenMenu ? @[@"FrozenMenu"] : @[@"SelectionMenu", @"SelectionIconSize", @"SelectionTextSize", @"HideSelectionNames"])) [RSMenuPrefs() removeObjectForKey:key];
+            for (NSString *key in (self.floatingMenu ? @[@"FloatingMenu"] : self.frozenMenu ? @[@"FrozenMenu"] : @[@"SelectionMenu", @"SelectionIconSize", @"SelectionCustomIconSize", @"SelectionTextSize", @"HideSelectionNames"])) [RSMenuPrefs() removeObjectForKey:key];
             [self reloadItems]; [self.tableView reloadData];
         }]];
         [self presentViewController:alert animated:YES completion:nil]; return;
