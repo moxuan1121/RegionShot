@@ -267,38 +267,6 @@ BOOL RSSelectionMenuHideNames(void) { return [RSMenuPrefs() boolForKey:@"HideSel
     UIImage *icon = [renderer imageWithActions:^(UIGraphicsImageRendererContext *ctx) {
         [image drawInRect:CGRectMake((160 - size.width) / 2, (160 - size.height) / 2, size.width, size.height)];
     }];
-    // Trim transparent padding so the visible artwork fills the toolbar's icon bounds.
-    unsigned char pixels[160 * 160 * 4] = {0};
-    CGColorSpaceRef space = CGColorSpaceCreateDeviceRGB();
-    CGContextRef bitmap = CGBitmapContextCreate(pixels, 160, 160, 8, 160 * 4, space,
-                                                 kCGImageAlphaPremultipliedLast | kCGBitmapByteOrder32Big);
-    CGColorSpaceRelease(space);
-    if (bitmap) {
-        CGContextDrawImage(bitmap, CGRectMake(0, 0, 160, 160), icon.CGImage);
-        CGContextRelease(bitmap);
-        NSInteger left = 160, top = 160, right = -1, bottom = -1;
-        for (NSInteger y = 0; y < 160; y++) for (NSInteger x = 0; x < 160; x++) {
-            if (pixels[(y * 160 + x) * 4 + 3] < 8) continue;
-            left = MIN(left, x); top = MIN(top, y);
-            right = MAX(right, x); bottom = MAX(bottom, y);
-        }
-        if (right >= left && bottom >= top) {
-            CGRect visible = CGRectMake(left, top, right - left + 1, bottom - top + 1);
-            if (CGRectGetWidth(visible) < 156 || CGRectGetHeight(visible) < 156) {
-                CGImageRef cropped = CGImageCreateWithImageInRect(icon.CGImage, visible);
-                if (cropped) {
-                    UIImage *artwork = [UIImage imageWithCGImage:cropped];
-                    CGImageRelease(cropped);
-                    CGFloat fit = MIN(160 / artwork.size.width, 160 / artwork.size.height);
-                    CGSize fitted = CGSizeMake(artwork.size.width * fit, artwork.size.height * fit);
-                    icon = [renderer imageWithActions:^(UIGraphicsImageRendererContext *ctx) {
-                        [artwork drawInRect:CGRectMake((160 - fitted.width) / 2, (160 - fitted.height) / 2,
-                                                       fitted.width, fitted.height)];
-                    }];
-                }
-            }
-        }
-    }
     NSData *png = UIImagePNGRepresentation(icon);
     if (!png || png.length > 256 * 1024) { [self showError:@"图标编码失败或过大。"]; return; }
     [self itemForID:identifier][@"image"] = png; [self save]; [self.tableView reloadData];

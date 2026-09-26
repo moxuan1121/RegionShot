@@ -48,10 +48,6 @@ assert "addChildViewController:navigation" not in edit_selection
 toolbar = read("Selection/RSSelectionToolbar.m")
 assert "RSMenuImpact();" in toolbar
 assert '@"presentation"] isEqual:@"keyboardai"' in toolbar
-menu = read("Selection/RSMenuSettings.m")
-icon_import = menu.split("- (void)importImage:", 1)[1].split("- (void)picker:", 1)[0]
-assert "CGBitmapContextCreate" in icon_import and "CGImageCreateWithImageInRect" in icon_import
-assert icon_import.index("CGImageCreateWithImageInRect") < icon_import.index("UIImagePNGRepresentation(icon)")
 hooks = read("Selection/RSFreezeSystemHooks.xm")
 assert "acquireSystemGestureDisableAssertion" not in read("Selection/RSSelectionWindow.m")
 assert "lockUIFromSource:" in hooks and "cancelCapture]; %orig;" in hooks
