@@ -2,14 +2,13 @@
 #import "RSMenuSettings.h"
 
 @interface RSSelectionToolbarButton : UIButton
-@property (nonatomic) BOOL customIcon;
 @end
 
 @implementation RSSelectionToolbarButton
 - (void)layoutSubviews {
     [super layoutSubviews];
     CGFloat width = CGRectGetWidth(self.bounds);
-    CGFloat size = self.customIcon ? RSSelectionCustomIconSize() : RSSelectionMenuSize(YES);
+    CGFloat size = RSSelectionMenuSize(YES);
     BOOL hideNames = RSSelectionMenuHideNames();
     CGFloat imageY = hideNames ? (CGRectGetHeight(self.bounds) - size) / 2.0 : 3;
     self.imageView.frame = CGRectMake((width - size) / 2.0, imageY, size, size);
@@ -45,7 +44,6 @@ static void RSMenuImpact(void) {
         for (NSDictionary *item in (self.selectionActive ? RSSelectionMenuItems() : RSFrozenMenuItems())) {
             if (![item[@"enabled"] boolValue]) continue;
             RSSelectionToolbarButton *button = [RSSelectionToolbarButton buttonWithType:UIButtonTypeSystem];
-            button.customIcon = item[@"image"] != nil;
             [button setTitle:item[@"title"] forState:UIControlStateNormal];
             button.accessibilityLabel = item[@"title"];
             [button setImage:RSSelectionMenuIcon(item) forState:UIControlStateNormal];

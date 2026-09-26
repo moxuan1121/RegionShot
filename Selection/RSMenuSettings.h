@@ -5,7 +5,6 @@ NSArray<NSDictionary *> *RSFloatingMenuItems(void);
 NSArray<NSDictionary *> *RSFrozenMenuItems(void);
 UIImage *RSSelectionMenuIcon(NSDictionary *item);
 CGFloat RSSelectionMenuSize(BOOL icon);
-CGFloat RSSelectionCustomIconSize(void);
 BOOL RSSelectionMenuHideNames(void);
 
 @interface RSMenuSettings : UITableViewController

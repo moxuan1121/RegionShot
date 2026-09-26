@@ -185,10 +185,9 @@ BOOL RSStageWeChatScanImage(UIImage *image) {
     self.imageView.frame = bounds;
     self.selectionView.frame = bounds;
     CGFloat safeBottom = insets.bottom;
-    CGFloat iconSize = MAX(RSSelectionMenuSize(YES), RSSelectionCustomIconSize());
-    CGFloat buttonWidth = MAX(44, iconSize + 16);
+    CGFloat buttonWidth = MAX(44, RSSelectionMenuSize(YES) + 16);
     CGFloat width = MIN(CGRectGetWidth(bounds) - 32, MIN(396, self.toolbar.subviews.count * buttonWidth));
-    CGFloat height = MAX(40, iconSize + (RSSelectionMenuHideNames() ? 6 : 24));
+    CGFloat height = MAX(40, RSSelectionMenuSize(YES) + (RSSelectionMenuHideNames() ? 6 : 24));
     self.toolbarScroll.frame = CGRectMake((CGRectGetWidth(bounds) - width) / 2.0,
                                     CGRectGetHeight(bounds) - safeBottom - height - 12, width, height);
     if (self.selectionView.hasValidSelection) {
