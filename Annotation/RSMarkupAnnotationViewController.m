@@ -172,10 +172,11 @@
 #pragma mark - Detail zoom
 
 - (void)updatePinchWithTouches:(NSArray<UITouch *> *)touches began:(BOOL)began {
-    CGPoint a = [touches[0] locationInView:self.zoomView];
-    CGPoint b = [touches[1] locationInView:self.zoomView];
+    CGPoint a = [touches[0] locationInView:self.view];
+    CGPoint b = [touches[1] locationInView:self.view];
     CGFloat distance = hypot(a.x - b.x, a.y - b.y);
-    CGPoint point = CGPointMake((a.x + b.x) / 2, (a.y + b.y) / 2);
+    CGPoint point = CGPointMake((a.x + b.x) / 2 - CGRectGetMinX(self.zoomView.frame),
+                                (a.y + b.y) / 2 - CGRectGetMinY(self.zoomView.frame));
     if (began) {
         self.pinchStartDistance = 0;
         if (distance < 1) return;
