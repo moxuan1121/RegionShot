@@ -51,6 +51,9 @@ assert '@"id":@3, @"title":@"标记"' in floating_menu
 assert 'RSFloatingActionMarkup = 3' in floating_header
 assert 'case RSFloatingActionMarkup:' in manager
 assert '[[RSImageEditor alloc] initWithImage:image completion:' in manager
+markup_completion = manager.split('case RSFloatingActionMarkup:', 1)[1].split('self.editorWindow = scene ?', 1)[0]
+assert '[self removeSnap:snap]' in markup_completion
+assert 'snap.image = edited' not in markup_completion
 assert '[RSChatController showImage:image scene:snap.window.windowScene persona:persona]' in manager
 assert 'RSFloatingMenuItems()' in floating_view
 

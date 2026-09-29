@@ -280,7 +280,7 @@ void RSShowFloatingImage(UIImage *image, UIWindowScene *scene) {
             UIWindowScene *scene = snap.window.windowScene;
             for (UIWindow *window in scene.windows) if (window.isKeyWindow) self.editorPreviousKeyWindow = window;
             RSImageEditor *editor = [[RSImageEditor alloc] initWithImage:image completion:^(UIImage *edited) {
-                if ([self.mutableSnaps containsObject:snap]) snap.image = edited;
+                if (edited) [self removeSnap:snap];
             }];
             self.editorWindow = scene ? [[UIWindow alloc] initWithWindowScene:scene] :
                                         [[UIWindow alloc] initWithFrame:UIScreen.mainScreen.bounds];
