@@ -173,6 +173,8 @@
 
 - (void)pinchImage:(UIPinchGestureRecognizer *)gesture {
     if (gesture.state == UIGestureRecognizerStateBegan) {
+        // Diagnostic build: green means the pinch recognizer began.
+        self.canvas.backgroundColor = [[UIColor systemGreenColor] colorWithAlphaComponent:0.25];
         self.pinchStartScale = self.zoomView.zoomScale;
         [self.canvas cancelCurrentStroke];
     }

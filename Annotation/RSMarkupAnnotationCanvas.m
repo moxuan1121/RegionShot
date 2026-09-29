@@ -50,6 +50,10 @@
 #pragma mark - Touch handling
 
 - (void)touchesBegan:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
+    // Diagnostic build: red=first touch, blue=second touch reached canvas.
+    self.backgroundColor = event.allTouches.count == 1 ?
+        [[UIColor systemRedColor] colorWithAlphaComponent:0.25] :
+        [[UIColor systemBlueColor] colorWithAlphaComponent:0.25];
     if (event.allTouches.count > 1) {
         [self cancelCurrentStroke];
         return;
