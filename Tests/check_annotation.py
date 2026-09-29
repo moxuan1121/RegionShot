@@ -13,13 +13,16 @@ assert "UIScrollViewDelegate" in editor
 assert "self.zoomView.maximumZoomScale = 6.0" in editor
 assert "self.zoomView.panGestureRecognizer.minimumNumberOfTouches = 2" in editor
 assert "return self.zoomContentView" in editor
-assert "[self.canvas addGestureRecognizer:pinch]" in editor
-assert "[self.view addGestureRecognizer:pinch]" not in editor
-assert "CGRectContainsPoint(self.zoomView.frame" not in editor
+assert "self.canvas.pinchTouchesChanged" in editor
+assert "[self.canvas addGestureRecognizer:pinch]" not in editor
+assert "self.zoomView.panGestureRecognizer.enabled = NO" in editor
+assert "touchesForView:self" in canvas
+assert "self.pinchTouchesChanged" in canvas
 assert "[self.canvas cancelCurrentStroke]" in editor
 assert "- (void)cancelCurrentStroke" in canvas
 assert "self.multipleTouchEnabled = YES" in canvas
-assert canvas.count("event.allTouches.count > 1") == 2
+assert canvas.count("active.count > 1") == 2
+assert "if (self.pinchActive)" in canvas
 assert "UITapGestureRecognizer *textTap" in editor
 assert "[self.canvas addGestureRecognizer:self.textTap]" in editor
 assert "RSMarkupAnnotationItem *item = [self.canvas textItemAtPoint:point]" in editor

@@ -7,6 +7,7 @@
 @property (nonatomic, strong) UILongPressGestureRecognizer *textMoveGesture;
 @property (nonatomic, strong) RSMarkupAnnotationItem *movingTextItem;
 @property (nonatomic) CGPoint textMoveOffset;
+@property (nonatomic) BOOL pinchActive;
 @end
 
 @implementation RSMarkupAnnotationCanvas
@@ -49,15 +50,25 @@
 
 #pragma mark - Touch handling
 
+- (NSArray<UITouch *> *)activeTouches:(UIEvent *)event {
+    NSMutableArray<UITouch *> *active = [NSMutableArray array];
+    for (UITouch *touch in [event touchesForView:self])
+        if (touch.phase != UITouchPhaseEnded && touch.phase != UITouchPhaseCancelled)
+            [active addObject:touch];
+    return active;
+}
+
 - (void)touchesBegan:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
-    // Diagnostic build: red=first touch, blue=second touch reached canvas.
-    self.backgroundColor = event.allTouches.count == 1 ?
-        [[UIColor systemRedColor] colorWithAlphaComponent:0.25] :
-        [[UIColor systemBlueColor] colorWithAlphaComponent:0.25];
-    if (event.allTouches.count > 1) {
+    NSArray<UITouch *> *active = [self activeTouches:event];
+    if (active.count > 1) {
         [self cancelCurrentStroke];
+        if (active.count == 2 && !self.pinchActive) {
+            self.pinchActive = YES;
+            if (self.pinchTouchesChanged) self.pinchTouchesChanged(active, YES);
+        }
         return;
     }
+    if (self.pinchActive) return;
     if ([self textItemAtPoint:[touches.anyObject locationInView:self]]) return;
     if (self.drawMode == RSMarkupDrawModeText) return;
     CGPoint p = [touches.anyObject locationInView:self];
@@ -76,10 +87,14 @@
 }
 
 - (void)touchesMoved:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
-    if (event.allTouches.count > 1) {
+    NSArray<UITouch *> *active = [self activeTouches:event];
+    if (active.count > 1) {
         [self cancelCurrentStroke];
+        if (active.count == 2 && self.pinchActive && self.pinchTouchesChanged)
+            self.pinchTouchesChanged(active, NO);
         return;
     }
+    if (self.pinchActive) return;
     if (!self.isDrawing) return;
     CGPoint p = [touches.anyObject locationInView:self];
     self.liveItem.endPoint = p;
@@ -90,6 +105,11 @@
 }
 
 - (void)touchesEnded:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
+    if (self.pinchActive) {
+        if (![self activeTouches:event].count) self.pinchActive = NO;
+        [self cancelCurrentStroke];
+        return;
+    }
     if (self.drawMode == RSMarkupDrawModeText) return;
     [self touchesMoved:touches withEvent:event];
     self.isDrawing = NO;
@@ -106,6 +126,7 @@
 }
 
 - (void)touchesCancelled:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
+    self.pinchActive = NO;
     [self cancelCurrentStroke];
 }
 

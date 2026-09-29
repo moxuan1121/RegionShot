@@ -5,7 +5,7 @@
 #import <Photos/Photos.h>
 #import <objc/runtime.h>
 
-@interface RSMarkupAnnotationViewController () <UIScrollViewDelegate, UIGestureRecognizerDelegate>
+@interface RSMarkupAnnotationViewController () <UIScrollViewDelegate>
 @property (nonatomic, strong) UIImage *sourceImage;
 @property (nonatomic, strong) UIScrollView *zoomView;
 @property (nonatomic, strong) UIView *zoomContentView;
@@ -22,6 +22,8 @@
 @property (nonatomic, strong) UISlider *widthSlider;
 @property (nonatomic, strong) UITapGestureRecognizer *textTap;
 @property (nonatomic) CGFloat pinchStartScale;
+@property (nonatomic) CGFloat pinchStartDistance;
+@property (nonatomic) CGPoint pinchAnchor;
 @end
 
 @implementation RSMarkupAnnotationViewController
@@ -76,6 +78,7 @@
     self.zoomView.showsVerticalScrollIndicator = NO;
     self.zoomView.delaysContentTouches = NO;
     self.zoomView.panGestureRecognizer.minimumNumberOfTouches = 2;
+    self.zoomView.panGestureRecognizer.enabled = NO;
     self.zoomView.pinchGestureRecognizer.enabled = NO;
     [self.view addSubview:self.zoomView];
 
@@ -96,9 +99,10 @@
     self.textTap.enabled = YES;
     self.textTap.cancelsTouchesInView = NO;
     [self.canvas addGestureRecognizer:self.textTap];
-    UIPinchGestureRecognizer *pinch = [[UIPinchGestureRecognizer alloc] initWithTarget:self action:@selector(pinchImage:)];
-    pinch.delegate = self;
-    [self.canvas addGestureRecognizer:pinch];
+    __weak typeof(self) weakSelf = self;
+    self.canvas.pinchTouchesChanged = ^(NSArray<UITouch *> *touches, BOOL began) {
+        [weakSelf updatePinchWithTouches:touches began:began];
+    };
 
     [self setupToolbar];
     [self setupWidthBar];   // 1.6 新增：预设线宽条
@@ -167,26 +171,26 @@
 
 #pragma mark - Detail zoom
 
-- (BOOL)gestureRecognizer:(UIGestureRecognizer *)gesture shouldRecognizeSimultaneouslyWithGestureRecognizer:(UIGestureRecognizer *)other {
-    return [gesture isKindOfClass:UIPinchGestureRecognizer.class];
-}
-
-- (void)pinchImage:(UIPinchGestureRecognizer *)gesture {
-    if (gesture.state == UIGestureRecognizerStateBegan) {
-        // Diagnostic build: green means the pinch recognizer began.
-        self.canvas.backgroundColor = [[UIColor systemGreenColor] colorWithAlphaComponent:0.25];
+- (void)updatePinchWithTouches:(NSArray<UITouch *> *)touches began:(BOOL)began {
+    CGPoint a = [touches[0] locationInView:self.zoomView];
+    CGPoint b = [touches[1] locationInView:self.zoomView];
+    CGFloat distance = hypot(a.x - b.x, a.y - b.y);
+    CGPoint point = CGPointMake((a.x + b.x) / 2, (a.y + b.y) / 2);
+    if (began) {
+        self.pinchStartDistance = 0;
+        if (distance < 1) return;
+        self.pinchStartDistance = distance;
         self.pinchStartScale = self.zoomView.zoomScale;
+        self.pinchAnchor = CGPointMake((self.zoomView.contentOffset.x + point.x) / self.pinchStartScale,
+                                      (self.zoomView.contentOffset.y + point.y) / self.pinchStartScale);
         [self.canvas cancelCurrentStroke];
     }
-    if (gesture.state != UIGestureRecognizerStateBegan && gesture.state != UIGestureRecognizerStateChanged) return;
-    CGFloat oldScale = self.zoomView.zoomScale;
-    CGFloat scale = MIN(MAX(self.pinchStartScale * gesture.scale, self.zoomView.minimumZoomScale), self.zoomView.maximumZoomScale);
-    CGPoint point = [gesture locationInView:self.zoomView];
-    CGPoint contentPoint = CGPointMake((self.zoomView.contentOffset.x + point.x) / oldScale,
-                                       (self.zoomView.contentOffset.y + point.y) / oldScale);
+    if (self.pinchStartDistance < 1) return;
+    CGFloat scale = MIN(MAX(self.pinchStartScale * distance / self.pinchStartDistance,
+                            self.zoomView.minimumZoomScale), self.zoomView.maximumZoomScale);
     self.zoomView.zoomScale = scale;
-    self.zoomView.contentOffset = CGPointMake(contentPoint.x * scale - point.x,
-                                              contentPoint.y * scale - point.y);
+    self.zoomView.contentOffset = CGPointMake(self.pinchAnchor.x * scale - point.x,
+                                              self.pinchAnchor.y * scale - point.y);
 }
 
 - (UIView *)viewForZoomingInScrollView:(UIScrollView *)scrollView {

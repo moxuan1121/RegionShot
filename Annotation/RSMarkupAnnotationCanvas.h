@@ -11,6 +11,7 @@
 @property (nonatomic, strong) UIColor *strokeColor;
 @property (nonatomic) CGFloat lineWidth;
 @property (nonatomic, strong) NSMutableArray<RSMarkupAnnotationItem *> *items;
+@property (nonatomic, copy) void (^pinchTouchesChanged)(NSArray<UITouch *> *touches, BOOL began);
 
 - (void)resizeDrawingToSize:(CGSize)size;
 - (void)cancelCurrentStroke;     // discard an unfinished mark before zooming
