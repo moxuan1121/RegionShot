@@ -98,7 +98,7 @@
     [self.canvas addGestureRecognizer:self.textTap];
     UIPinchGestureRecognizer *pinch = [[UIPinchGestureRecognizer alloc] initWithTarget:self action:@selector(pinchImage:)];
     pinch.delegate = self;
-    [self.view addGestureRecognizer:pinch];
+    [self.canvas addGestureRecognizer:pinch];
 
     [self setupToolbar];
     [self setupWidthBar];   // 1.6 新增：预设线宽条
@@ -166,11 +166,6 @@
 }
 
 #pragma mark - Detail zoom
-
-- (BOOL)gestureRecognizerShouldBegin:(UIGestureRecognizer *)gesture {
-    return ![gesture isKindOfClass:UIPinchGestureRecognizer.class] ||
-        CGRectContainsPoint(self.zoomView.frame, [gesture locationInView:self.view]);
-}
 
 - (BOOL)gestureRecognizer:(UIGestureRecognizer *)gesture shouldRecognizeSimultaneouslyWithGestureRecognizer:(UIGestureRecognizer *)other {
     return [gesture isKindOfClass:UIPinchGestureRecognizer.class];

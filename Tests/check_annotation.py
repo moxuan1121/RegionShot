@@ -13,6 +13,9 @@ assert "UIScrollViewDelegate" in editor
 assert "self.zoomView.maximumZoomScale = 6.0" in editor
 assert "self.zoomView.panGestureRecognizer.minimumNumberOfTouches = 2" in editor
 assert "return self.zoomContentView" in editor
+assert "[self.canvas addGestureRecognizer:pinch]" in editor
+assert "[self.view addGestureRecognizer:pinch]" not in editor
+assert "CGRectContainsPoint(self.zoomView.frame" not in editor
 assert "[self.canvas cancelCurrentStroke]" in editor
 assert "- (void)cancelCurrentStroke" in canvas
 assert "self.multipleTouchEnabled = YES" in canvas
