@@ -17,6 +17,7 @@ static NSArray *RSMenuDefaults(BOOL floating) {
         @{@"id":@0, @"title":@"复制", @"symbol":@"doc.on.doc", @"enabled":@YES},
         @{@"id":@1, @"title":@"保存", @"symbol":@"square.and.arrow.down", @"enabled":@YES},
         @{@"id":@2, @"title":@"分享", @"symbol":@"square.and.arrow.up", @"enabled":@YES},
+        @{@"id":@3, @"title":@"标记", @"symbol":@"pencil.tip", @"enabled":@YES},
         @{@"id":@4, @"title":@"关闭全部", @"symbol":@"trash", @"enabled":@YES},
         @{@"id":@5, @"title":@"图片问答", @"symbol":@"text.bubble", @"enabled":@YES},
         @{@"id":@6, @"title":@"关闭当前", @"symbol":@"xmark", @"enabled":@YES},
@@ -36,7 +37,7 @@ static NSArray *RSMenuDefaults(BOOL floating) {
 static NSArray *RSMenuItems(BOOL floating) {
     [RSMenuPrefs() synchronize];
     NSMutableArray *defaults = [RSMenuDefaults(floating) mutableCopy];
-    if (!floating) for (NSDictionary *persona in RSAIPersonas())
+    for (NSDictionary *persona in RSAIPersonas())
         [defaults addObject:@{@"id":persona[@"menuID"], @"title":persona[@"name"] ?: @"AI 人设", @"symbol":@"brain", @"enabled":@YES, @"persona":persona}];
     return RSNormalizeMenu([RSMenuPrefs() objectForKey:floating ? @"FloatingMenu" : @"SelectionMenu"], defaults, floating ? @6 : nil);
 }

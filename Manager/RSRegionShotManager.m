@@ -4,6 +4,8 @@
 #import "../Floating/RSFloatingWindow.h"
 #import "../Selection/RSSelectionWindow.h"
 #import "../AI/RSChatController.h"
+#import "../AI/RSAISettingsController.h"
+#import "../Selection/RSImageEditor.h"
 #import <Photos/Photos.h>
 #import "../Preferences/RSOptions.h"
 #import "../History/RSHistoryController.h"
@@ -17,6 +19,8 @@
 @property (nonatomic, strong, nullable) RSSelectionWindow *selectionWindow;
 @property (nonatomic, strong, nullable) RSLongCaptureController *longCaptureWindow;
 @property (nonatomic, strong, nullable) RSFloatingWindow *floatingWindow;
+@property (nonatomic, strong, nullable) UIWindow *editorWindow;
+@property (nonatomic, weak, nullable) UIWindow *editorPreviousKeyWindow;
 @property (nonatomic, strong) NSMutableArray<RSFloatingImageView *> *mutableSnaps;
 - (void)createFloatingSnap:(UIImage *)image windowScene:(nullable UIWindowScene *)scene;
 @end
@@ -249,6 +253,15 @@ void RSShowFloatingImage(UIImage *image, UIWindowScene *scene) {
 - (void)floatingImageView:(RSFloatingImageView *)snap didRequestAction:(RSFloatingAction)action {
     UIImage *image = snap.croppedImage;
     if (!image) return;
+    if (action >= 100) {
+        for (NSDictionary *persona in RSAIPersonas()) {
+            if ([persona[@"menuID"] integerValue] != action) continue;
+            [RSChatController showImage:image scene:snap.window.windowScene persona:persona];
+            [self removeSnap:snap];
+            return;
+        }
+        return;
+    }
     switch (action) {
         case RSFloatingActionCopy:
             UIPasteboard.generalPasteboard.image = image;
@@ -260,6 +273,29 @@ void RSShowFloatingImage(UIImage *image, UIWindowScene *scene) {
         }
         case RSFloatingActionShare: {
             [self shareImage:image completion:^{ [self removeSnap:snap]; }];
+            break;
+        }
+        case RSFloatingActionMarkup: {
+            if (self.editorWindow) break;
+            UIWindowScene *scene = snap.window.windowScene;
+            for (UIWindow *window in scene.windows) if (window.isKeyWindow) self.editorPreviousKeyWindow = window;
+            RSImageEditor *editor = [[RSImageEditor alloc] initWithImage:image completion:^(UIImage *edited) {
+                if ([self.mutableSnaps containsObject:snap]) snap.image = edited;
+            }];
+            self.editorWindow = scene ? [[UIWindow alloc] initWithWindowScene:scene] :
+                                        [[UIWindow alloc] initWithFrame:UIScreen.mainScreen.bounds];
+            self.editorWindow.frame = scene ? scene.coordinateSpace.bounds : UIScreen.mainScreen.bounds;
+            self.editorWindow.windowLevel = UIWindowLevelAlert + 100;
+            self.editorWindow.rootViewController = [[UINavigationController alloc] initWithRootViewController:editor];
+            editor.dismissEditor = ^{
+                self.editorWindow.hidden = YES;
+                self.editorWindow.rootViewController = nil;
+                self.editorWindow = nil;
+                [self.editorPreviousKeyWindow makeKeyWindow];
+                self.editorPreviousKeyWindow = nil;
+            };
+            RSApplyWindowOrientation(self.editorWindow, RSActiveOrientation(scene));
+            [self.editorWindow makeKeyAndVisible];
             break;
         }
         case RSFloatingActionCloseAll:

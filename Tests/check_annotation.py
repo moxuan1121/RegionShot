@@ -41,6 +41,19 @@ assert "forceDestroyOnRotation" not in editor
 assert "Snapper3.h" not in editor
 print("Annotation entry, text/highlight export, pixel sampling and layout wiring verified")
 
+floating_menu = read("Selection/RSMenuSettings.m")
+floating_view = read("Floating/RSFloatingImageView.m")
+floating_header = read("Floating/RSFloatingImageView.h")
+manager = read("Manager/RSRegionShotManager.m")
+assert 'for (NSDictionary *persona in RSAIPersonas())' in floating_menu
+assert 'if (!floating) for (NSDictionary *persona in RSAIPersonas())' not in floating_menu
+assert '@"id":@3, @"title":@"标记"' in floating_menu
+assert 'RSFloatingActionMarkup = 3' in floating_header
+assert 'case RSFloatingActionMarkup:' in manager
+assert '[[RSImageEditor alloc] initWithImage:image completion:' in manager
+assert '[RSChatController showImage:image scene:snap.window.windowScene persona:persona]' in manager
+assert 'RSFloatingMenuItems()' in floating_view
+
 for path in ["Input/RSInputInterface.m", "KeyboardAI/RSKAInterface.m"]:
     popup = read(path)
     assert "host.keyboardLayoutGuide.topAnchor" not in popup

@@ -4,6 +4,7 @@ typedef NS_ENUM(NSInteger, RSFloatingAction) {
     RSFloatingActionCopy = 0,
     RSFloatingActionSave = 1,
     RSFloatingActionShare = 2,
+    RSFloatingActionMarkup = 3,
     RSFloatingActionCloseAll = 4,
     RSFloatingActionAI = 5,
     RSFloatingActionCloseCurrent = 6,
