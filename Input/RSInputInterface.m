@@ -16,6 +16,7 @@
 #import "../Capture/RSWebURL.h"
 
 void RSInputOpenSearchEngine(NSDictionary *engine, NSString *text) {
+    if (text.length) UIPasteboard.generalPasteboard.string = text;
     NSURL *url = RSInputSearchURL(engine[@"engine"], text);
     if (url) [UIApplication.sharedApplication openURL:url options:@{} completionHandler:nil];
 }

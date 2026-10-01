@@ -61,6 +61,9 @@ for path in ["Input/RSInputInterface.m", "KeyboardAI/RSKAInterface.m"]:
     popup = read(path)
     assert "host.keyboardLayoutGuide.topAnchor" not in popup
     assert "insertArrangedSubview:self.tokenView atIndex:1" in popup
+    search_helper = popup.split("OpenSearchEngine(NSDictionary *engine, NSString *text) {", 1)[1].split("\n}", 1)[0]
+    assert "if (text.length) UIPasteboard.generalPasteboard.string = text;" in search_helper
+    assert search_helper.index("UIPasteboard.generalPasteboard.string = text") < search_helper.index("openURL:")
 assert "lockcomplete" in read("Trigger.xm")
 assert "if (!record) snap.center" in read("Manager/RSRegionShotManager.m")
 

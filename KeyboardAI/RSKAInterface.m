@@ -15,6 +15,7 @@
 #import "../Capture/RSWebURL.h"
 static NSDictionary *RSKAConfig(void) { return RSInputConfig(); }
 static void RSKAOpenSearchEngine(NSDictionary *engine, NSString *text) {
+    if (text.length) UIPasteboard.generalPasteboard.string = text;
     NSURL *url = RSKASearchURL(engine[@"engine"], text);
     if (url) [UIApplication.sharedApplication openURL:url options:@{} completionHandler:nil];
 }
