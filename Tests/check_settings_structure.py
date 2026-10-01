@@ -16,11 +16,13 @@ for selector in re.findall(r'@"((?:open|test|check)\w+)"', page):
 assert '当前开发预览' not in page and '关于' not in page
 assert page.index('@"Enabled"') < page.index('NSArray *sections')
 assert 'presentViewController:self.pages' not in page
-assert '@[@"复制截图历史调用地址", @"copyHistoryURL"]' in page
-history_copy = re.search(r'- \(void\)copyHistoryURL\s*\{([^}]+)\}', page).group(1)
+assert '复制截图历史调用地址' not in page
+behavior = (root / 'Preferences/RSBehaviorSettings.m').read_text(encoding='utf-8')
+assert 'self.groupIndex == 3' in behavior and 'isHistoryURLPath:path' in behavior
+assert 'cell.textLabel.text = @"复制截图历史调用地址"' in behavior
+history_copy = behavior.split('if ([self isHistoryURLPath:path]) {')[-1].split('return;', 1)[0]
 assert 'UIPasteboard.generalPasteboard.string = @"prefs://root=regionshot_history";' in history_copy
 assert 'presentViewController:alert' in history_copy and '@"已复制"' in history_copy
-behavior = (root / 'Preferences/RSBehaviorSettings.m').read_text(encoding='utf-8')
 controller = (root / 'LongShot/RSLongCaptureController.m').read_text(encoding='utf-8')
 header = (root / 'LongShot/RSLongCaptureController.h').read_text(encoding='utf-8')
 makefile = (root / 'Makefile').read_text(encoding='utf-8')

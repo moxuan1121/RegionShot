@@ -8,7 +8,8 @@
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView { return self.groupIndex == NSNotFound ? RSOptionGroups().count - 1 : 1; }
 - (BOOL)isAIGroup { return self.groupIndex == (NSInteger)RSOptionGroups().count - 1; }
 - (BOOL)isPhrasesPath:(NSIndexPath *)path { return self.isAIGroup && path.row == (NSInteger)[RSOptionGroups()[self.groupIndex][@"items"] count]; }
-- (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section { return self.groupIndex == NSNotFound ? 1 : [RSOptionGroups()[self.groupIndex][@"items"] count] + (self.isAIGroup ? 1 : 0); }
+- (BOOL)isHistoryURLPath:(NSIndexPath *)path { return self.groupIndex == 3 && path.row == (NSInteger)[RSOptionGroups()[3][@"items"] count]; }
+- (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section { return self.groupIndex == NSNotFound ? 1 : [RSOptionGroups()[self.groupIndex][@"items"] count] + (self.isAIGroup || self.groupIndex == 3 ? 1 : 0); }
 - (NSString *)tableView:(UITableView *)tableView titleForHeaderInSection:(NSInteger)section { return self.groupIndex == NSNotFound ? nil : RSOptionGroups()[self.groupIndex][@"title"]; }
 - (NSString *)tableView:(UITableView *)tableView titleForFooterInSection:(NSInteger)section { return self.groupIndex == NSNotFound ? nil : RSOptionGroups()[self.groupIndex][@"footer"]; }
 - (NSDictionary *)optionAt:(NSIndexPath *)path { return RSOptionGroups()[self.groupIndex][@"items"][path.row]; }
@@ -22,6 +23,10 @@
     if ([self isPhrasesPath:path]) {
         UITableViewCell *cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:nil];
         cell.textLabel.text = @"短语"; cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator; return cell;
+    }
+    if ([self isHistoryURLPath:path]) {
+        UITableViewCell *cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:nil];
+        cell.textLabel.text = @"复制截图历史调用地址"; return cell;
     }
     NSDictionary *option = [self optionAt:path];
     UITableViewCell *cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:nil];
@@ -62,6 +67,12 @@
         [self.navigationController pushViewController:page animated:YES]; return;
     }
     if ([self isPhrasesPath:path]) { [self.navigationController pushViewController:RSAICreatePhrasesController() animated:YES]; return; }
+    if ([self isHistoryURLPath:path]) {
+        UIPasteboard.generalPasteboard.string = @"prefs://root=regionshot_history";
+        UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"已复制" message:@"可粘贴到快捷指令、浏览器或其他插件中，直接打开截图历史。" preferredStyle:UIAlertControllerStyleAlert];
+        [alert addAction:[UIAlertAction actionWithTitle:@"好" style:UIAlertActionStyleCancel handler:nil]];
+        [self presentViewController:alert animated:YES completion:nil]; return;
+    }
     NSDictionary *option = [self optionAt:path];
     if (option[@"readOnlyText"]) return;
     NSArray *choices = option[@"choices"];

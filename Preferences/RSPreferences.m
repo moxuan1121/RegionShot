@@ -24,7 +24,7 @@ static __weak UINavigationController *RSSettingsNavigation;
         @[@"截图", @[@"触发与选区", @"openCaptureOptions"]],
         @[@"菜单", @[@"选区菜单", @"openMenu"], @[@"冻结菜单", @"openFrozenMenu"], @[@"悬浮图片菜单", @"openFloatingMenu"], @[@"菜单外观", @"openMenuAppearance"]],
         @[@"悬浮图片", @[@"显示与操作", @"openFloatOptions"]],
-        @[@"截图历史", @[@"打开截图历史", @"openHistory"], @[@"复制截图历史调用地址", @"copyHistoryURL"], @[@"记录与容量", @"openHistoryOptions"]],
+        @[@"截图历史", @[@"打开截图历史", @"openHistory"], @[@"记录与容量", @"openHistoryOptions"]],
         @[@"AI", @[@"AI 设置", @"openAI"]],
         @[@"输入与搜索", @[@"分词", @"openTokens"], @[@"搜索引擎", @"openSearch"]]
     ];
@@ -90,10 +90,4 @@ static __weak UINavigationController *RSSettingsNavigation;
 - (void)openTokens { [self openPage:RSInputCreateOptions(NO)]; }
 - (void)openSearch { [self openPage:RSInputCreateOptions(YES)]; }
 - (void)openHistory { notify_post("com.moxuan.regionshot/History"); }
-- (void)copyHistoryURL {
-    UIPasteboard.generalPasteboard.string = @"prefs://root=regionshot_history";
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"已复制" message:@"可粘贴到快捷指令、浏览器或其他插件中，直接打开截图历史。" preferredStyle:UIAlertControllerStyleAlert];
-    [alert addAction:[UIAlertAction actionWithTitle:@"好" style:UIAlertActionStyleCancel handler:nil]];
-    [self presentViewController:alert animated:YES completion:nil];
-}
 @end
