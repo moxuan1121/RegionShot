@@ -10,14 +10,12 @@
 #import "../Preferences/RSOptions.h"
 #import "../History/RSHistoryController.h"
 #import "../Geometry/RSOrientation.h"
-#import "../LongShot/RSLongCaptureController.h"
 
 @interface RSRegionShotManager () <RSFloatingImageViewDelegate>
 @property (nonatomic, getter=isCapturing) BOOL capturing;
 @property (nonatomic, getter=isInternalCapture) BOOL internalCapture;
 @property (nonatomic, strong, nullable) UIImage *frozenImage;
 @property (nonatomic, strong, nullable) RSSelectionWindow *selectionWindow;
-@property (nonatomic, strong, nullable) RSLongCaptureController *longCaptureWindow;
 @property (nonatomic, strong, nullable) RSFloatingWindow *floatingWindow;
 @property (nonatomic, strong, nullable) UIWindow *editorWindow;
 @property (nonatomic, weak, nullable) UIWindow *editorPreviousKeyWindow;
@@ -122,28 +120,11 @@ void RSShowFloatingImage(UIImage *image, UIWindowScene *scene) {
         return;
     }
     [self.selectionWindow dismiss];
-    [self.longCaptureWindow stop];
-    self.longCaptureWindow = nil;
     self.selectionWindow = nil;
     self.frozenImage = nil;
     self.internalCapture = NO;
     self.capturing = NO;
 
-}
-
-- (void)beginLongCapture {
-    if (!NSThread.isMainThread) { dispatch_async(dispatch_get_main_queue(), ^{ [self beginLongCapture]; }); return; }
-    UIWindowScene *scene = self.selectionWindow.windowScene;
-    [self.selectionWindow dismiss]; self.selectionWindow = nil; self.frozenImage = nil;
-    __weak typeof(self) weakSelf = self;
-    self.longCaptureWindow = [RSLongCaptureController startWithScene:scene
-        mode:[RSOption(@"LongCaptureMode") integerValue]
-        completion:^(UIWindowScene *resultScene) {
-            RSRegionShotManager *manager = weakSelf; manager.longCaptureWindow = nil; manager.capturing = NO;
-
-        } cancel:^{
-            RSRegionShotManager *manager = weakSelf; manager.longCaptureWindow = nil; manager.capturing = NO;
-        }];
 }
 
 - (void)createFloatingSnap:(UIImage *)image windowScene:(UIWindowScene *)scene {

@@ -43,16 +43,14 @@ jobs:
         run: clang -fobjc-arc -Wall -Wextra -Werror -framework Foundation Tests/test_urls.m -o /tmp/regionshot-urls && /tmp/regionshot-urls
       - name: Check crop geometry
         run: cc -std=c11 -Wall -Wextra -Werror Tests/test_geometry.c -lm -o /tmp/regionshot-geometry && /tmp/regionshot-geometry
-      - name: Check long screenshot pixels end to end
-        run: clang -fobjc-arc -Wall -Wextra -Werror -Wno-unused-parameter -I Tests/LongShotHost -framework Foundation -framework CoreGraphics -framework ImageIO Tests/test_long_stitcher.m LongShot/RSLongStitcher.m -o /tmp/regionshot-long-pixels && /tmp/regionshot-long-pixels
-      - name: Check long screenshot overlap matching
-        run: clang -std=c11 -Wall -Wextra -Werror Tests/long_match_test.c -o /tmp/regionshot-long-match && /tmp/regionshot-long-match
       - name: Check streaming packet boundaries
         run: clang -fobjc-arc -Wall -Wextra -Werror -framework Foundation Tests/test_stream.m AI/RSSSEDecoder.m -o /tmp/regionshot-stream && /tmp/regionshot-stream
       - name: Check generated QR recognition
         run: clang -fobjc-arc -Wall -Wextra -Werror -framework Foundation -framework Vision -framework CoreImage -framework CoreGraphics -framework ImageIO Tests/test_recognition.m -o /tmp/regionshot-recognition && /tmp/regionshot-recognition
       - name: Check WeChat scanner integration
         run: python3 Tests/check_wechat_scan.py
+      - name: Check Sileo touch path
+        run: python3 Tests/check_sileo_gesture.py
       - name: Check URL actions in both input panels
         run: python3 Tests/check_url_action.py
       - name: Install signing tools

@@ -23,12 +23,11 @@ assert 'cell.textLabel.text = @"复制截图历史调用地址"' in behavior
 history_copy = behavior.split('if ([self isHistoryURLPath:path]) {')[-1].split('return;', 1)[0]
 assert 'UIPasteboard.generalPasteboard.string = @"prefs://root=regionshot_history";' in history_copy
 assert 'presentViewController:alert' in history_copy and '@"已复制"' in history_copy
-controller = (root / 'LongShot/RSLongCaptureController.m').read_text(encoding='utf-8')
-header = (root / 'LongShot/RSLongCaptureController.h').read_text(encoding='utf-8')
 makefile = (root / 'Makefile').read_text(encoding='utf-8')
 injection = (root / 'RegionShot.plist').read_text(encoding='utf-8')
-swipe = (root / 'LongShot/RSLongSwipe.m').read_text(encoding='utf-8')
-assert '@"choiceValues":@[@3, @4]' in source
+assert 'LongCaptureMode' not in source and 'LongShot/' not in makefile
+assert '长截图' not in (root / 'Selection/RSMenuSettings.m').read_text(encoding='utf-8')
+assert 'longCaptureHandler' not in (root / 'Selection/RSSelectionToolbar.m').read_text(encoding='utf-8')
 assert 'choiceValues.count > index ? choiceValues[index] : @(index)' in behavior
 assert '[value unsignedIntegerValue]' not in behavior
 ai_settings = (root / 'AI/RSAISettingsController.m').read_text(encoding='utf-8')
@@ -56,20 +55,5 @@ assert 'name:@"com.moxuan.regionshot.orientation.target"' in camera
 assert '[NSNotificationCenter.defaultCenter removeObserver:self]' in camera
 assert 'UIInterfaceOrientationLandscapeLeft) videoOrientation = AVCaptureVideoOrientationLandscapeLeft' in camera
 assert 'UIInterfaceOrientationLandscapeRight) videoOrientation = AVCaptureVideoOrientationLandscapeRight' in camera
-mode_block = re.search(r'typedef NS_ENUM\(NSInteger, RSLongCaptureMode\) \{([^}]+)\}', header).group(1)
-assert set(re.findall(r'(RSLongCaptureMode\w+)\s*=', mode_block)) == {
-    'RSLongCaptureModeButtonStep', 'RSLongCaptureModeAutomaticStep'}
-assert 'mode == RSLongCaptureModeAutomaticStep ? RSLongCaptureModeAutomaticStep : RSLongCaptureModeButtonStep' in controller
-assert '@"按键分步滚动"' in source and '@"自动分步滚动"' in source
-assert 'action:@selector(continuePressed)' in controller
-assert 'scheduleAutomaticStep' in controller and 'automaticStepScheduled' in controller
-assert 'NSTimer' not in controller and 'manualTick' not in controller and 'startSampling' not in controller
-assert 'if (self.finishRequested) { [self captureFinalFrame]; return; }' in controller
-assert '@"已到页面底部，正在生成长图…"' in controller
-assert 'LongShot/RSLongSwipe.m' in makefile
 assert 'com.apple.UIKit' not in injection
-assert 'progress * progress * (3.0 - 2.0 * progress)' in swipe
-assert '700 * NSEC_PER_MSEC' in swipe
-assert 'self.nextStepAllowedTime = now + 1.8' in controller
-assert '- (void)enableContinueWhenReady' in controller
 print('Verified original preference keys/defaults/ranges and root settings destinations')

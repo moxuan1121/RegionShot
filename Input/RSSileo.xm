@@ -49,14 +49,23 @@ static NSString *RSNativeText(UIView *view) {
 }
 @interface RSSileoTranslate : NSObject <UIGestureRecognizerDelegate>
 @property(nonatomic) BOOL extracting;
+@property(nonatomic) BOOL enabled;
 @end
 @implementation RSSileoTranslate
+- (void)refreshEnabled:(__unused NSNotification *)note { self.enabled = [RSInputConfig()[@"sileo"][@"enabled"] boolValue]; }
+- (instancetype)init {
+    if ((self = [super init])) {
+        [self refreshEnabled:nil];
+        [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(refreshEnabled:)
+            name:UIApplicationDidBecomeActiveNotification object:nil];
+    }
+    return self;
+}
 - (BOOL)gestureRecognizer:(UIGestureRecognizer *)gesture shouldReceiveTouch:(UITouch *)touch {
-    if (![RSInputConfig()[@"sileo"][@"enabled"] boolValue] || RSInputIsPanelVisible()) return NO;
+    if (!self.enabled || RSInputIsPanelVisible()) return NO;
     for (UIView *view = touch.view; view && view != gesture.view; view = view.superview)
         if ([view isKindOfClass:UIControl.class]) return NO;
-    UIView *text = RSTextAtPoint(gesture.view, [touch locationInView:gesture.view], 0);
-    return RSIsDepiction(text ?: touch.view);
+    return YES;
 }
 - (BOOL)gestureRecognizer:(UIGestureRecognizer *)gesture shouldRecognizeSimultaneouslyWithGestureRecognizer:(UIGestureRecognizer *)other { return YES; }
 - (BOOL)gestureRecognizer:(UIGestureRecognizer *)gesture shouldRequireFailureOfGestureRecognizer:(UIGestureRecognizer *)other { return NO; }
@@ -71,7 +80,7 @@ static NSString *RSNativeText(UIView *view) {
     RSInputRunCopiedAction(action, text, ^(NSString *result) { RSInputOpenSearch(result); });
 }
 - (void)pressed:(UILongPressGestureRecognizer *)gesture {
-    if (gesture.state != UIGestureRecognizerStateBegan || self.extracting || ![RSInputConfig()[@"sileo"][@"enabled"] boolValue]) return;
+    if (gesture.state != UIGestureRecognizerStateBegan || self.extracting || !self.enabled) return;
     CGPoint point = [gesture locationInView:gesture.view];
     UIView *hit = RSTextAtPoint(gesture.view, point, 0) ?: [gesture.view hitTest:point withEvent:nil];
     if (!RSIsDepiction(hit)) return;
@@ -85,7 +94,7 @@ static NSString *RSNativeText(UIView *view) {
             NSString *script = @"(function(){var s=window.getSelection();if(s&&s.toString().length)return s.toString();var b=document.body;return ((b&&(b.innerText||b.textContent))||'').slice(0,12001);})()";
             [(WKWebView *)view evaluateJavaScript:script completionHandler:^(id result, NSError *error) {
                 self.extracting = NO;
-                if (!error && gesture.view.window && [RSInputConfig()[@"sileo"][@"enabled"] boolValue]) [self translate:result];
+                if (!error && gesture.view.window && self.enabled) [self translate:result];
             }];
             return;
         }

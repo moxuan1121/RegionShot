@@ -3,12 +3,6 @@
     "key": "@\"StatusBarSwipe\"",
     "default": "@YES"
   },
-  "LongCaptureMode": {
-    "key": "@\"LongCaptureMode\"",
-    "default": "@2",
-    "min": "@0",
-    "max": "@4"
-  },
   "CaptureHaptic": {
     "key": "@\"CaptureHaptic\"",
     "default": "@YES"
