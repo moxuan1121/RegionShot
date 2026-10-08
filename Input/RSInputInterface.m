@@ -542,11 +542,11 @@ static NSString *RSInputFullText(id<UITextInput> target) {
     return self.tokenView ? self.tokenView.selectedText : self.result;
 }
 - (void)updateTokenButtonOrder {
-    UIStackView *buttons = (id)self.visitButton.superview;
+    UIStackView *buttons = (id)self.orderButton.superview;
     if (![buttons isKindOfClass:UIStackView.class]) return;
-    [buttons removeArrangedSubview:self.visitButton];
-    [self.visitButton removeFromSuperview];
-    [buttons insertArrangedSubview:self.visitButton atIndex:self.tokenView ? 2 : 1];
+    [buttons removeArrangedSubview:self.orderButton];
+    [self.orderButton removeFromSuperview];
+    [buttons insertArrangedSubview:self.orderButton atIndex:self.tokenView ? 2 : 3];
 }
 - (void)updateTokenButtonIcons {
     if (!self.closeButton) return;
