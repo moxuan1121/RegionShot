@@ -87,18 +87,11 @@ static inline BOOL RSInputCanReplace(NSString *original, NSString *current, NSRa
         range.length <= current.length - range.location;
 }
 
+#import "RSTokenPieces.h"
+
 // Preserve punctuation and spaces so selecting every piece reproduces the exact result.
 static inline NSArray<NSString *> *RSInputTextPieces(NSString *text) {
-    if (![text isKindOfClass:NSString.class] || text.length > 24000) return @[];
-    NSMutableArray *pieces = [NSMutableArray array];
-    __block NSUInteger end = 0;
-    [text enumerateSubstringsInRange:NSMakeRange(0, text.length) options:NSStringEnumerationByWords usingBlock:^(NSString *word, NSRange range, __unused NSRange enclosing, __unused BOOL *stop) {
-        if (range.location > end) [pieces addObject:[text substringWithRange:NSMakeRange(end, range.location - end)]];
-        [pieces addObject:word];
-        end = NSMaxRange(range);
-    }];
-    if (end < text.length) [pieces addObject:[text substringFromIndex:end]];
-    return pieces;
+    return RSTokenPieces(text);
 }
 
 static inline BOOL RSInputSplitPiece(NSMutableArray<NSString *> *pieces, NSMutableIndexSet *selected, NSUInteger index) {

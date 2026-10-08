@@ -1,6 +1,7 @@
 #import "RSKATokenView.h"
 #import "RSKACore.h"
 #import "RSKAInterface.h"
+#import <math.h>
 
 // Use the same UILabel measurement and padding for sizing and rendering.
 @interface RSKATokenCell : UICollectionViewCell
@@ -49,6 +50,7 @@
         self.pieces = [pieces mutableCopy];
         self.chosen = [NSMutableIndexSet indexSet];
         self.selectionOrder = [NSMutableArray array];
+        self.usesSelectionOrder = NO;
         self.dataSource = self;
         self.delegate = self;
         self.backgroundColor = UIColor.clearColor;
@@ -169,7 +171,13 @@
 }
 - (NSString *)selectedText {
     NSMutableString *text = [NSMutableString string];
-    for (NSNumber *value in self.selectionOrder) [text appendString:self.pieces[value.unsignedIntegerValue]];
+    if (self.usesSelectionOrder) {
+        for (NSNumber *value in self.selectionOrder) [text appendString:self.pieces[value.unsignedIntegerValue]];
+    } else {
+        [self.chosen enumerateIndexesUsingBlock:^(NSUInteger index, __unused BOOL *stop) {
+            [text appendString:self.pieces[index]];
+        }];
+    }
     return text;
 }
 - (BOOL)splitAtIndex:(NSUInteger)index {
@@ -201,16 +209,23 @@
         return [gesture locationInView:self].x >= self.bounds.size.width - 36;
     if (gesture != self.paint) return [super gestureRecognizerShouldBegin:gesture];
     CGPoint point = [self.paint locationInView:self], translation = [self.paint translationInView:self];
+    if (fabs(translation.y) > fabs(translation.x) * 1.3) return NO;
     return [self indexPathNearPoint:CGPointMake(point.x - translation.x, point.y - translation.y)] != nil;
 }
 - (NSIndexPath *)indexPathNearPoint:(CGPoint)point {
     if (point.x >= self.bounds.size.width - 36) return nil;
     NSIndexPath *path = [self indexPathForItemAtPoint:point];
     if (path) return path;
-    for (NSIndexPath *visible in self.indexPathsForVisibleItems)
-        if (CGRectContainsPoint(CGRectInset([self layoutAttributesForItemAtIndexPath:visible].frame, -4, -4), point))
-            return visible;
-    return nil;
+    NSIndexPath *nearest = nil;
+    CGFloat shortest = 8 * 8;
+    for (NSIndexPath *visible in self.indexPathsForVisibleItems) {
+        CGRect frame = [self layoutAttributesForItemAtIndexPath:visible].frame;
+        CGFloat dx = MAX(0, MAX(CGRectGetMinX(frame) - point.x, point.x - CGRectGetMaxX(frame)));
+        CGFloat dy = MAX(0, MAX(CGRectGetMinY(frame) - point.y, point.y - CGRectGetMaxY(frame)));
+        CGFloat distance = dx * dx + dy * dy;
+        if (distance < shortest) { shortest = distance; nearest = visible; }
+    }
+    return nearest;
 }
 - (void)paintAtPoint:(CGPoint)point {
     NSIndexPath *path = [self indexPathNearPoint:point];

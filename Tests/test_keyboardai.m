@@ -12,6 +12,12 @@ int main(void) {
     NSString *text = @"区域截图 AI 👨‍👩‍👧‍👦\n第二行";
     NSArray *pieces = RSKATextPieces(text);
     assert([[pieces componentsJoinedByString:@""] isEqual:text]);
+    NSString *mixed = @"HTTPServer fooBar_2\n中文，👨‍👩‍👧‍👦";
+    NSArray *mixedPieces = RSKATextPieces(mixed);
+    assert([[mixedPieces componentsJoinedByString:@""] isEqual:mixed]);
+    assert([mixedPieces containsObject:@"HTTP"] && [mixedPieces containsObject:@"Server"]);
+    assert([mixedPieces containsObject:@"foo"] && [mixedPieces containsObject:@"Bar"]);
+    assert([mixedPieces containsObject:@"\n"]);
     NSMutableIndexSet *selected = [NSMutableIndexSet indexSet];
     RSKAPaintSelection(selected, 1, 3, YES);
     assert(selected.count == 3);

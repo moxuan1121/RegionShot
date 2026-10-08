@@ -1,4 +1,5 @@
 #import <Foundation/Foundation.h>
+#import "../Input/RSTokenPieces.h"
 
 
 static inline NSString *RSKATrim(NSString *text) {
@@ -6,16 +7,7 @@ static inline NSString *RSKATrim(NSString *text) {
 }
 
 static inline NSArray<NSString *> *RSKATextPieces(NSString *text) {
-    if (![text isKindOfClass:NSString.class] || text.length > 24000) return @[];
-    NSMutableArray *pieces = [NSMutableArray array];
-    __block NSUInteger end = 0;
-    [text enumerateSubstringsInRange:NSMakeRange(0, text.length) options:NSStringEnumerationByWords usingBlock:^(NSString *word, NSRange range, __unused NSRange enclosing, __unused BOOL *stop) {
-        if (range.location > end) [pieces addObject:[text substringWithRange:NSMakeRange(end, range.location - end)]];
-        [pieces addObject:word];
-        end = NSMaxRange(range);
-    }];
-    if (end < text.length) [pieces addObject:[text substringFromIndex:end]];
-    return pieces;
+    return RSTokenPieces(text);
 }
 
 static inline BOOL RSKASplitPiece(NSMutableArray<NSString *> *pieces, NSMutableIndexSet *selected, NSUInteger index) {

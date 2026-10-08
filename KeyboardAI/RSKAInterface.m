@@ -72,7 +72,9 @@ static UIWindowLevel RSKAPanelWindowLevel(NSDictionary *options, NSString *key) 
 @property(strong) UIButton *backButton;
 @property(strong) UIButton *replaceButton;
 @property(strong) UIButton *clipboardButton;
+@property(strong) UIButton *orderButton;
 @property(strong) UIButton *visitButton;
+@property(strong) UIButton *closeButton;
 @property(strong) NSURL *visitURL;
 @property BOOL visitURLChecked;
 @property(strong) RSKAAnchoredMenuView *searchMenu;
@@ -188,14 +190,21 @@ static UIWindowLevel RSKAPanelWindowLevel(NSDictionary *options, NSString *key) 
         self.replaceButton.accessibilityHint = @"轻按使用默认搜索引擎，长按选择搜索引擎";
     }
     self.clipboardButton = [self button:@"复制" action:@selector(copyResult)];
+    self.orderButton = [self button:@"原序" action:@selector(toggleSelectionOrder)];
+    self.orderButton.accessibilityLabel = @"输出顺序：按原文位置";
+    UIButtonConfiguration *orderConfig = self.orderButton.configuration;
+    orderConfig.image = nil;
+    self.orderButton.configuration = orderConfig;
+    self.orderButton.hidden = YES;
     self.visitButton = [self button:@"访问" action:@selector(visitResult)];
     self.visitButton.hidden = YES;
     UIButton *close = [self button:@"关闭" action:@selector(close)];
+    self.closeButton = close;
     UILongPressGestureRecognizer *clearSelection = [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(clearTokenSelection:)];
     clearSelection.minimumPressDuration = 0.5;
     [close addGestureRecognizer:clearSelection];
     close.accessibilityHint = @"轻按关闭，分词时长按取消全部选择";
-    UIStackView *buttons = [[UIStackView alloc] initWithArrangedSubviews:@[self.replaceButton, self.clipboardButton, self.visitButton, close]];
+    UIStackView *buttons = [[UIStackView alloc] initWithArrangedSubviews:@[self.replaceButton, self.clipboardButton, self.orderButton, self.visitButton, close]];
     buttons.distribution = UIStackViewDistributionFillEqually;
     buttons.spacing = 8;
     self.statusLabel = [UILabel new];
@@ -278,7 +287,7 @@ static UIWindowLevel RSKAPanelWindowLevel(NSDictionary *options, NSString *key) 
     RSCloseWindowSurface(self.overlayWindow, self.panel); self.panel = nil;
     [self.previousWindow makeKeyWindow]; self.overlayWindow = nil;
     self.textView = nil; self.contentStack = nil; self.header = nil; self.tokenView = nil;
-    self.backButton = nil; self.replaceButton = nil; self.clipboardButton = nil; self.visitButton = nil;
+    self.backButton = nil; self.replaceButton = nil; self.clipboardButton = nil; self.orderButton = nil; self.visitButton = nil; self.closeButton = nil;
     self.statusLabel = nil; self.spinner = nil; self.heightConstraint = nil;
     self.panelTop = nil; self.panelLeading = nil; self.panelWidth = nil; self.windowOptions = nil;
     self.result = nil; self.completedResult = NO; self.generating = NO;
@@ -288,16 +297,39 @@ static UIWindowLevel RSKAPanelWindowLevel(NSDictionary *options, NSString *key) 
 - (NSString *)actionText {
     return self.tokenView ? self.tokenView.selectedText : self.result;
 }
+- (void)updateTokenButtonIcons {
+    if (!self.closeButton) return;
+    NSArray<UIButton *> *buttons = @[self.replaceButton, self.clipboardButton, self.visitButton, self.closeButton];
+    NSArray<NSString *> *symbols = @[@"magnifyingglass", @"doc.on.doc", @"safari", @"xmark"];
+    for (NSUInteger i = 0; i < buttons.count; i++) {
+        UIButtonConfiguration *config = buttons[i].configuration;
+        config.image = self.tokenView ? nil : [UIImage systemImageNamed:symbols[i]];
+        buttons[i].configuration = config;
+    }
+}
 - (void)updateTokenActions {
     BOOL hasText = self.tokenView ? self.tokenView.hasSelection : self.result.length > 0;
     self.clipboardButton.enabled = hasText;
     self.replaceButton.enabled = hasText && self.completedResult;
+    self.orderButton.hidden = self.tokenView == nil;
     self.visitButton.hidden = self.visitURL == nil;
     self.visitButton.enabled = self.visitURL != nil;
+}
+- (void)toggleSelectionOrder {
+    if (!self.tokenView) return;
+    self.tokenView.usesSelectionOrder = !self.tokenView.usesSelectionOrder;
+    BOOL selectedOrder = self.tokenView.usesSelectionOrder;
+    UIButtonConfiguration *config = self.orderButton.configuration;
+    config.title = selectedOrder ? @"选序" : @"原序";
+    config.image = nil;
+    self.orderButton.configuration = config;
+    self.orderButton.accessibilityLabel = selectedOrder ? @"输出顺序：按选择先后" : @"输出顺序：按原文位置";
+    RSKASelectionFeedback();
 }
 - (void)leaveTokens {
     [self.tokenView removeFromSuperview];
     self.tokenView = nil;
+    [self updateTokenButtonIcons];
     self.overlayWindow.windowLevel = RSKAPanelWindowLevel(self.windowOptions, @"aiWindowPriority");
     self.textView.hidden = NO;
     self.header.hidden = NO;
@@ -323,6 +355,7 @@ static UIWindowLevel RSKAPanelWindowLevel(NSDictionary *options, NSString *key) 
         self.visitURLChecked = YES;
     }
     self.tokenView = [[RSKATokenView alloc] initWithPieces:pieces];
+    [self updateTokenButtonIcons];
     self.overlayWindow.windowLevel = RSKAPanelWindowLevel(self.windowOptions, @"tokenWindowPriority");
     __weak RSKAPanel *weakSelf = self;
     self.tokenView.onSelectionChanged = ^{ [weakSelf updateTokenActions]; };

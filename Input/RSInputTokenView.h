@@ -6,6 +6,7 @@
 @property(copy) void (^onGutterLongPress)(void);
 @property(readonly) BOOL hasSelection;
 @property(readonly, copy) NSString *selectedText;
+@property BOOL usesSelectionOrder;
 - (instancetype)initWithPieces:(NSArray<NSString *> *)pieces;
 - (void)clearSelection;
 @end
