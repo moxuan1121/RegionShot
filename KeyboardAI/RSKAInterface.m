@@ -190,6 +190,7 @@ static UIWindowLevel RSKAPanelWindowLevel(NSDictionary *options, NSString *key) 
         self.replaceButton.accessibilityHint = @"轻按使用默认搜索引擎，长按选择搜索引擎";
     }
     self.clipboardButton = [self button:@"复制" action:@selector(copyResult)];
+    self.clipboardButton.accessibilityHint = @"未选词时复制全文，选词后复制所选内容";
     self.orderButton = [self button:@"原序" action:@selector(toggleSelectionOrder)];
     self.orderButton.accessibilityLabel = @"输出顺序：按原文位置";
     UIButtonConfiguration *orderConfig = self.orderButton.configuration;
@@ -316,7 +317,7 @@ static UIWindowLevel RSKAPanelWindowLevel(NSDictionary *options, NSString *key) 
 }
 - (void)updateTokenActions {
     BOOL hasText = self.tokenView ? self.tokenView.hasSelection : self.result.length > 0;
-    self.clipboardButton.enabled = hasText;
+    self.clipboardButton.enabled = self.result.length > 0;
     self.replaceButton.enabled = hasText && self.completedResult;
     self.orderButton.hidden = self.tokenView == nil;
     self.visitButton.hidden = self.visitURL == nil;
@@ -397,8 +398,9 @@ static UIWindowLevel RSKAPanelWindowLevel(NSDictionary *options, NSString *key) 
     [self.searchMenu trackGestureRecognizer:gesture];
 }
 - (void)copyResult {
-    if ([self actionText].length) {
-        UIPasteboard.generalPasteboard.string = [self actionText];
+    NSString *text = self.tokenView && !self.tokenView.hasSelection ? self.result : [self actionText];
+    if (text.length) {
+        UIPasteboard.generalPasteboard.string = text;
         [self close];
         UIAccessibilityPostNotification(UIAccessibilityAnnouncementNotification, @"已复制");
     }
