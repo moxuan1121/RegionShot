@@ -266,7 +266,7 @@ static NSString *RSInputFullText(id<UITextInput> target) {
     clearSelection.minimumPressDuration = 0.5;
     [close addGestureRecognizer:clearSelection];
     close.accessibilityHint = @"轻按关闭，分词时长按取消全部选择";
-    UIStackView *buttons = [[UIStackView alloc] initWithArrangedSubviews:@[self.replaceButton, self.clipboardButton, self.orderButton, self.visitButton, close]];
+    UIStackView *buttons = [[UIStackView alloc] initWithArrangedSubviews:@[self.replaceButton, self.visitButton, self.clipboardButton, self.orderButton, close]];
     buttons.distribution = UIStackViewDistributionFillEqually;
     buttons.spacing = 8;
     self.statusLabel = [UILabel new];
@@ -541,6 +541,13 @@ static NSString *RSInputFullText(id<UITextInput> target) {
 - (NSString *)actionText {
     return self.tokenView ? self.tokenView.selectedText : self.result;
 }
+- (void)updateTokenButtonOrder {
+    UIStackView *buttons = (id)self.visitButton.superview;
+    if (![buttons isKindOfClass:UIStackView.class]) return;
+    [buttons removeArrangedSubview:self.visitButton];
+    [self.visitButton removeFromSuperview];
+    [buttons insertArrangedSubview:self.visitButton atIndex:self.tokenView ? 2 : 1];
+}
 - (void)updateTokenButtonIcons {
     if (!self.closeButton) return;
     NSArray<UIButton *> *buttons = @[self.replaceButton, self.clipboardButton, self.visitButton, self.closeButton];
@@ -573,6 +580,7 @@ static NSString *RSInputFullText(id<UITextInput> target) {
 - (void)leaveTokens {
     [self.tokenView removeFromSuperview];
     self.tokenView = nil;
+    [self updateTokenButtonOrder];
     [self updateTokenButtonIcons];
     self.overlayWindow.windowLevel = RSInputPanelWindowLevel(self.windowOptions, @"aiWindowPriority");
     self.textView.hidden = NO;
@@ -611,6 +619,7 @@ static NSString *RSInputFullText(id<UITextInput> target) {
         self.visitURLChecked = YES;
     }
     self.tokenView = [[RSInputTokenView alloc] initWithPieces:pieces];
+    [self updateTokenButtonOrder];
     [self updateTokenButtonIcons];
     self.overlayWindow.windowLevel = RSInputPanelWindowLevel(self.windowOptions, @"tokenWindowPriority");
     __weak RSInputPanel *weakSelf = self;

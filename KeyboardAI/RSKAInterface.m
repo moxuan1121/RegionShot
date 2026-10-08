@@ -204,7 +204,7 @@ static UIWindowLevel RSKAPanelWindowLevel(NSDictionary *options, NSString *key) 
     clearSelection.minimumPressDuration = 0.5;
     [close addGestureRecognizer:clearSelection];
     close.accessibilityHint = @"轻按关闭，分词时长按取消全部选择";
-    UIStackView *buttons = [[UIStackView alloc] initWithArrangedSubviews:@[self.replaceButton, self.clipboardButton, self.orderButton, self.visitButton, close]];
+    UIStackView *buttons = [[UIStackView alloc] initWithArrangedSubviews:@[self.replaceButton, self.visitButton, self.clipboardButton, self.orderButton, close]];
     buttons.distribution = UIStackViewDistributionFillEqually;
     buttons.spacing = 8;
     self.statusLabel = [UILabel new];
@@ -297,6 +297,13 @@ static UIWindowLevel RSKAPanelWindowLevel(NSDictionary *options, NSString *key) 
 - (NSString *)actionText {
     return self.tokenView ? self.tokenView.selectedText : self.result;
 }
+- (void)updateTokenButtonOrder {
+    UIStackView *buttons = (id)self.visitButton.superview;
+    if (![buttons isKindOfClass:UIStackView.class]) return;
+    [buttons removeArrangedSubview:self.visitButton];
+    [self.visitButton removeFromSuperview];
+    [buttons insertArrangedSubview:self.visitButton atIndex:self.tokenView ? 2 : 1];
+}
 - (void)updateTokenButtonIcons {
     if (!self.closeButton) return;
     NSArray<UIButton *> *buttons = @[self.replaceButton, self.clipboardButton, self.visitButton, self.closeButton];
@@ -329,6 +336,7 @@ static UIWindowLevel RSKAPanelWindowLevel(NSDictionary *options, NSString *key) 
 - (void)leaveTokens {
     [self.tokenView removeFromSuperview];
     self.tokenView = nil;
+    [self updateTokenButtonOrder];
     [self updateTokenButtonIcons];
     self.overlayWindow.windowLevel = RSKAPanelWindowLevel(self.windowOptions, @"aiWindowPriority");
     self.textView.hidden = NO;
@@ -355,6 +363,7 @@ static UIWindowLevel RSKAPanelWindowLevel(NSDictionary *options, NSString *key) 
         self.visitURLChecked = YES;
     }
     self.tokenView = [[RSKATokenView alloc] initWithPieces:pieces];
+    [self updateTokenButtonOrder];
     [self updateTokenButtonIcons];
     self.overlayWindow.windowLevel = RSKAPanelWindowLevel(self.windowOptions, @"tokenWindowPriority");
     __weak RSKAPanel *weakSelf = self;
