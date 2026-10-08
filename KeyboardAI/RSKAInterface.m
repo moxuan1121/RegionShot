@@ -187,7 +187,7 @@ static UIWindowLevel RSKAPanelWindowLevel(NSDictionary *options, NSString *key) 
         UILongPressGestureRecognizer *searchMenu = [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(showSearchMenu:)];
         searchMenu.minimumPressDuration = 0.35;
         [self.replaceButton addGestureRecognizer:searchMenu];
-        self.replaceButton.accessibilityHint = @"轻按使用默认搜索引擎，长按选择搜索引擎";
+        self.replaceButton.accessibilityHint = @"未选词时搜索全文，选词后搜索所选内容；长按选择搜索引擎";
     }
     self.clipboardButton = [self button:@"复制" action:@selector(copyResult)];
     self.clipboardButton.accessibilityHint = @"未选词时复制全文，选词后复制所选内容";
@@ -298,6 +298,9 @@ static UIWindowLevel RSKAPanelWindowLevel(NSDictionary *options, NSString *key) 
 - (NSString *)actionText {
     return self.tokenView ? self.tokenView.selectedText : self.result;
 }
+- (NSString *)fullOrSelectedText {
+    return self.tokenView && !self.tokenView.hasSelection ? self.result : [self actionText];
+}
 - (void)updateTokenButtonOrder {
     UIStackView *buttons = (id)self.orderButton.superview;
     if (![buttons isKindOfClass:UIStackView.class]) return;
@@ -316,9 +319,8 @@ static UIWindowLevel RSKAPanelWindowLevel(NSDictionary *options, NSString *key) 
     }
 }
 - (void)updateTokenActions {
-    BOOL hasText = self.tokenView ? self.tokenView.hasSelection : self.result.length > 0;
     self.clipboardButton.enabled = self.result.length > 0;
-    self.replaceButton.enabled = hasText && self.completedResult;
+    self.replaceButton.enabled = self.result.length > 0 && self.completedResult;
     self.orderButton.hidden = self.tokenView == nil;
     self.visitButton.hidden = self.visitURL == nil;
     self.visitButton.enabled = self.visitURL != nil;
@@ -378,13 +380,13 @@ static UIWindowLevel RSKAPanelWindowLevel(NSDictionary *options, NSString *key) 
     [self resizePanel];
     RSKASelectionFeedback();
 }
-- (void)searchResult { NSString *text = [self actionText]; if (text.length) { [self close]; RSKAOpenSearch(text); } }
+- (void)searchResult { NSString *text = [self fullOrSelectedText]; if (text.length) { [self close]; RSKAOpenSearch(text); } }
 - (void)showSearchMenu:(UILongPressGestureRecognizer *)gesture {
-    if (gesture.state == UIGestureRecognizerStateBegan && [self actionText].length) {
+    if (gesture.state == UIGestureRecognizerStateBegan && self.replaceButton.enabled) {
         [self.searchMenu dismiss];
         RSKAAnchoredMenuView *menu = [RSKAAnchoredMenuView new];
         menu.menuWidth = 180; menu.centersTitles = YES; menu.presentsBelowSource = YES; menu.animatesDismissal = YES;
-        NSString *text = [self actionText]; __weak RSKAPanel *weakSelf = self;
+        NSString *text = [self fullOrSelectedText]; __weak RSKAPanel *weakSelf = self;
         for (NSDictionary *engine in RSKASearchEngines(RSKAConfig()))
             [menu addItemWithTitle:engine[@"name"] image:[UIImage systemImageNamed:@"magnifyingglass"] destructive:NO handler:^{ [weakSelf close]; RSKAOpenSearchEngine(engine, text); }];
         for (NSDictionary *action in RSInputVisibleActions(@"clipboardHiddenPersonas"))
@@ -398,7 +400,7 @@ static UIWindowLevel RSKAPanelWindowLevel(NSDictionary *options, NSString *key) 
     [self.searchMenu trackGestureRecognizer:gesture];
 }
 - (void)copyResult {
-    NSString *text = self.tokenView && !self.tokenView.hasSelection ? self.result : [self actionText];
+    NSString *text = [self fullOrSelectedText];
     if (text.length) {
         UIPasteboard.generalPasteboard.string = text;
         [self close];

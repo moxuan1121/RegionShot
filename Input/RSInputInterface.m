@@ -249,7 +249,7 @@ static NSString *RSInputFullText(id<UITextInput> target) {
         UILongPressGestureRecognizer *searchMenu = [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(showSearchMenu:)];
         searchMenu.minimumPressDuration = 0.35;
         [self.replaceButton addGestureRecognizer:searchMenu];
-        self.replaceButton.accessibilityHint = @"轻按使用默认搜索引擎，长按选择搜索引擎";
+        self.replaceButton.accessibilityHint = @"未选词时搜索全文，选词后搜索所选内容；长按选择搜索引擎";
     }
     self.clipboardButton = [self button:@"复制" action:@selector(copyResult)];
     self.clipboardButton.accessibilityHint = @"未选词时复制全文，选词后复制所选内容";
@@ -542,6 +542,9 @@ static NSString *RSInputFullText(id<UITextInput> target) {
 - (NSString *)actionText {
     return self.tokenView ? self.tokenView.selectedText : self.result;
 }
+- (NSString *)fullOrSelectedText {
+    return self.tokenView && !self.tokenView.hasSelection ? self.result : [self actionText];
+}
 - (void)updateTokenButtonOrder {
     UIStackView *buttons = (id)self.orderButton.superview;
     if (![buttons isKindOfClass:UIStackView.class]) return;
@@ -562,7 +565,7 @@ static NSString *RSInputFullText(id<UITextInput> target) {
 - (void)updateTokenActions {
     BOOL hasText = self.tokenView ? self.tokenView.hasSelection : self.result.length > 0;
     self.clipboardButton.enabled = self.result.length > 0;
-    self.replaceButton.enabled = hasText && self.completedResult && (self.searchAction || !self.inputInvalidated);
+    self.replaceButton.enabled = (self.searchAction ? self.result.length > 0 : hasText) && self.completedResult && (self.searchAction || !self.inputInvalidated);
     self.orderButton.hidden = self.tokenView == nil;
     self.visitButton.hidden = self.visitURL == nil;
     self.visitButton.enabled = self.visitURL != nil;
@@ -637,20 +640,20 @@ static NSString *RSInputFullText(id<UITextInput> target) {
 - (void)searchResult {
     if (self.generating || !self.replaceButton.enabled || !self.result.length || !self.searchAction) return;
     void (^search)(NSString *) = self.searchAction;
-    NSString *text = [self actionText];
+    NSString *text = [self fullOrSelectedText];
     [self close];
     search(text);
 }
 - (void)showSearchMenu:(UILongPressGestureRecognizer *)gesture {
     if (gesture.state == UIGestureRecognizerStateBegan) {
-        if (!self.searchAction || !self.replaceButton.enabled || ![self actionText].length) return;
+        if (!self.searchAction || !self.replaceButton.enabled) return;
         [self.searchMenu dismiss];
         RSInputAnchoredMenuView *menu = [RSInputAnchoredMenuView new];
         menu.menuWidth = 180;
         menu.centersTitles = YES;
         menu.presentsBelowSource = YES;
         menu.animatesDismissal = YES;
-        NSString *text = [[self actionText] copy];
+        NSString *text = [[self fullOrSelectedText] copy];
         __weak RSInputPanel *weakSelf = self;
         for (NSDictionary *engine in RSInputSearchEngines(RSInputConfig())) {
             [menu addItemWithTitle:engine[@"name"] image:[UIImage systemImageNamed:@"magnifyingglass"]
@@ -676,7 +679,7 @@ static NSString *RSInputFullText(id<UITextInput> target) {
     [self.searchMenu trackGestureRecognizer:gesture];
 }
 - (void)copyResult {
-    NSString *text = self.tokenView && !self.tokenView.hasSelection ? self.result : [self actionText];
+    NSString *text = [self fullOrSelectedText];
     if (text.length) {
         UIPasteboard.generalPasteboard.string = text;
         [self close];

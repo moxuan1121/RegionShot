@@ -80,8 +80,11 @@ keyboard_panel = (root / 'KeyboardAI/RSKAInterface.m').read_text(encoding='utf-8
 input_panel = (root / 'Input/RSInputInterface.m').read_text(encoding='utf-8')
 for panel in (keyboard_panel, input_panel):
     assert 'self.clipboardButton.enabled = self.result.length > 0' in panel
-    assert 'self.tokenView && !self.tokenView.hasSelection ? self.result : [self actionText]' in panel
+    assert 'return self.tokenView && !self.tokenView.hasSelection ? self.result : [self actionText]' in panel
+    assert 'NSString *text = [self fullOrSelectedText]' in panel
     assert 'UIPasteboard.generalPasteboard.string = text' in panel
+    assert '[self fullOrSelectedText]' in panel.split('- (void)searchResult {', 1)[1].split('- (void)showSearchMenu:', 1)[0]
+    assert '[self fullOrSelectedText]' in panel.split('- (void)showSearchMenu:', 1)[1].split('- (void)copyResult {', 1)[0]
 open_tokens = keyboard_panel.split('void RSKAOpenTokens(NSString *text) {', 1)[1].split('void RSKAClosePanel', 1)[0]
 assert open_tokens.index('[RSKASharedPanel() close]') < open_tokens.index('[panel show]')
 desktop_focus = chat.split('- (void)armDesktopKeyRecovery {', 1)[1].split('- (void)updateHeading', 1)[0]
