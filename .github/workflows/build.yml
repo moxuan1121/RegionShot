@@ -60,10 +60,12 @@ jobs:
           export THEOS="$RUNNER_TEMP/theos"
           echo "THEOS=$THEOS" >> "$GITHUB_ENV"
           git clone https://github.com/roothide/theos.git "$THEOS"
+          git -C "$THEOS" fetch origin 88506b2c22e9e07dd4ed055f23c9e398a117a2c7
           git -C "$THEOS" checkout 88506b2c22e9e07dd4ed055f23c9e398a117a2c7
           git -C "$THEOS" submodule update --init --recursive
           git clone --filter=blob:none --no-checkout https://github.com/theos/sdks.git "$RUNNER_TEMP/sdks"
           git -C "$RUNNER_TEMP/sdks" sparse-checkout set iPhoneOS15.6.sdk
+          git -C "$RUNNER_TEMP/sdks" fetch origin 0222fd5413cf4b9af096f37b4621afa2688572f7
           git -C "$RUNNER_TEMP/sdks" checkout 0222fd5413cf4b9af096f37b4621afa2688572f7
           cp -R "$RUNNER_TEMP/sdks/iPhoneOS15.6.sdk" "$THEOS/sdks/"
       - name: Build package
